@@ -27,6 +27,60 @@ tiny = 1e-15  # small number for numerical gymnastics...
 
 method = "LSODA"
 
+def combined_rhs(
+    t, 
+    y,
+    gas_accretion_rate, 
+    halo_mass, 
+    stellar_metallicity,
+    sfr_feedback, 
+    sfr_metals_feedback, 
+    past_stars_mass,
+    feedback_type,
+    ):
+    
+    """
+    Single combined RHS for all five state variables:
+        y = [gas_mass, stars_mass, gas_metals, stars_metals, dust_mass]
+    """
+    
+    gas_mass, stars_mass, gas_metals, stars_metals, dust_mass = y
+
+    d_gas = update_gas_reservoir(
+        t, 
+        gas_mass, 
+        gas_accretion_rate, 
+        halo_mass,
+        stars_metals, 
+        sfr_feedback, 
+        feedback_type,
+    )
+
+    d_stars = star_formation_rate(t, gas_mass)
+
+    d_gas_met = evolve_gas_metals(
+        t, 
+        gas_metals, 
+        gas_mass, 
+        gas_accretion_rate, 
+        halo_mass,
+        stars_metals, 
+        sfr_metals_feedback, 
+        feedback_type,
+    )
+
+    d_stars_met = evolve_stars_metals(t, gas_metals, gas_mass)
+
+    d_dust = update_dust_reservoir(
+        t, 
+        dust_mass, 
+        gas_mass, 
+        halo_mass,
+        sfr_feedback, 
+        past_stars_mass, 
+        stars_metals,
+    )
+    return [d_gas, d_stars, d_gas_met, d_stars_met, d_dust]
 
 def run1(halo_mass, halo_mass_rate, redshift):
     cosmic_time = utils.time_at_z(redshift)  # Gyr
@@ -45,91 +99,59 @@ def run1(halo_mass, halo_mass_rate, redshift):
         redshift, halo_mass, halo_mass_rate, UV_background
     )
 
-    delay_counter = None
+    # delay_counter = None
 
     for j in range(1, n):
         t_span = [cosmic_time[j - 1], cosmic_time[j]]
+        
+# --- Delay index: find the timestep closest to t - t_d  ---
+        t_delayed = cosmic_time[j] - t_d
+        idx_delayed = int(np.searchsorted(cosmic_time, t_delayed))
+        idx_delayed = max(0, min(idx_delayed, j - 1))
 
         if cosmic_time[j] <= tsn:
             feedback_type = "no"
             sfr_feedback = 0.0
-            delay_counter = j
+            sfr_metals_feedback = sfr[j-1] 
         else:
             feedback_type = sn_type
-            sfr_feedback = (
-                sfr[j - delay_counter - 1] if delay_counter is not None else 0.0
-            )
+            sfr_feedback = sfr[idx_delayed]
+            sfr_metals_feedback = sfr[idx_delayed]
+   
+        # Delta stellar mass at the delayed index (used by dust RHS)
+        past_stars_delta = stars_mass[idx_delayed] - stars_mass[max(0, idx_delayed - 1)]
+            
+        y0 = [
+            gas_mass[j - 1],
+            stars_mass[j - 1],
+            gas_metals[j - 1],
+            stars_metals[j - 1],
+            dust_mass[j - 1],
+        ]
 
-        # Update gas mass
         sol = solve_ivp(
-            update_gas_reservoir,
-            t_span,
-            [gas_mass[j - 1]],
+            combined_rhs,
+            t_span,                
+            y0,
             method=method,
             args=(
                 gas_accretion_rate[j - 1],
                 halo_mass[j - 1],
                 stellar_metallicity[j - 1],
                 sfr_feedback,
+                sfr_metals_feedback,         
+                past_stars_delta,
                 feedback_type,
             ),
         )
-        gas_mass[j] = sol.y[0, -1]
 
-        # Update stellar mass
-        sol = solve_ivp(
-            lambda t, y: [star_formation_rate(t, gas_mass[j - 1])],
-            t_span,
-            [stars_mass[j - 1]],
-            method=method,
-        )
-        stars_mass[j] = sol.y[0, -1]
-
-        # Update gas metals
-        if cosmic_time[j] <= tsn:
-            sfr_input = sfr[j - 1]
-        else:
-            sfr_input = sfr[j - 1 - delay_counter]
-        sol = solve_ivp(
-            evolve_gas_metals,
-            t_span,
-            [gas_metals[j - 1]],
-            method=method,
-            args=(
-                gas_mass[j - 1],
-                gas_accretion_rate[j - 1],
-                halo_mass[j - 1],
-                stellar_metallicity[j - 1],
-                sfr_input,
-                feedback_type,
-            ),
-        )
-        gas_metals[j] = sol.y[0, -1]
-
-        # Update stellar metals
-        sol = solve_ivp(
-            lambda t, y: [evolve_stars_metals(t, gas_metals[j - 1], gas_mass[j - 1])],
-            t_span,
-            [stars_metals[j - 1]],
-            method=method,
-        )
-        stars_metals[j] = sol.y[0, -1]
-
-        # Update dust mass
-        sol = solve_ivp(
-            update_dust_reservoir,
-            t_span,
-            [dust_mass[j - 1]],
-            method=method,
-            args=(
-                gas_mass[j - 1],
-                halo_mass[j - 1],
-                sfr[j - 1 - delay_counter],
-                stars_mass[j - 1 - delay_counter] - stars_mass[j - 2 - delay_counter],
-                stars_metals[j - 1],
-            ),
-        )
-        dust_mass[j] = sol.y[0, -1]
+        (
+            gas_mass[j],
+            stars_mass[j],
+            gas_metals[j],
+            stars_metals[j],
+            dust_mass[j],
+        ) = sol.y[:, -1]
 
         # Star formation rate at current time
         sfr[j] = star_formation_rate(cosmic_time[j], gas_mass[j])

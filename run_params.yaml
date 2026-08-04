@@ -30,3 +30,6 @@ dust:
   dust_gamma: 1.3e-4
   dust_alpha: 8
   m_crit: 1.0e+5
+
+black_holes:
+  efficiency: 0.001 # BH growth efficiency (gas_mass / t_ff units, same form as SF efficiency); not yet wired into main.py's run1()

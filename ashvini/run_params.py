@@ -47,6 +47,11 @@ class DustParams:
 
 
 @dataclass
+class BlackHoleParams:
+    efficiency: float
+
+
+@dataclass
 class Params:
     io: IOParams
     sf: StarFormationParams
@@ -54,6 +59,7 @@ class Params:
     reion: ReionizationParams
     metals: MetalsParams
     dust: DustParams
+    bh: BlackHoleParams
 
 
 def load_params() -> Params:
@@ -68,6 +74,7 @@ def load_params() -> Params:
         reion=ReionizationParams(**raw["reionization"]),
         metals=MetalsParams(**raw["metallicity"]),
         dust=DustParams(**raw["dust"]),
+        bh=BlackHoleParams(**raw["black_holes"]),
     )
 
     return params
@@ -87,6 +94,7 @@ def print_config(params: Params):
     section("Reionization", asdict(params.reion))
     section("Metals", asdict(params.metals))
     section("Dust", asdict(params.dust))
+    section("Black Holes", asdict(params.bh))
 
 
 PARAMS = load_params()

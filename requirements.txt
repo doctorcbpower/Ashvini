@@ -4,4 +4,4 @@ astropy
 h5py
 joblib
 tqdm
-tqdm_joblib
+pyyaml

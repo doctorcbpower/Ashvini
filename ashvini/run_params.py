@@ -47,8 +47,42 @@ class DustParams:
 
 
 @dataclass
+class Pop3Seeding:
+    enabled: bool
+    z_min: float
+    M_halo_min: float
+    Z_gas_max: float
+    M_seed: float
+
+
+@dataclass
+class DirectCollapseSeeding:
+    enabled: bool
+    z_min: float
+    M_halo_min: float
+    Z_gas_max: float
+    M_seed: float
+
+
+@dataclass
+class HaloMassThresholdSeeding:
+    enabled: bool
+    M_halo_min: float
+    M_seed: float
+
+
+@dataclass
+class SeedingParams:
+    pop3: Pop3Seeding
+    direct_collapse: DirectCollapseSeeding
+    halo_mass_threshold: HaloMassThresholdSeeding
+
+
+@dataclass
 class BlackHoleParams:
     efficiency: float
+    eta_agn: float
+    seeding: SeedingParams
 
 
 @dataclass
@@ -74,7 +108,19 @@ def load_params() -> Params:
         reion=ReionizationParams(**raw["reionization"]),
         metals=MetalsParams(**raw["metallicity"]),
         dust=DustParams(**raw["dust"]),
-        bh=BlackHoleParams(**raw["black_holes"]),
+        bh=BlackHoleParams(
+            efficiency=raw["black_holes"]["efficiency"],
+            eta_agn=raw["black_holes"]["eta_agn"],
+            seeding=SeedingParams(
+                pop3=Pop3Seeding(**raw["black_holes"]["seeding"]["pop3"]),
+                direct_collapse=DirectCollapseSeeding(
+                    **raw["black_holes"]["seeding"]["direct_collapse"]
+                ),
+                halo_mass_threshold=HaloMassThresholdSeeding(
+                    **raw["black_holes"]["seeding"]["halo_mass_threshold"]
+                ),
+            ),
+        ),
     )
 
     return params

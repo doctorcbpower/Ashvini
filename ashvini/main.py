@@ -7,6 +7,8 @@ from scipy.integrate import solve_ivp
 
 from . import utils as utils
 from . import supernovae_feedback as sn
+from . import black_holes_growth as bh_growth
+from . import agn_feedback as agn
 
 from .star_formation import star_formation_rate, time_freefall
 from .gas_evolve import gas_inflow_rate, update_gas_reservoir
@@ -53,6 +55,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
     sfr = np.zeros(n)
     stellar_metallicity = np.zeros(n)
     dust_mass = np.zeros(n)
+    bh_mass = np.zeros(n)
 
     gas_accretion_rate = gas_inflow_rate(
         redshift, halo_mass, halo_mass_rate, UV_background
@@ -73,6 +76,29 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
                 sfr[j - delay_counter - 1] if delay_counter is not None else 0.0
             )
 
+        # Black hole seeding + growth (computed before gas mass, since gas
+        # mass's AGN wind term needs this step's BH growth rate)
+        gas_metallicity_prev = (
+            gas_metals[j - 1] / gas_mass[j - 1] if gas_mass[j - 1] > 0 else 0.0
+        )
+        newly_seeded, seed_mass = bh_growth.seeding_mask_and_mass(
+            halo_mass[j - 1],
+            redshift[j - 1],
+            gas_metallicity_prev,
+            bh_mass[j - 1] > 0,
+        )
+        bh_mass_y0 = float(seed_mass) if bool(newly_seeded) else bh_mass[j - 1]
+
+        sol = solve_ivp(
+            bh_growth.black_hole_growth_rate,
+            t_span,
+            [bh_mass_y0],
+            method=method,
+            args=(gas_mass[j - 1],),
+        )
+        bh_mass[j] = max(sol.y[0, -1], 0.0)
+        agn_growth_rate = (bh_mass[j] - bh_mass_y0) / (t_span[1] - t_span[0])
+
         # Update gas mass
         sol = solve_ivp(
             update_gas_reservoir,
@@ -85,6 +111,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
                 stellar_metallicity[j - 1],
                 sfr_feedback,
                 feedback_type,
+                agn_growth_rate,
             ),
         )
         gas_mass[j] = sol.y[0, -1]
@@ -153,6 +180,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         stars_mass[j] = max(stars_mass[j], 0.0)
         stars_metals[j] = max(stars_metals[j], 0.0)
         dust_mass[j] = max(dust_mass[j], 0.0)
+        bh_mass[j] = max(bh_mass[j], 0.0)
 
         # No gas metals or dust if no gas
         if gas_mass[j] <= 0:
@@ -172,6 +200,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         "gas_metals": gas_metals,
         "stars_metals": stars_metals,
         "dust_mass": dust_mass,
+        "bh_mass": bh_mass,
         "sfr": sfr,
         "cosmic_time": cosmic_time,
         "halo_mass": halo_mass,
@@ -243,6 +272,52 @@ def _sf_time_integral(cosmic_time, redshift):
     return 0.5 * dt * np.sum(integrand * weights[None, :], axis=1)
 
 
+def _bh_growth_step(y0, A_bh, kappa_edd, dt):
+    """
+    Closed-form update of dM_BH/dt = min(A_bh, kappa_edd*y) over a step of
+    size dt, with A_bh (gas-supply-limited rate) frozen over the step and
+    kappa_edd a true constant (the Eddington-limited growth rate per unit
+    mass). Unlike _linear_ode_step, this ODE is piecewise (not affine) --
+    a halo below the crossover mass A_bh/kappa_edd grows exponentially
+    (Eddington-limited) until it reaches it, then grows linearly at rate
+    A_bh (gas-supply-limited) for the remainder of the step. Solved exactly
+    (not by picking one regime for the whole step) so a step that happens
+    to straddle the crossover doesn't overshoot.
+
+    y0 == 0 (not yet seeded) is handled without special-casing: the
+    Eddington branch is multiplicative, so 0 stays exactly 0.
+    """
+    threshold_mass = A_bh / kappa_edd  # A_bh >= 0 always, so this is safe
+    eddington_limited = y0 < threshold_mass
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        y0_safe = np.where(y0 > 0, y0, 1.0)
+        t_star = np.where(
+            y0 > 0,
+            np.log(threshold_mass / y0_safe) / kappa_edd,
+            np.inf,
+        )
+
+    crosses_over = eddington_limited & (t_star < dt)
+    stays_eddington = eddington_limited & ~crosses_over
+    gas_limited = ~eddington_limited
+
+    # np.select evaluates every choice array for every element regardless of
+    # which branch is picked, so t_star's inf entries (uncrossed haloes)
+    # would otherwise hit inf * 0 = nan under "dt - t_star" and warn, even
+    # though that value is never selected. Clip to a finite stand-in first.
+    t_star_safe = np.where(np.isfinite(t_star), t_star, dt)
+
+    return np.select(
+        [stays_eddington, crosses_over, gas_limited],
+        [
+            y0 * np.exp(kappa_edd * dt),
+            threshold_mass + A_bh * (dt - t_star_safe),
+            y0 + A_bh * dt,
+        ],
+    )
+
+
 def run_forest(halo_mass, halo_mass_rate, redshift):
     """
     Vectorised replacement for joblib.Parallel(run1_scalar): integrates all
@@ -265,6 +340,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
     sfr = np.zeros((N, n))
     stellar_metallicity = np.zeros((N, n))
     dust_mass = np.zeros((N, n))
+    bh_mass = np.zeros((N, n))
 
     redshift_bcast = np.broadcast_to(redshift, (N, n))
     gas_accretion_rate = gas_inflow_rate(
@@ -295,17 +371,38 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
         B_sf = e_ff / time_freefall(z_mid)  # scalar, shared across haloes
         ML = sn.mass_loading_factor(z_mid, hm_prev, sz_prev)  # shape (N,)
 
-        # --- gas mass: dy/dt = A_acc - present_sfr(y) - ML*wind_sfr ---
+        # --- black hole seeding + growth (computed before gas mass, since
+        # gas mass's AGN wind term needs this step's BH growth rate) ---
+        gas_metallicity_prev = np.where(
+            has_gas, gas_metals[:, j - 1] / gm_prev_safe, 0.0
+        )
+        newly_seeded, seed_mass = bh_growth.seeding_mask_and_mass(
+            hm_prev, redshift[j - 1], gas_metallicity_prev, bh_mass[:, j - 1] > 0
+        )
+        bh_mass_prev = np.where(newly_seeded, seed_mass, bh_mass[:, j - 1])
+        A_bh = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gm_prev
+        bh_mass[:, j] = np.maximum(
+            _bh_growth_step(
+                bh_mass_prev, A_bh, bh_growth.EDDINGTON_RATE_PER_UNIT_MASS, dt
+            ),
+            0.0,
+        )
+        agn_growth_rate = (bh_mass[:, j] - bh_mass_prev) / dt
+        agn_forcing = agn.agn_wind_mass_rate(agn_growth_rate)
+
+        # --- gas mass: dy/dt = A_acc - present_sfr(y) - ML*wind_sfr - AGN wind ---
         # (present_sfr is always self-referential -- it's B_sf*y for THIS
         # ode -- so it's always decay; only "instantaneous" wind_sfr is
-        # also self-referential, the other two branches keep it as forcing)
+        # also self-referential, the other two branches keep it as forcing;
+        # the AGN wind term uses this step's frozen BH growth rate, so it's
+        # forcing regardless of branch)
         if feedback_type == "no":
             wind_sfr = np.zeros(N)
-            gas_forcing = A_acc
+            gas_forcing = A_acc - agn_forcing
             gas_decay = B_sf
         elif feedback_type == "instantaneous":
             wind_sfr = B_sf * gm_prev  # only used below, in gas_metals forcing
-            gas_forcing = A_acc
+            gas_forcing = A_acc - agn_forcing
             gas_decay = B_sf * (1.0 + ML)
         else:  # "delayed"
             wind_sfr = (
@@ -313,7 +410,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
                 if delay_counter is not None
                 else np.zeros(N)
             )
-            gas_forcing = A_acc - ML * wind_sfr
+            gas_forcing = A_acc - ML * wind_sfr - agn_forcing
             gas_decay = B_sf
 
         gas_mass[:, j] = _linear_ode_step(gm_prev, gas_forcing, gas_decay, dt)
@@ -389,6 +486,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
         "gas_metals": gas_metals,
         "stars_metals": stars_metals,
         "dust_mass": dust_mass,
+        "bh_mass": bh_mass,
         "sfr": sfr,
         "cosmic_time": cosmic_time,
         "halo_mass": halo_mass,

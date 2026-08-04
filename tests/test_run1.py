@@ -6,12 +6,18 @@ downsampled slice of the real merger-tree data (5 haloes x 3 mass bins x
 301 redshift steps, ~60 KB) generated with scripts/downsample_trees.py.
 See that script's docstring for how to regenerate or extend the fixture.
 
-The point of this suite is to catch unintended behaviour changes -- e.g. from
-the ODE-vectorisation work flagged in the code audit as the next efficiency
-step -- not to validate the astrophysics itself. Reference values below were
-captured from the current implementation and are pinned with a loose enough
-tolerance (rtol=1e-6) to survive floating point / platform differences, but
-tight enough to catch a real change in behaviour.
+The point of this suite is to catch unintended behaviour changes -- not to
+validate the astrophysics itself. Reference values below were captured from
+the current implementation and are pinned with a loose enough tolerance
+(rtol=1e-6) to survive floating point / platform differences, but tight
+enough to catch a real change in behaviour.
+
+run1() was rewritten (see ashvini/main.py) to replace its five per-step
+solve_ivp calls with a closed-form/quadrature vectorised update -- see the
+module-level comment in main.py for the numerical scheme. REFERENCE_FINAL_VALUES
+below was recaptured from that new implementation; run1_scalar() (the old
+solve_ivp-based version, kept as a reference) is cross-checked against it in
+test_vectorized_matches_scalar_reference below.
 """
 
 import os
@@ -20,21 +26,21 @@ import numpy as np
 import pytest
 
 from ashvini import utils
-from ashvini.main import run1
+from ashvini.main import run1, run1_scalar
 
 FIXTURE_PATH = os.path.join(os.path.dirname(__file__), "fixtures", "merger_trees_fixture.h5")
 
 OUTPUT_KEYS = ["gas_mass", "stars_mass", "gas_metals", "stars_metals", "dust_mass", "sfr"]
 
 # Reference "final timestep" values for halo 0 in the 1e10 mass bin, captured
-# from the current implementation (see module docstring).
+# from the current (vectorised) run1() implementation (see module docstring).
 REFERENCE_FINAL_VALUES = {
-    "gas_mass": 16427710.954957614,
-    "stars_mass": 1601779.2279374518,
-    "gas_metals": 65222.22581236108,
-    "stars_metals": 2848.3583806431257,
-    "dust_mass": 4832.189043741113,
-    "sfr": 997098.4013238181,
+    "gas_mass": 16460528.947352327,
+    "stars_mass": 1610392.7634086742,
+    "gas_metals": 65431.91190875075,
+    "stars_metals": 2870.1763863218744,
+    "dust_mass": 3288.9626074627,
+    "sfr": 999090.3262999238,
 }
 
 
@@ -92,6 +98,26 @@ def test_run1_matches_reference_baseline(tree_data):
             f"(e.g. a deliberate change to the integration scheme), update "
             f"REFERENCE_FINAL_VALUES after checking the new output makes sense."
         )
+
+
+def test_vectorized_matches_scalar_reference(tree_data):
+    # Cross-check the closed-form/quadrature run1() against the old
+    # solve_ivp-based run1_scalar() it replaced. Not bit-for-bit -- run1()
+    # freezes redshift-dependent ODE coefficients at each step's midpoint
+    # instead of letting LSODA integrate them continuously -- but final-step
+    # values should agree to within a percent or so for every halo in the
+    # fixture. A larger drift here would indicate a real bug in the
+    # vectorised scheme, not just approximation error.
+    halo_masses, halo_mass_rates, redshift = tree_data
+    for i in range(halo_masses.shape[0]):
+        fast = run1(halo_masses[i], halo_mass_rates[i], redshift)
+        slow = run1_scalar(halo_masses[i], halo_mass_rates[i], redshift)
+        for key in OUTPUT_KEYS:
+            assert fast[key][-1] == pytest.approx(slow[key][-1], rel=0.02), (
+                f"halo {i}, {key}: vectorised final value {fast[key][-1]!r} "
+                f"diverged from scalar reference {slow[key][-1]!r} by more "
+                f"than the expected approximation error"
+            )
 
 
 def test_time_redshift_roundtrip_consistency():

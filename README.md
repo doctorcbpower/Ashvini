@@ -43,7 +43,17 @@ This integrates every halo in the input merger-tree file and writes the results 
 
 **Ashvini** needs halo merger histories as input. You can download a merger tree file [here](https://drive.google.com/file/d/1eAiONNCOHSAw829n3zbR1izsIU6JNCO4/view?usp=sharing). This consists of merger histories of 100 haloes in each mass bin, where the bins are linearly distributed within $10^6\leq M_{\rm h}/M_\odot \leq 10^{11}$ at $z=5$.
 
-Merger trees can also be generated directly with [pymctrees](https://github.com/doctorcbpower/pymctrees) and adapted to Ashvini's expected HDF5 layout (see `utils.read_trees`).
+Merger trees can also be generated directly with [pymctrees](https://github.com/doctorcbpower/pymctrees) and adapted to Ashvini's expected HDF5 layout with `scripts/build_trees_from_pymctrees.py`:
+
+```
+pip install -e /path/to/pymctrees[camb]   # pymctrees is not an Ashvini dependency
+python scripts/build_trees_from_pymctrees.py \
+    /path/to/pymctrees/config/planck2018.yml \
+    data/inputs/merger_trees_pymctrees.h5 \
+    --mass-bins 1e6 1e7 1e8 1e9 1e10 1e11 --n-halos 100 --z0 5.0 --z-max 20.0
+```
+
+See the script's docstring for the unit/ordering conversions it handles (pymctrees works in Msun/h and grows trees backward from z0; Ashvini expects plain Msun in forward chronological order).
 
 ## Package structure
 

@@ -540,9 +540,32 @@ def run1(halo_mass, halo_mass_rate, redshift):
 def run():
     print_config(PARAMS)
 
-    halo_masses, halo_mass_rates, redshifts = utils.read_trees(
-        file_path=PARAMS.io.tree_file, mass_bin=PARAMS.io.mass_bin
-    )
+    if PARAMS.io.tree_source == "pymctrees":
+        from . import pymctrees_adapter
+
+        p = PARAMS.io.pymctrees
+        if p is None:
+            raise ValueError(
+                "basics.tree_source is 'pymctrees' but basics.pymctrees is "
+                "not configured in run_params.yaml -- see PymctreesSourceParams "
+                "in run_params.py for the required fields (at minimum 'config', "
+                "a path to a pymctrees YAML config)."
+            )
+        print(f"\nGenerating trees live via pymctrees ({p.config}) instead of reading a file...")
+        halo_masses, halo_mass_rates, redshifts = pymctrees_adapter.build_forest_live(
+            pymctrees_config_path=p.config, mass_bin=PARAMS.io.mass_bin,
+            n_halos=p.n_halos, z0=p.z0, z_max=p.z_max, dz=p.dz,
+            m_res=p.m_res, backend=p.backend, seed=p.seed,
+        )
+    elif PARAMS.io.tree_source == "file":
+        halo_masses, halo_mass_rates, redshifts = utils.read_trees(
+            file_path=PARAMS.io.tree_file, mass_bin=PARAMS.io.mass_bin
+        )
+    else:
+        raise ValueError(
+            f"Unknown basics.tree_source '{PARAMS.io.tree_source}' -- must be "
+            "'file' or 'pymctrees'."
+        )
 
     N_halos = np.shape(halo_masses)[0]
     print(f"Running {N_halos} halos (vectorised across all haloes at once)...")

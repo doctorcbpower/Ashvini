@@ -8,34 +8,14 @@ ashvini.utils.read_trees expects:
     /<mass_bin_group>/halo_growth_rates (N, S)    float64   -- Msun/Gyr
 where mass_bin_group is e.g. "01e10" for a bin of 1e10 Msun.
 
-This is the "adapter" approach from the code audit (Section 6): it requires
-zero changes to Ashvini's main.py, and lets pymctrees-generated trees be
-validated against the existing reference tree file before considering the
-heavier "direct integration" path (calling pymctrees straight from run(),
-which would make pymctrees -- and transitively CLASS/CAMB -- a hard
-dependency of Ashvini).
-
-Three conversions happen here that are easy to get quietly wrong, so they're
-each called out explicitly in the code below:
-
-1. pymctrees' M0/mass_history are in Msun/h (it works in Mpc/h internally);
-   Ashvini's are in plain Msun. Converted via the same 'h' pymctrees derived
-   from the run's own H0.
-2. pymctrees grows trees *backward* in time -- z_steps runs from z0 (low
-   redshift, e.g. the present day) up to z_max (high redshift, the past) --
-   whereas Ashvini's run1() integrates *forward* in cosmic time. The mass
-   and redshift arrays are reversed here so index 0 is the earliest
-   (highest-z) point.
-3. pymctrees only returns masses, not growth rates. halo_growth_rates is
-   derived by differencing the (now chronological) mass array against
-   Ashvini's own cosmic_time(z) mapping (astropy Planck18, via
-   ashvini.utils.time_at_z) -- not against pymctrees' own H(z) -- since
-   that's the expansion history run1() will actually use to interpret the
-   rate. If the pymctrees run's Cosmology block doesn't match Planck18,
-   this is a deliberate simplifying choice, not an oversight: it keeps the
-   *output* dimensionally consistent with how Ashvini will integrate it,
-   independent of whichever cosmology pymctrees used to grow the tree
-   topology itself.
+This is the "offline" path (write once, read like any other input
+catalogue via tree_source: file in run_params.yaml): builds the forest,
+writes it to a file, and never touches Ashvini's run() itself. For
+generating a forest fresh on every run instead, see tree_source: pymctrees
+in run_params.yaml's basics section (ashvini.pymctrees_adapter.
+build_forest_live, used from main.py's run()) -- both paths share the same
+tree-generation/unit-conversion logic in ashvini.pymctrees_adapter, so they
+produce identical trees for the same parameters.
 
 M0_array is built from --mass-bins interpreted as the halo mass (Msun) at
 z0 -- matching the existing reference tree file's convention (100 haloes
@@ -61,132 +41,12 @@ import sys
 import h5py
 import numpy as np
 
-from ashvini.utils import time_at_z
-
-
-def _mass_bin_group_name(mass_bin):
-    """Matches ashvini.utils.read_trees' group-naming convention exactly."""
-    mass_bin = float(mass_bin)
-    exponent = int(np.log10(mass_bin))
-    mantissa = int(mass_bin / 10**exponent)
-    return f"{mantissa:02d}e{exponent:02d}"
-
-
-def _import_pymctrees():
-    try:
-        from pymctrees import cosmo_utils, PCHMergerTree
-        from pymctrees.utils import io as pymctrees_io
-    except ImportError as exc:
-        raise ImportError(
-            "This script requires pymctrees, which is not an Ashvini "
-            "dependency (see the code audit, Section 7.4, for why CLASS/"
-            "CAMB are kept optional). Install it with:\n"
-            "    pip install -e /path/to/pymctrees[camb]   # or [class]"
-        ) from exc
-    return cosmo_utils, PCHMergerTree, pymctrees_io
-
-
-def build_forest_for_bin(tree_generator, M0_msun, h, n_halos, z0, z_max, m_res_msun, dz, backend, rng_seed):
-    """
-    Grow n_halos trees for a single mass bin and return them in Ashvini's
-    chronological, plain-Msun convention: (halo_masses, redshifts), both
-    shape (n_halos, n_steps+1) / (n_steps+1,), index 0 = earliest (highest z).
-    """
-    if rng_seed is not None:
-        np.random.seed(rng_seed)
-
-    M0_array_hunits = np.full(n_halos, M0_msun * h)  # Msun -> Msun/h
-    M_res_hunits = m_res_msun * h
-
-    if backend == "numpy":
-        mass_history, _split_events, z_steps = tree_generator.build_forest_numpy(
-            M0_array=M0_array_hunits, z0=z0, z_max=z_max, M_res=M_res_hunits, dz=dz
-        )
-    elif backend == "numba":
-        mass_history, z_steps = tree_generator.build_forest_numba(
-            M0_array=M0_array_hunits, z0=z0, z_max=z_max, M_res=M_res_hunits, dz=dz
-        )
-    else:
-        raise ValueError(f"Unknown backend '{backend}'")
-
-    # (1) prepend M0 -- mass_history starts at the end of the first step,
-    # not at z0 itself
-    mass_hunits = np.concatenate([M0_array_hunits[:, None], mass_history], axis=1)
-
-    # (2) reverse: pymctrees runs z0 (present) -> z_max (past); Ashvini
-    # expects earliest (highest z) -> latest
-    mass_hunits = mass_hunits[:, ::-1]
-    redshifts = z_steps[::-1].copy()
-
-    # convert Msun/h -> Msun
-    halo_masses = mass_hunits / h
-
-    # (4) zero out each halo's pre-formation prefix: pymctrees can't
-    # resolve a progenitor below M_res, so a halo whose random walk
-    # doesn't reach a resolved split until some z < z_max is held at a
-    # frozen placeholder mass for every earlier (higher-z) step -- this is
-    # a real tree-resolution limit (worse the smaller M_res is relative to
-    # the halo's own formation history, e.g. z_max=25/M_res~100 for a
-    # 1e7 Msun M0 can leave >75% of the grid frozen), not a discretization
-    # artifact fixable by a finer dz (checked directly: it doesn't shrink
-    # with dz). Left as a nonzero placeholder mass, this reads to Ashvini
-    # as a real halo sitting inert for a large fraction of cosmic time,
-    # and its finite-difference growth rate is then exactly 0 there --
-    # which reionization.uv_suppression divides by, an Ashvini-side bug
-    # fixed separately, but the deeper issue is that this stretch
-    # shouldn't be presented as "a halo with mass" at all. Zeroing it
-    # represents "this halo does not exist yet" instead, which is the
-    # physically correct reading of an unresolved progenitor.
-    is_frozen_prefix = _mask_unresolved_prefix(halo_masses)
-    halo_masses = np.where(is_frozen_prefix, 0.0, halo_masses)
-
-    return halo_masses, redshifts
-
-
-def _mask_unresolved_prefix(halo_masses):
-    """
-    For each halo (row), find the run of steps from index 0 (earliest
-    time) that are exactly equal to the row's own first value -- pymctrees'
-    frozen-placeholder signature for "not yet resolved" -- and return a
-    boolean mask of that prefix (True = pre-formation, to be zeroed).
-    Stops at the first step that differs from halo_masses[:, 0].
-    """
-    N, n_steps = halo_masses.shape
-    first_val = halo_masses[:, :1]
-    same_as_first = halo_masses == first_val
-    # cumulative-AND from the left: True only while every step so far has
-    # matched the first value, i.e. the contiguous frozen run starting at
-    # index 0 (a later step that happens to coincidentally re-equal the
-    # first value, after the walk has already moved on, must not count).
-    return np.minimum.accumulate(same_as_first, axis=1)
-
-
-def compute_growth_rates(halo_masses, redshifts):
-    """
-    (3) halo_growth_rates via differencing against Ashvini's own
-    cosmic_time(z) (astropy Planck18), not pymctrees' H(z). rate[:, -1] is
-    never read by run1() (its loop only ever indexes rate[:, j-1] for
-    j in [1, n-1]), so it's just filled by repeating the last real value.
-
-    The single step where halo_masses jumps from 0 (the zeroed
-    pre-formation prefix -- see _mask_unresolved_prefix) to its first
-    resolved value would otherwise show a spuriously huge growth rate
-    (a large mass change over one step's dt, an artifact of representing
-    "formation" as instantaneous rather than a rate); that step's rate is
-    zeroed too, so accretion switches on smoothly from the following step.
-    """
-    cosmic_time = time_at_z(redshifts)  # Gyr, same ordering as halo_masses
-    dt = np.diff(cosmic_time)  # (n_steps,)
-    dm = np.diff(halo_masses, axis=1)  # (N, n_steps)
-    rates = dm / dt[None, :]
-
-    was_zero = halo_masses[:, :-1] == 0.0
-    now_nonzero = halo_masses[:, 1:] != 0.0
-    formation_step = was_zero & now_nonzero
-    rates = np.where(formation_step, 0.0, rates)
-
-    rates = np.concatenate([rates, rates[:, -1:]], axis=1)  # pad to (N, n_steps+1)
-    return rates
+from ashvini.pymctrees_adapter import (
+    _import_pymctrees,
+    build_forest_for_bin,
+    compute_growth_rates,
+)
+from ashvini.utils import mass_bin_group_name
 
 
 def main():
@@ -228,7 +88,7 @@ def main():
     redshifts_ref = None
     with h5py.File(args.output, "w") as fout:
         for mass_bin in args.mass_bins:
-            group_name = _mass_bin_group_name(mass_bin)
+            group_name = mass_bin_group_name(mass_bin)
             print(f"  {group_name} (M0={mass_bin:.3e} Msun) ...")
 
             halo_masses, redshifts = build_forest_for_bin(
@@ -263,7 +123,7 @@ def main():
             )
 
             # index -1 is z0/M0 by construction (always "alive"); index 0
-            # is always 0 by construction now too (_mask_unresolved_prefix
+            # is always 0 by construction too (_mask_unresolved_prefix
             # zeroes every halo's earliest step unless it happened to
             # resolve on literally the first step). The meaningful
             # diagnostic is each halo's formation redshift -- the highest z

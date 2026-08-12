@@ -1,17 +1,15 @@
 """
-Tests for scripts/build_trees_from_pymctrees.py -- the adapter that turns a
-pymctrees forest into ashvini.utils.read_trees' expected HDF5 layout (code
-audit, Section 6).
+Tests for ashvini.pymctrees_adapter -- the adapter that turns a pymctrees
+forest into ashvini.utils.read_trees' expected layout, shared by the
+offline scripts/build_trees_from_pymctrees.py path and the live
+tree_source='pymctrees' path (see main.py's run()).
 
-pymctrees is not an Ashvini dependency (see the script's own docstring), so
+pymctrees is not an Ashvini dependency (see the module's own docstring), so
 these tests are skipped entirely if it isn't installed. They use a synthetic
 power-law P(k) (mirroring pymctrees' own test suite) rather than CLASS/CAMB,
 so they don't require either heavy backend to be installed either -- only
 pymctrees itself.
 """
-
-import importlib.util
-import os
 
 import numpy as np
 import pytest
@@ -21,21 +19,9 @@ pymctrees = pytest.importorskip("pymctrees")
 from pymctrees.cosmo_utils import CosmoData
 from pymctrees.pch_trees import PCHMergerTree
 
+from ashvini import pymctrees_adapter as adapter
 from ashvini import utils
 from ashvini.main import run1
-
-SCRIPT_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "scripts", "build_trees_from_pymctrees.py"
-)
-
-
-@pytest.fixture(scope="module")
-def adapter():
-    spec = importlib.util.spec_from_file_location("build_trees_from_pymctrees", SCRIPT_PATH)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
 
 PLANCK_LIKE = {
     "Code": {"mode": "camb", "pk_kmin": 1e-4, "pk_kmax": 10.0, "pk_npoints": 500},
@@ -54,7 +40,7 @@ def tree_generator():
     return PCHMergerTree(cosmo_data, PLANCK_LIKE)
 
 
-def test_build_forest_for_bin_shape_and_ordering(adapter, tree_generator):
+def test_build_forest_for_bin_shape_and_ordering(tree_generator):
     n_halos = 20
     halo_masses, redshifts = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e12, h=H, n_halos=n_halos,
@@ -73,7 +59,7 @@ def test_build_forest_for_bin_shape_and_ordering(adapter, tree_generator):
     assert np.all(np.diff(halo_masses, axis=1) >= -1e-6)
 
 
-def test_msun_over_h_conversion(adapter, tree_generator):
+def test_msun_over_h_conversion(tree_generator):
     # Same seed/params, different h -- output masses should scale by 1/h
     # relative to each other for a fixed physical M0 (M0 itself is passed in
     # Msun both times, so the *converted* trajectories should differ only
@@ -96,7 +82,7 @@ def test_msun_over_h_conversion(adapter, tree_generator):
     assert np.allclose(halo_masses_h05[:, -1], 1e12)
 
 
-def test_compute_growth_rates_shape(adapter, tree_generator):
+def test_compute_growth_rates_shape(tree_generator):
     halo_masses, redshifts = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e12, h=H, n_halos=10,
         z0=0.0, z_max=5.0, m_res_msun=1e9, dz=0.5, backend="numpy", rng_seed=2,
@@ -108,7 +94,7 @@ def test_compute_growth_rates_shape(adapter, tree_generator):
     assert np.all(rates >= -1e-6)
 
 
-def test_mask_unresolved_prefix_detects_frozen_start(adapter):
+def test_mask_unresolved_prefix_detects_frozen_start():
     # Direct unit test of the helper, independent of pymctrees itself:
     # a contiguous run of the row's own first value starting at index 0
     # is the frozen prefix; a later step that happens to coincidentally
@@ -126,7 +112,7 @@ def test_mask_unresolved_prefix_detects_frozen_start(adapter):
     assert np.array_equal(mask[2], [True, False, False, False, False])
 
 
-def test_build_forest_for_bin_zeroes_preformation_prefix(adapter, tree_generator):
+def test_build_forest_for_bin_zeroes_preformation_prefix(tree_generator):
     # A deep z_max relative to a tight m_res forces at least some haloes'
     # random walks to not resolve a split until well after z_max -- for
     # those, build_forest_for_bin must report mass=0 (not a frozen
@@ -151,7 +137,7 @@ def test_build_forest_for_bin_zeroes_preformation_prefix(adapter, tree_generator
         assert np.all(row[first_nonzero:] > 0.0)
 
 
-def test_compute_growth_rates_zeroes_formation_step_not_a_spike(adapter, tree_generator):
+def test_compute_growth_rates_zeroes_formation_step_not_a_spike(tree_generator):
     halo_masses, redshifts = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e10, h=H, n_halos=20,
         z0=0.0, z_max=8.0, m_res_msun=1e2, dz=0.05, backend="numpy", rng_seed=7,
@@ -169,12 +155,12 @@ def test_compute_growth_rates_zeroes_formation_step_not_a_spike(adapter, tree_ge
         assert rates[i, formation_idx - 1] == 0.0
 
 
-def test_mass_bin_group_naming(adapter):
-    assert adapter._mass_bin_group_name(1e10) == "01e10"
-    assert adapter._mass_bin_group_name(5e8) == "05e08"
+def test_mass_bin_group_naming():
+    assert utils.mass_bin_group_name(1e10) == "01e10"
+    assert utils.mass_bin_group_name(5e8) == "05e08"
 
 
-def test_output_file_round_trips_through_read_trees_and_run1(adapter, tree_generator, tmp_path):
+def test_output_file_round_trips_through_read_trees_and_run1(tree_generator, tmp_path):
     import h5py
 
     halo_masses, redshifts = adapter.build_forest_for_bin(
@@ -186,7 +172,7 @@ def test_output_file_round_trips_through_read_trees_and_run1(adapter, tree_gener
     out_path = tmp_path / "adapter_test.h5"
     with h5py.File(out_path, "w") as f:
         f.create_dataset("redshifts", data=redshifts)
-        grp = f.create_group(adapter._mass_bin_group_name(1e10))
+        grp = f.create_group(utils.mass_bin_group_name(1e10))
         grp.create_dataset("halo_masses", data=halo_masses)
         grp.create_dataset("halo_growth_rates", data=rates)
 
@@ -201,3 +187,40 @@ def test_output_file_round_trips_through_read_trees_and_run1(adapter, tree_gener
     for key in ["gas_mass", "stars_mass", "gas_metals", "stars_metals", "dust_mass", "bh_mass", "sfr"]:
         assert np.all(np.isfinite(result[key]))
         assert np.all(result[key] >= 0)
+
+
+def test_build_forest_live_matches_offline_equivalent(tmp_path):
+    # build_forest_live (the "live" path used by run() when
+    # tree_source='pymctrees') must produce exactly the same tree as the
+    # offline build_forest_for_bin + compute_growth_rates combination it
+    # wraps, given the same parameters and seed -- they're meant to be
+    # interchangeable, not two independently-evolving implementations.
+    config_path = tmp_path / "planck_like.yml"
+    config_path.write_text(
+        "Run:\n"
+        "  mode: camb\n"
+        "  pk_kmin: 1.0e-4\n"
+        "  pk_kmax: 10.0\n"
+        "  pk_npoints: 500\n"
+        "Cosmology:\n"
+        "  H0: 67.66\n"
+        "  OmegaBar: 0.048\n"
+        "  OmegaM: 0.3111\n"
+        "  OmegaK: 0.0\n"
+        "  As: 2.1e-9\n"
+        "  ns: 0.9665\n"
+        "  tau_reio: 0.0561\n"
+        "  mnu: 0.0\n"
+        "camb:\n"
+    )
+
+    live_masses, live_rates, live_z = adapter.build_forest_live(
+        pymctrees_config_path=str(config_path), mass_bin=1e10,
+        n_halos=5, z0=0.0, z_max=3.0, dz=0.5, m_res=1e9,
+        backend="numpy", seed=42,
+    )
+
+    assert live_masses.shape == (5, 7)  # (0, 0.5, ..., 3.0) -> 7 steps
+    assert live_z[-1] == pytest.approx(0.0)
+    assert np.allclose(live_masses[:, -1], 1e10)
+    assert np.all(np.isfinite(live_rates))

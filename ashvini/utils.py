@@ -9,6 +9,20 @@ Omega_b = cosmo.Ob0
 Omega_L = cosmo.Ode0
 
 
+def mass_bin_group_name(mass_bin):
+    """
+    HDF5 group-naming convention for a mass bin, e.g. 1e10 -> "01e10",
+    5e8 -> "05e08". Shared by read_trees() below and by
+    ashvini.pymctrees_adapter (both the offline scripts/
+    build_trees_from_pymctrees.py path and the live tree_source='pymctrees'
+    path) -- kept in one place so they can't drift apart.
+    """
+    mass_bin = float(mass_bin)
+    exponent = int(np.log10(mass_bin))
+    mantissa = int(mass_bin / 10**exponent)
+    return f"{mantissa:02d}e{exponent:02d}"
+
+
 def read_trees(file_path, mass_bin):
     """
     Reads halo masses, halo growth rates, and redshifts for a mass bin.
@@ -22,10 +36,7 @@ def read_trees(file_path, mass_bin):
     - halo_accretion_rate: np.ndarray
     - redshift: np.ndarray
     """
-    mass_bin = float(mass_bin)
-    exponent = int(np.log10(mass_bin))
-    mantissa = int(mass_bin / 10**exponent)
-    group_name = f"{mantissa:02d}e{exponent:02d}"
+    group_name = mass_bin_group_name(mass_bin)
 
     with h5py.File(file_path, "r") as f:
         group = f[group_name]

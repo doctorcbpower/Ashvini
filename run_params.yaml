@@ -1,7 +1,29 @@
 basics:
   mass_bin: 1e10
-  tree_file: "./data/inputs/merger_trees.h5"
   dir_out: "./data/outputs/"
+
+  # tree_source: "file" (default) reads tree_file below, exactly as before.
+  # tree_source: "pymctrees" instead generates a forest live via pymctrees
+  # on every run (requires pymctrees installed separately -- see
+  # ashvini/pymctrees_adapter.py -- and a pymctrees YAML config for
+  # cosmology/dm_model/window_function_type, referenced via
+  # pymctrees.config below, not duplicated here). No caching: tree
+  # generation is fast enough (seconds for typical halo counts) that
+  # regenerating each run is simpler than invalidation logic. For a forest
+  # you want to reuse across many runs, build one offline instead with
+  # scripts/build_trees_from_pymctrees.py and point tree_file at it.
+  tree_source: "file"
+  tree_file: "./data/inputs/merger_trees.h5"
+
+  # pymctrees:
+  #   config: "/path/to/pymctrees/config/planck2018_camb.yml"
+  #   n_halos: 100
+  #   z0: 5.0
+  #   z_max: 20.0
+  #   dz: 0.1
+  #   m_res: null    # Msun; null -> 1e-3 * mass_bin
+  #   backend: "numpy"   # or "numba"
+  #   seed: null
 
 star_formation:
   efficiency: 0.015

@@ -108,6 +108,67 @@ def test_compute_growth_rates_shape(adapter, tree_generator):
     assert np.all(rates >= -1e-6)
 
 
+def test_mask_unresolved_prefix_detects_frozen_start(adapter):
+    # Direct unit test of the helper, independent of pymctrees itself:
+    # a contiguous run of the row's own first value starting at index 0
+    # is the frozen prefix; a later step that happens to coincidentally
+    # re-equal the first value must not be swept in once the walk has
+    # already moved on.
+    halo_masses = np.array([
+        [5.0, 5.0, 5.0, 12.0, 20.0],   # frozen for first 3 steps, then grows
+        [7.0, 7.0, 7.0, 7.0, 7.0],     # frozen for the whole row
+        [3.0, 9.0, 3.0, 15.0, 20.0],   # NOT frozen -- moves immediately, index 2's
+                                        # coincidental re-match to index 0 doesn't count
+    ])
+    mask = adapter._mask_unresolved_prefix(halo_masses)
+    assert np.array_equal(mask[0], [True, True, True, False, False])
+    assert np.array_equal(mask[1], [True, True, True, True, True])
+    assert np.array_equal(mask[2], [True, False, False, False, False])
+
+
+def test_build_forest_for_bin_zeroes_preformation_prefix(adapter, tree_generator):
+    # A deep z_max relative to a tight m_res forces at least some haloes'
+    # random walks to not resolve a split until well after z_max -- for
+    # those, build_forest_for_bin must report mass=0 (not a frozen
+    # placeholder) for the pre-formation stretch (see
+    # _mask_unresolved_prefix's docstring for why: pymctrees can't resolve
+    # a progenitor below M_res, so this stretch shouldn't be presented to
+    # Ashvini as "a halo with mass" at all).
+    halo_masses, redshifts = adapter.build_forest_for_bin(
+        tree_generator, M0_msun=1e10, h=H, n_halos=20,
+        z0=0.0, z_max=8.0, m_res_msun=1e2, dz=0.05, backend="numpy", rng_seed=7,
+    )
+    has_preformation = np.any(halo_masses[:, 0] == 0.0)
+    assert has_preformation, "expected at least one halo to have an unresolved prefix at this dynamic range"
+    # every prefix must be a contiguous run of exact zeros starting at
+    # index 0 (never a zero appearing after real growth has started)
+    for row in halo_masses:
+        nonzero = np.where(row > 0)[0]
+        if len(nonzero) == 0 or nonzero[0] == 0:
+            continue
+        first_nonzero = nonzero[0]
+        assert np.all(row[:first_nonzero] == 0.0)
+        assert np.all(row[first_nonzero:] > 0.0)
+
+
+def test_compute_growth_rates_zeroes_formation_step_not_a_spike(adapter, tree_generator):
+    halo_masses, redshifts = adapter.build_forest_for_bin(
+        tree_generator, M0_msun=1e10, h=H, n_halos=20,
+        z0=0.0, z_max=8.0, m_res_msun=1e2, dz=0.05, backend="numpy", rng_seed=7,
+    )
+    rates = adapter.compute_growth_rates(halo_masses, redshifts)
+    assert np.all(np.isfinite(rates))
+
+    for i, row in enumerate(halo_masses):
+        nonzero = np.where(row > 0)[0]
+        if len(nonzero) == 0 or nonzero[0] == 0:
+            continue
+        formation_idx = nonzero[0]
+        # the step whose diff spans 0 -> first resolved mass must be
+        # reported as zero growth, not a huge instantaneous-formation spike
+        assert rates[i, formation_idx - 1] == 0.0
+
+
 def test_mass_bin_group_naming(adapter):
     assert adapter._mass_bin_group_name(1e10) == "01e10"
     assert adapter._mass_bin_group_name(5e8) == "05e08"

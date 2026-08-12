@@ -121,7 +121,44 @@ def build_forest_for_bin(tree_generator, M0_msun, h, n_halos, z0, z_max, m_res_m
     # convert Msun/h -> Msun
     halo_masses = mass_hunits / h
 
+    # (4) zero out each halo's pre-formation prefix: pymctrees can't
+    # resolve a progenitor below M_res, so a halo whose random walk
+    # doesn't reach a resolved split until some z < z_max is held at a
+    # frozen placeholder mass for every earlier (higher-z) step -- this is
+    # a real tree-resolution limit (worse the smaller M_res is relative to
+    # the halo's own formation history, e.g. z_max=25/M_res~100 for a
+    # 1e7 Msun M0 can leave >75% of the grid frozen), not a discretization
+    # artifact fixable by a finer dz (checked directly: it doesn't shrink
+    # with dz). Left as a nonzero placeholder mass, this reads to Ashvini
+    # as a real halo sitting inert for a large fraction of cosmic time,
+    # and its finite-difference growth rate is then exactly 0 there --
+    # which reionization.uv_suppression divides by, an Ashvini-side bug
+    # fixed separately, but the deeper issue is that this stretch
+    # shouldn't be presented as "a halo with mass" at all. Zeroing it
+    # represents "this halo does not exist yet" instead, which is the
+    # physically correct reading of an unresolved progenitor.
+    is_frozen_prefix = _mask_unresolved_prefix(halo_masses)
+    halo_masses = np.where(is_frozen_prefix, 0.0, halo_masses)
+
     return halo_masses, redshifts
+
+
+def _mask_unresolved_prefix(halo_masses):
+    """
+    For each halo (row), find the run of steps from index 0 (earliest
+    time) that are exactly equal to the row's own first value -- pymctrees'
+    frozen-placeholder signature for "not yet resolved" -- and return a
+    boolean mask of that prefix (True = pre-formation, to be zeroed).
+    Stops at the first step that differs from halo_masses[:, 0].
+    """
+    N, n_steps = halo_masses.shape
+    first_val = halo_masses[:, :1]
+    same_as_first = halo_masses == first_val
+    # cumulative-AND from the left: True only while every step so far has
+    # matched the first value, i.e. the contiguous frozen run starting at
+    # index 0 (a later step that happens to coincidentally re-equal the
+    # first value, after the walk has already moved on, must not count).
+    return np.minimum.accumulate(same_as_first, axis=1)
 
 
 def compute_growth_rates(halo_masses, redshifts):
@@ -130,11 +167,24 @@ def compute_growth_rates(halo_masses, redshifts):
     cosmic_time(z) (astropy Planck18), not pymctrees' H(z). rate[:, -1] is
     never read by run1() (its loop only ever indexes rate[:, j-1] for
     j in [1, n-1]), so it's just filled by repeating the last real value.
+
+    The single step where halo_masses jumps from 0 (the zeroed
+    pre-formation prefix -- see _mask_unresolved_prefix) to its first
+    resolved value would otherwise show a spuriously huge growth rate
+    (a large mass change over one step's dt, an artifact of representing
+    "formation" as instantaneous rather than a rate); that step's rate is
+    zeroed too, so accretion switches on smoothly from the following step.
     """
     cosmic_time = time_at_z(redshifts)  # Gyr, same ordering as halo_masses
     dt = np.diff(cosmic_time)  # (n_steps,)
     dm = np.diff(halo_masses, axis=1)  # (N, n_steps)
     rates = dm / dt[None, :]
+
+    was_zero = halo_masses[:, :-1] == 0.0
+    now_nonzero = halo_masses[:, 1:] != 0.0
+    formation_step = was_zero & now_nonzero
+    rates = np.where(formation_step, 0.0, rates)
+
     rates = np.concatenate([rates, rates[:, -1:]], axis=1)  # pad to (N, n_steps+1)
     return rates
 
@@ -212,12 +262,19 @@ def main():
                 compression_opts=args.compression_level, chunks=True,
             )
 
-            # index -1 is z0/M0 by construction (always "alive"); the
-            # meaningful diagnostic is whether the progenitor was still
-            # resolved (M > 0) all the way back to the earliest step, z_max
-            n_resolved_to_zmax = int(np.sum(halo_masses[:, 0] > 0))
-            print(f"    {n_resolved_to_zmax}/{args.n_halos} haloes have a resolved "
-                  f"progenitor back to z={redshifts[0]:.2f}, {len(redshifts)} steps")
+            # index -1 is z0/M0 by construction (always "alive"); index 0
+            # is always 0 by construction now too (_mask_unresolved_prefix
+            # zeroes every halo's earliest step unless it happened to
+            # resolve on literally the first step). The meaningful
+            # diagnostic is each halo's formation redshift -- the highest z
+            # at which its mass is still nonzero -- and how much of the
+            # grid that leaves as pre-formation.
+            first_resolved_idx = np.argmax(halo_masses > 0, axis=1)  # per-halo
+            formation_z = redshifts[first_resolved_idx]
+            frac_preformation = first_resolved_idx / (len(redshifts) - 1)
+            print(f"    formation z: median={np.median(formation_z):.2f} "
+                  f"(range {formation_z.min():.2f}-{formation_z.max():.2f}); "
+                  f"median pre-formation fraction of grid: {np.median(frac_preformation):.1%}")
 
     print(f"\nSaved {args.output}")
 

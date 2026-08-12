@@ -57,12 +57,19 @@ def X(z, m_halo):
 
 
 def epsilon(z):
-    part2 = (
-        (gamma * (z ** (gamma - 1)) / (beta**gamma))
-        * (np.exp((z / beta) ** gamma))
-        / ((1 + np.exp((z / beta) ** gamma)) ** 2)
-    )
-    epsilon = (0.63) / (1 + np.exp((z / beta) ** gamma)) + part2
+    # (z/beta)**gamma grows huge well within uv_suppression's z<=10 mask
+    # (e.g. ~640 at z=10 for the default z_reion=7, gamma=15) -- exp of
+    # that is still finite, but its square overflows float64, correctly
+    # driving part2 -> 0 in the limit. np.errstate suppresses the resulting
+    # (harmless, verified against a finite/non-nan result) RuntimeWarning
+    # rather than leaving every real run of this function noisy.
+    with np.errstate(over="ignore"):
+        part2 = (
+            (gamma * (z ** (gamma - 1)) / (beta**gamma))
+            * (np.exp((z / beta) ** gamma))
+            / ((1 + np.exp((z / beta) ** gamma)) ** 2)
+        )
+        epsilon = (0.63) / (1 + np.exp((z / beta) ** gamma)) + part2
     return epsilon
 
 
@@ -79,15 +86,29 @@ def uv_suppression(z_val, m_halo, mdot_halo):
     mh_masked = m_halo[mask]
     mdot_masked = mdot_halo[mask]
 
-    mu_vals = mu_c(z_masked, mh_masked)
-    x_vals = X(z_masked, mh_masked)
+    # A halo/step with no mass and/or no accretion rate (e.g. a
+    # not-yet-formed progenitor -- see build_trees_from_pymctrees.py's
+    # pre-formation zeroing) has no accretion to suppress: the correct
+    # answer is 0 regardless of what this function's internals would
+    # otherwise evaluate to (gas_inflow_rate multiplies this output by
+    # halo_mass_dot, which is already 0 there). But m_halo=0 feeds into
+    # mu_c/X/s as a divide-by-zero (M_c(z)/m_halo, and s's x**(-y) with
+    # x=mu_c=0), producing inf/nan that then poisons the already-correct
+    # "0 *" via 0*nan=nan -- so this is guarded here directly rather than
+    # relying on the caller's multiplication to save it, the same
+    # principle as the mdot_halo=0 guard below.
+    resolved = (mh_masked > 0) & (mdot_masked > 0)
+    mh_safe = np.where(resolved, mh_masked, 1.0)
+    mdot_safe = np.where(resolved, mdot_masked, 1.0)
+
+    mu_vals = mu_c(z_masked, mh_safe)
+    x_vals = X(z_masked, mh_safe)
     eps_vals = epsilon(z_masked)
     H_vals = cosmo.H(z_masked).value
 
-    suppressed = s(mu_vals, omega) * (
-        (1 + x_vals)
-        - 2 * eps_vals * mh_masked * x_vals * (1 + z_masked) * H_vals / mdot_masked
-    )
+    ratio_term = 2 * eps_vals * mh_safe * x_vals * (1 + z_masked) * H_vals / mdot_safe
+    suppressed = s(mu_vals, omega) * ((1 + x_vals) - ratio_term)
+    suppressed = np.where(resolved, suppressed, 0.0)
 
     suppression[mask] = np.maximum(suppressed, 0.0)
 

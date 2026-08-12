@@ -54,13 +54,24 @@ DEFAULT_CROSS_VALIDATION_RTOL = 0.02
 # Reference "final timestep" values for halo 0 in the 1e10 mass bin, captured
 # from the current (vectorised) run1() implementation (see module docstring).
 REFERENCE_FINAL_VALUES = {
-    "gas_mass": 16460203.827404512,
-    "stars_mass": 1610384.6462875996,
-    "gas_metals": 65431.49820079876,
-    "stars_metals": 2870.1699206575877,
-    "dust_mass": 3288.939936002951,
+    # Recaptured after fixing a real bug in the delayed-SN-feedback lookback
+    # (see _delay_lookback_index in main.py): it used to be a fixed array-
+    # index offset calibrated once near the start of the run, reused for
+    # every later step regardless of how much cosmic_time it actually
+    # spanned there -- correct only for a uniform cosmic-time grid, but
+    # trees are stepped uniformly in *redshift*, whose mapping to time is
+    # highly non-uniform. bh_mass is unaffected (it never depended on the
+    # delay lookback); the others shift by a few percent (gas_mass) up to
+    # ~15-20% (stars_mass, dust_mass) now that delayed feedback is applied
+    # at approximately the intended ~15 Myr lag instead of one that had
+    # drifted to several hundred Myr by late times.
+    "gas_mass": 16774161.092892453,
+    "stars_mass": 1328613.356870733,
+    "gas_metals": 60998.48188596737,
+    "stars_metals": 2858.117290460802,
+    "dust_mass": 3009.033322847071,
     "bh_mass": 998.4932457898989,
-    "sfr": 999070.5927788572,
+    "sfr": 1018126.5822810071,
 }
 
 
@@ -178,6 +189,44 @@ def test_bh_seeding_and_growth(tree_data):
         # never exceeds the Eddington rate integrated naively over the
         # whole history (a very loose sanity bound, not a tight physical one)
         assert np.all(bh_mass < 1e12), f"halo {i}: bh_mass unphysically large"
+
+
+def test_delay_lookback_index_uses_actual_elapsed_time():
+    # Regression test for a real, pre-existing bug (confirmed present in
+    # the original solas-sims/Ashvini repo too, not introduced by this
+    # fork's vectorisation work): the delayed-feedback lookback used to be
+    # a fixed array-index offset calibrated once early in the run, reused
+    # for every later step regardless of how much cosmic_time it actually
+    # spanned there. That's only correct for a uniform cosmic_time grid --
+    # this directly checks _delay_lookback_index against a deliberately
+    # non-uniform one (mimicking a redshift-uniform tree, where dt/dz
+    # varies enormously with z) and confirms the *time gap*, not the step
+    # count, stays close to t_d throughout.
+    from ashvini.main import _delay_lookback_index
+
+    # non-uniform cosmic_time: fine steps early, coarse steps late (same
+    # qualitative shape as a redshift-uniform grid's z->t mapping)
+    cosmic_time = np.concatenate([
+        np.linspace(0.1, 0.3, 400),
+        np.linspace(0.3, 1.2, 400)[1:],
+    ])
+    t_d = 0.015  # Gyr, matches run_params.yaml's default delay_time
+
+    delay_idx = _delay_lookback_index(cosmic_time, t_d)
+
+    has_history = delay_idx >= 0
+    assert has_history.any() and (~has_history).any()  # exercises both branches
+
+    actual_gap = cosmic_time[has_history] - cosmic_time[delay_idx[has_history]]
+    # searchsorted picks the last tabulated point at or before the target
+    # lookback time, so the true gap is always >= t_d, bounded above by
+    # t_d + one local step (otherwise the *next* point would have been
+    # picked instead) -- everywhere, including late in the run where steps
+    # are ~20x coarser than at the start. The old fixed-index-offset bug
+    # would instead have shown a gap that grew to tens of times t_d there.
+    assert np.all(actual_gap >= t_d - 1e-12)
+    local_step = np.diff(cosmic_time)[np.clip(delay_idx[has_history], 0, len(cosmic_time) - 2)]
+    assert np.all(actual_gap <= t_d + local_step + 1e-9)
 
 
 def test_time_redshift_roundtrip_consistency():

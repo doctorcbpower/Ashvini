@@ -45,7 +45,6 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
     build_forest_numpy()/build_forest_numba() backends. Not used by run().
     """
     cosmic_time = utils.time_at_z(redshift)  # Gyr
-    tsn = cosmic_time[0] + t_d  # Supernova switch-on time
 
     n = len(cosmic_time)
     gas_mass = np.zeros(n)
@@ -61,20 +60,18 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         redshift, halo_mass, halo_mass_rate, UV_background
     )
 
-    delay_counter = None
+    delay_idx = _delay_lookback_index(cosmic_time, t_d)
 
     for j in range(1, n):
         t_span = [cosmic_time[j - 1], cosmic_time[j]]
 
-        if cosmic_time[j] <= tsn:
+        has_delay_history = delay_idx[j] >= 0
+        if not has_delay_history:
             feedback_type = "no"
             sfr_feedback = 0.0
-            delay_counter = j
         else:
             feedback_type = sn_type
-            sfr_feedback = (
-                sfr[j - delay_counter - 1] if delay_counter is not None else 0.0
-            )
+            sfr_feedback = sfr[delay_idx[j]]
 
         # Black hole seeding + growth (computed before gas mass, since gas
         # mass's AGN wind term needs this step's BH growth rate)
@@ -126,10 +123,10 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         stars_mass[j] = sol.y[0, -1]
 
         # Update gas metals
-        if cosmic_time[j] <= tsn:
+        if not has_delay_history:
             sfr_input = sfr[j - 1]
         else:
-            sfr_input = sfr[j - 1 - delay_counter]
+            sfr_input = sfr[delay_idx[j]]
         sol = solve_ivp(
             evolve_gas_metals,
             t_span,
@@ -156,6 +153,15 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         stars_metals[j] = sol.y[0, -1]
 
         # Update dust mass
+        if has_delay_history and delay_idx[j] >= 1:
+            idx1 = delay_idx[j]
+            idx2 = idx1 - 1
+            past_sfr_dust = sfr[idx1]
+            past_stars_mass_dust = stars_mass[idx1] - stars_mass[idx2]
+        else:
+            past_sfr_dust = 0.0
+            past_stars_mass_dust = 0.0
+
         sol = solve_ivp(
             update_dust_reservoir,
             t_span,
@@ -164,8 +170,8 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
             args=(
                 gas_mass[j - 1],
                 halo_mass[j - 1],
-                sfr[j - 1 - delay_counter],
-                stars_mass[j - 1 - delay_counter] - stars_mass[j - 2 - delay_counter],
+                past_sfr_dust,
+                past_stars_mass_dust,
                 stellar_metallicity[j - 1],
             ),
         )
@@ -272,6 +278,33 @@ def _sf_time_integral(cosmic_time, redshift):
     return 0.5 * dt * np.sum(integrand * weights[None, :], axis=1)
 
 
+def _delay_lookback_index(cosmic_time, t_d):
+    """
+    For each step j, the largest index k with cosmic_time[k] <= cosmic_time[j] - t_d
+    (i.e. the most recent tabulated state at or before t_d in the past),
+    or -1 if less than t_d has elapsed since the start of the run.
+
+    Regression fix for a real bug: this used to be a single index offset
+    (delay_counter) computed once, from however many *array steps* elapsed
+    before crossing t_d early in the run, then reused as a fixed offset for
+    the rest of the integration. That's only correct on a uniform
+    cosmic-time grid -- trees are stepped uniformly in *redshift*, and
+    dt/dz varies enormously with z (e.g. ~40x between z=25 and z=5 for a
+    typical cosmology), so a fixed step-offset calibrated near z_max
+    represented an effective delay tens of times longer than t_d by the
+    time the integration reached low z (verified directly: 182 steps
+    calibrated to 15 Myr near z=25 corresponded to ~530 Myr by z=5 for a
+    z_max=25 pymctrees-adapted tree). That silently washed out the
+    delayed-feedback oscillations the model is specifically built to
+    produce. This recomputes the lookback per-step from actual elapsed
+    time instead of a step count.
+    """
+    n = len(cosmic_time)
+    target_t = cosmic_time - t_d
+    idx = np.searchsorted(cosmic_time, target_t, side="right") - 1
+    return np.clip(idx, -1, n - 1)
+
+
 def _bh_growth_step(y0, A_bh, kappa_edd, dt):
     """
     Closed-form update of dM_BH/dt = min(A_bh, kappa_edd*y) over a step of
@@ -331,7 +364,6 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
     cosmic_time = utils.time_at_z(redshift)  # Gyr
     n = len(cosmic_time)
     N = halo_mass.shape[0]
-    tsn = cosmic_time[0] + t_d
 
     gas_mass = np.zeros((N, n))
     gas_metals = np.zeros((N, n))
@@ -348,8 +380,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
     )
 
     sf_integral = _sf_time_integral(cosmic_time, redshift)
-
-    delay_counter = None
+    delay_idx = _delay_lookback_index(cosmic_time, t_d)
 
     for j in range(1, n):
         dt = cosmic_time[j] - cosmic_time[j - 1]
@@ -361,9 +392,9 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
         has_gas = gm_prev > 0
         gm_prev_safe = np.where(has_gas, gm_prev, 1.0)
 
-        if cosmic_time[j] <= tsn:
+        has_delay_history = delay_idx[j] >= 0
+        if not has_delay_history:
             feedback_type = "no"
-            delay_counter = j
         else:
             feedback_type = sn_type
 
@@ -405,11 +436,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
             gas_forcing = A_acc - agn_forcing
             gas_decay = B_sf * (1.0 + ML)
         else:  # "delayed"
-            wind_sfr = (
-                sfr[:, j - delay_counter - 1]
-                if delay_counter is not None
-                else np.zeros(N)
-            )
+            wind_sfr = sfr[:, delay_idx[j]] if has_delay_history else np.zeros(N)
             gas_forcing = A_acc - ML * wind_sfr - agn_forcing
             gas_decay = B_sf
 
@@ -434,9 +461,9 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
         )
 
         # --- dust mass ---
-        if delay_counter is not None:
-            idx1 = j - 1 - delay_counter
-            idx2 = j - 2 - delay_counter
+        if has_delay_history and delay_idx[j] >= 1:
+            idx1 = delay_idx[j]
+            idx2 = idx1 - 1
             past_sfr = sfr[:, idx1]
             past_stars_mass = stars_mass[:, idx1] - stars_mass[:, idx2]
         else:

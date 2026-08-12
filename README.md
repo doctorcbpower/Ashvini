@@ -55,12 +55,15 @@ python scripts/build_trees_from_pymctrees.py \
 
 See the script's docstring for the unit/ordering conversions it handles (pymctrees works in Msun/h and grows trees backward from z0; Ashvini expects plain Msun in forward chronological order).
 
+Alternatively, `run()` can generate trees live -- no intermediate file -- by setting `basics.tree_source: pymctrees` in `run_params.yaml` instead of `file` (see the commented-out example in `run_params.yaml` for the full `basics.pymctrees` block: config path, halo count, z0/z_max/dz, mass resolution, backend, seed). Tree generation is fast enough that there's no caching -- every run regenerates the forest. For a forest you want to reuse across many `run_params.yaml` sweeps, build one offline instead with the script above and point `tree_file` at it.
+
 ## Package structure
 
 | Module | Responsibility |
 |---|---|
-| `main.py` | Drives the integration: `run1()` (vectorised, fast path), `run1_scalar()` (solve_ivp reference), `run_forest()` (all haloes at once), `run()` (CLI entry point, reads trees, writes HDF5) |
+| `main.py` | Drives the integration: `run1()` (vectorised, fast path), `run1_scalar()` (solve_ivp reference), `run_forest()` (all haloes at once), `run()` (CLI entry point, reads or generates trees, writes HDF5) |
 | `run_params.py` / `run_params.yaml` | Dataclass-based config loader |
+| `pymctrees_adapter.py` | pymctrees <-> Ashvini tree-format conversion (unit/ordering conversions, pre-formation-prefix handling), shared by `scripts/build_trees_from_pymctrees.py` (offline) and `run()`'s live `tree_source: pymctrees` path |
 | `gas_evolve.py` | Cosmological gas accretion and the gas-mass reservoir ODE |
 | `star_formation.py` | Star formation rate |
 | `metallicity.py` | Gas-phase and stellar metal enrichment |
@@ -70,6 +73,10 @@ See the script's docstring for the unit/ordering conversions it handles (pymctre
 | `agn_feedback.py` | AGN-driven gas wind, proportional to BH accretion rate |
 | `reionization.py` | UV background suppression of gas accretion |
 | `utils.py` | Merger-tree I/O, cosmic time/redshift interpolation |
+
+## Interactive exploration
+
+`notebooks/pymctrees_ashvini_demo.ipynb` demonstrates the live pymctrees hook end to end: generates a set of merger trees for a range of z=5 halo masses, runs Ashvini's model under both delayed and instantaneous supernova feedback (default parameters otherwise), and plots stellar mass and gas mass growth for both -- the bursty, oscillatory gas-mass signature delayed feedback is meant to produce (and its absence under instantaneous feedback) is directly visible, most strongly at the low-mass end. Open it with `jupyter notebook notebooks/pymctrees_ashvini_demo.ipynb` after `pip install -e /path/to/pymctrees[camb] jupyter`.
 
 ### Numerical scheme
 
@@ -82,7 +89,7 @@ pip install -r requirements-dev.txt
 pytest tests/
 ```
 
-The suite runs against a small downsampled merger-tree fixture (`tests/fixtures/merger_trees_fixture.h5`, regenerated with `scripts/downsample_trees.py`) and checks output shapes/validity, a pinned reference baseline, agreement between the vectorised and reference integrators, and BH seeding/growth invariants.
+The suite runs against a small downsampled merger-tree fixture (`tests/fixtures/merger_trees_fixture.h5`, regenerated with `scripts/downsample_trees.py`) and checks output shapes/validity, a pinned reference baseline, agreement between the vectorised and reference integrators, and BH seeding/growth invariants. `test_run_params.py` and `test_run_tree_source.py` cover the `tree_source: pymctrees` config parsing (including a regression test for `run_params.yaml`'s bare-exponent-number YAML gotcha, e.g. `1e10` parsing as a string) and a full live-generation `run()` smoke test; both are skipped if pymctrees isn't installed.
 
 ## Citation
 

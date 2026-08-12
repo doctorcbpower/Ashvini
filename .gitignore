@@ -139,3 +139,7 @@ data/inputs/*.h5
 data/inputs/*.hdf5
 !tests/fixtures/*.h5
 !tests/fixtures/*.hdf5
+
+# Notebook-generated plot images (re-derivable by re-running the notebook;
+# already embedded inline as cell outputs in the .ipynb itself)
+notebooks/*.png

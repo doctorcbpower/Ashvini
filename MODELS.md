@@ -161,18 +161,58 @@ Default values:
 | efficiency | `black_holes.efficiency` | 0.001 | `epsilon_BH`, gas-supply growth efficiency (same functional form as SF efficiency) |
 | eddington_multiplier | `black_holes.eddington_multiplier` | 1.0 | `f_Edd`, Eddington cap multiplier (>1 allows super-Eddington growth) |
 
-## AGN feedback ([`agn_feedback.py`](ashvini/agn_feedback.py))
+## AGN feedback ([`agn_feedback.py`](ashvini/agn_feedback.py), [`black_holes_growth.py`](ashvini/black_holes_growth.py))
 
 ```
-Mdot_AGN,wind = eta_agn * Mdot_BH,delayed
+Mdot_AGN,wind = eta_agn_eff * Mdot_BH,delayed
 ```
 
-`Mdot_BH,delayed` is the BH growth rate from `feedback_delay_time` Gyr ago (0 if no history yet); with the default `feedback_delay_time = 0.0`, this reduces to the current step's own accretion rate (instantaneous feedback).
+`Mdot_BH,delayed` is the BH growth rate from `feedback_delay_time` Gyr ago (0 if no history yet); with the default `feedback_delay_time = 0.0`, this reduces to the current step's own accretion rate (instantaneous feedback). By default `eta_agn_eff` is just the constant `eta_agn`; enabling `black_holes.sigma_feedback` replaces it with the M-sigma self-regulation coupling below.
 
 | Parameter | Config key | Default | Meaning |
 |---|---|---|---|
 | eta_agn | `black_holes.eta_agn` | 0.5 | AGN wind mass-loading efficiency |
 | feedback_delay_time | `black_holes.feedback_delay_time` | 0.0 Gyr | Lag between BH accretion and the wind it powers; 0.0 = instantaneous |
+
+### Isothermal-sphere M-sigma self-regulation (optional)
+
+King (2003, 2005) and Power, Zubovas, Nayakshin & King (2011, MNRAS 413, L110) argue AGN wind coupling to bulge gas isn't a constant efficiency: it's weak (momentum-driven, Compton-cooled, effectively trapped near the BH) while `M_BH < M_sigma`, and becomes effective at expelling gas once `M_BH >= M_sigma`, where `M_sigma` is set by balancing the wind's Eddington-limited momentum thrust against the weight of the overlying gas in an isothermal sphere. `black_holes.sigma_feedback.enabled` (default `False`) swaps the constant `eta_agn` above for this mechanism; disabled, behaviour is identical to the constant coupling. Only the isothermal-sphere approximation is implemented -- an NFW version (radius-dependent weight, concentration-mass relation, transcendental `M_sigma` solve) is a deliberate follow-up, not implemented here.
+
+Isothermal-sphere velocity dispersion (`velocity_dispersion`, from the virial relations `R_v = sigma/(5*sqrt(2)*H(z))`, `M_v = 2*sigma^2*R_v/G`, PZNK11 eq. 18):
+
+```
+sigma(M_halo, z) = [ (5*sqrt(2)/2) * G * H(z) * M_halo ]^(1/3)
+```
+
+`H(z)` uses the same Planck18 cosmology as everywhere else in the package (`utils.Hubble_time`), not a third cosmology alongside the Planck18/Planck15 split noted above. `M_halo <= 0` gives `sigma = 0`.
+
+Self-regulated BH mass scale (`m_sigma`, King 2003/2005, PZNK11 eq. 5):
+
+```
+M_sigma(sigma) = (f_g * kappa_es / (pi * G^2)) * sigma^4
+```
+
+`kappa_es = sigma_thomson/m_p` is the electron-scattering opacity -- a different quantity from the Eddington-rate constant `kappa` in [Black hole growth](#black-hole-growth-black_holes_growthpy) above, despite the shared name in the literature. `sigma = 0` gives `M_sigma = 0`.
+
+Effective coupling (`coupling_switch`, replacing the constant `eta_agn`):
+
+```
+eta_agn_eff(M_BH, M_sigma) = eta_agn * f_switch(M_BH / M_sigma)
+f_switch(x) = 1 / (1 + exp(-log10(x) / transition_width))     (logistic in log10(M_BH/M_sigma), centered at M_BH = M_sigma)
+```
+
+Neither paper specifies a particular smooth interpolation between the trapped and escaping regimes -- only that the regime change happens near `M_BH ~ M_sigma` -- so `f_switch`'s exact functional form is a deliberate modelling choice, isolated in `coupling_switch()` so it can be revisited independently of the rest of the pipeline. `M_BH <= 0` or `M_sigma <= 0` gives `f_switch = 0` (no coupling without a BH, or for an unformed halo).
+
+**Numerical scheme note**: because `eta_agn_eff` depends on `M_BH(t)`, which evolves within the same step as the gas-mass ODE it enters, `M_BH` is evaluated at the step midpoint (via the same closed-form BH-growth update used for `bh_mass[j]` itself, but over `dt/2`) rather than at the step's own not-yet-known end -- consistent with how every other time-varying coefficient in the gas ODE is already frozen mid-step (see [Numerical scheme](#numerical-scheme)), and necessary to keep the gas-mass ODE affine so `_linear_ode_step` still applies exactly.
+
+| Parameter | Config key | Default | Meaning |
+|---|---|---|---|
+| enabled | `black_holes.sigma_feedback.enabled` | False | Master switch; disabled reproduces the constant `eta_agn` coupling exactly |
+| f_g | `black_holes.sigma_feedback.f_g` | 0.16 | Baryon fraction relative to dark matter |
+| kappa_es | `black_holes.sigma_feedback.kappa_es` | null (-> `sigma_thomson/m_p`) | Electron-scattering opacity, cm^2/g |
+| transition_width | `black_holes.sigma_feedback.transition_width` | 0.1 | Dex width of the smooth `M_BH/M_sigma` switch |
+
+Out of scope for this mechanism (potential follow-ups): an NFW-profile version of `sigma`/`M_sigma`; any feedback-driven cap or quenching of BH growth itself tied to `M_sigma` (PZNK11 eq. 20-23's deviation term); and the competing nuclear-cluster feedback channel (Nayakshin, Wilkinson & King 2009).
 
 ## Reionization ([`reionization.py`](ashvini/reionization.py))
 

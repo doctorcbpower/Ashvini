@@ -59,6 +59,20 @@ black_holes:
   eddington_multiplier: 1.0 # f_Edd: BH growth capped at f_Edd x the Eddington rate; >1 allows super-Eddington growth
   feedback_delay_time: 0.0 # Gyr; time lag between BH accretion and the AGN wind it powers. 0.0 = instantaneous (default)
 
+  # Optional replacement for the constant eta_agn coupling above: King
+  # (2003, 2005) / Power, Zubovas, Nayakshin & King (2011) isothermal-sphere
+  # M-sigma self-regulation. Mdot_wind = eta_agn * f_switch(M_BH/M_sigma) *
+  # Mdot_BH instead of a constant eta_agn -- weak coupling while
+  # M_BH < M_sigma(halo velocity dispersion), switching on smoothly once
+  # M_BH >= M_sigma. See MODELS.md's "AGN feedback" section for the
+  # equations. Off by default: enabled: False reproduces the constant
+  # eta_agn behaviour exactly.
+  sigma_feedback:
+    enabled: False
+    f_g: 0.16 # baryon fraction relative to dark matter (King 2003; Power et al. 2011)
+    kappa_es: null # cm^2/g electron-scattering opacity; null -> physical sigma_thomson/m_p
+    transition_width: 0.1 # dex width of the smooth M_BH/M_sigma switch
+
   seeding:
     # Three independently enable-able seeding channels, checked in priority
     # order pop3 -> direct_collapse -> halo_mass_threshold; the first one

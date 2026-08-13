@@ -105,6 +105,20 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
             bh_growth_rate_history[agn_delay_idx[j]] if has_agn_delay_history else 0.0
         )
 
+        # Step-midpoint M_BH, for agn.agn_wind_mass_rate's optional
+        # M-sigma self-regulation coupling (sigma_feedback_enabled) only --
+        # a closed-form estimate (same _bh_growth_step used by
+        # run_forest(), evaluated at dt/2 instead of dt) rather than
+        # bh_mass[j] itself, so the AGN coupling doesn't depend on the
+        # step's own not-yet-known end state. Cheap and unused when
+        # sigma_feedback is disabled (the default).
+        z_mid = utils.z_at_time(0.5 * (t_span[0] + t_span[1]))
+        A_bh_mid = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gas_mass[j - 1]
+        kappa_edd = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * bh_growth.eddington_multiplier
+        bh_mass_mid = float(
+            _bh_growth_step(bh_mass_y0, A_bh_mid, kappa_edd, 0.5 * (t_span[1] - t_span[0]))
+        )
+
         # Update gas mass
         sol = solve_ivp(
             update_gas_reservoir,
@@ -119,6 +133,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
                 feedback_type,
                 agn_growth_rate,       # instantaneous: BH's own accretion, a gas-mass sink
                 agn_wind_growth_rate,  # possibly delayed: drives the AGN wind term
+                bh_mass_mid,           # step-midpoint M_BH, for the AGN coupling switch
             ),
         )
         gas_mass[j] = sol.y[0, -1]
@@ -443,7 +458,16 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
         agn_wind_growth_rate = (
             bh_growth_rate_history[:, agn_delay_idx[j]] if has_agn_delay_history else np.zeros(N)
         )
-        agn_forcing = agn.agn_wind_mass_rate(agn_wind_growth_rate)
+        # Step-midpoint M_BH (same closed form as bh_mass[:, j] above, but
+        # evaluated at dt/2), for agn.agn_wind_mass_rate's optional
+        # M-sigma self-regulation coupling only -- see
+        # gas_evolve.update_gas_reservoir's bh_mass_for_wind docstring for
+        # why this must be frozen mid-step rather than left to vary with
+        # the gas ODE's own state.
+        bh_mass_mid = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, 0.5 * dt)
+        agn_forcing = agn.agn_wind_mass_rate(
+            agn_wind_growth_rate, bh_mass=bh_mass_mid, halo_mass=hm_prev, redshift=z_mid
+        )
 
         # --- gas mass: dy/dt = A_acc - present_sfr(y) - ML*wind_sfr
         #                        - bh_accretion - AGN wind ---

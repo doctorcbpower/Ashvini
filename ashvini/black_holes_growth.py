@@ -12,6 +12,27 @@ m_p = 1.67e-24  # proton mass in CGS
 sigma_thomson = 6.65e-25  # Thomson cross section in CGS
 
 Gyr_s = 3.15576e16  # seconds per Gyr
+Msun_g = 1.98892e33  # grams per solar mass (IAU nominal)
+
+# black_holes.sigma_feedback -- isothermal-sphere M-sigma self-regulation
+# (King 2003, 2005; Power, Zubovas, Nayakshin & King 2011). Only used by
+# velocity_dispersion()/m_sigma() below, and only when
+# ashvini.agn_feedback's sigma_feedback_enabled is True.
+_sigma_feedback_params = PARAMS.bh.sigma_feedback
+f_g = _sigma_feedback_params.f_g  # baryon fraction relative to dark matter
+# Electron-scattering opacity, cm^2/g. This is a genuinely different
+# quantity from the `kappa_per_s`/`kappa_per_gyr` constants below (the
+# mass-independent Eddington accretion rate per unit BH mass) -- both
+# happen to be conventionally called "kappa" in the AGN feedback
+# literature, but they enter completely different formulas (Eddington rate
+# vs. M-sigma normalisation). Configurable via
+# black_holes.sigma_feedback.kappa_es; None (the default) falls back to
+# the physical value sigma_thomson/m_p.
+kappa_es = (
+    _sigma_feedback_params.kappa_es
+    if _sigma_feedback_params.kappa_es is not None
+    else sigma_thomson / m_p
+)
 
 
 def time_freefall(redshift):
@@ -34,6 +55,53 @@ def eddington_bh_growth(M_BH):
 
 
 EDDINGTON_RATE_PER_UNIT_MASS = float(eddington_bh_growth(1.0))  # 1/Gyr, f_Edd=1 (physical Eddington rate)
+
+
+def velocity_dispersion(halo_mass, redshift):
+    """
+    Isothermal-sphere velocity dispersion sigma(M_halo, z), in cm/s (CGS).
+
+    Derived from the isothermal-sphere virial relations
+    R_v = sigma / (5*sqrt(2)*H(z)) and M_v = 2*sigma^2*R_v/G (Power,
+    Zubovas, Nayakshin & King 2011, eq. 18):
+
+        sigma(M_halo, z) = [ (5*sqrt(2)/2) * G * H(z) * M_halo ]^(1/3)
+
+    H(z) is taken from Hubble_time(z) (= 1/H(z)), i.e. the SAME (Planck18)
+    cosmology already used everywhere else in this package for cosmic
+    time/redshift interpolation -- deliberately not a third cosmology
+    alongside the pre-existing utils.py (Planck18) / reionization.py
+    (Planck15) split documented in MODELS.md.
+
+    halo_mass <= 0 (unformed progenitor) returns sigma = 0, the same guard
+    pattern used elsewhere (supernovae_feedback.mass_loading_factor,
+    reionization.uv_suppression) for undefined halo properties.
+    """
+    halo_mass = np.asarray(halo_mass, dtype=float)
+    resolved = halo_mass > 0
+    halo_mass_g = np.where(resolved, halo_mass, 1.0) * Msun_g
+
+    H_per_s = (1.0 / Hubble_time(redshift)) / Gyr_s  # 1/Gyr -> 1/s
+
+    sigma = (2.5 * np.sqrt(2) * G * H_per_s * halo_mass_g) ** (1.0 / 3.0)
+    return np.where(resolved, sigma, 0.0)
+
+
+def m_sigma(sigma):
+    """
+    King (2003, 2005) self-regulated BH mass scale (Power, Zubovas,
+    Nayakshin & King 2011, eq. 5), where the wind's Eddington-limited
+    momentum thrust balances the weight of the overlying isothermal-sphere
+    gas:
+
+        M_sigma(sigma) = (f_g * kappa_es / (pi * G^2)) * sigma^4
+
+    sigma in cm/s (see velocity_dispersion above). Returns M_sigma in
+    Msun. sigma = 0 (unformed halo) gives M_sigma = 0.
+    """
+    sigma = np.asarray(sigma, dtype=float)
+    M_sigma_g = (f_g * kappa_es / (np.pi * G**2)) * sigma**4
+    return M_sigma_g / Msun_g
 
 
 def black_hole_growth_rate(t, M_BH, gas_mass):

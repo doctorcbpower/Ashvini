@@ -20,6 +20,7 @@ from .run_params import PARAMS, print_config
 UV_background = PARAMS.reion.UVB_enabled
 t_d = PARAMS.sn.delay_time  # delay time for SNe feedback, in Gyr
 sn_type = PARAMS.sn.type  # type of supernova feedback
+agn_delay_time = PARAMS.bh.feedback_delay_time  # Gyr; 0.0 = instantaneous AGN wind
 e_ff = PARAMS.sf.efficiency
 IGM_metallicity = PARAMS.metals.Z_IGM
 metallicity_yield = PARAMS.metals.Z_yield
@@ -61,6 +62,8 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
     )
 
     delay_idx = _delay_lookback_index(cosmic_time, t_d)
+    agn_delay_idx = _delay_lookback_index(cosmic_time, agn_delay_time)
+    bh_growth_rate_history = np.zeros(n)
 
     for j in range(1, n):
         t_span = [cosmic_time[j - 1], cosmic_time[j]]
@@ -95,6 +98,12 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         )
         bh_mass[j] = max(sol.y[0, -1], 0.0)
         agn_growth_rate = (bh_mass[j] - bh_mass_y0) / (t_span[1] - t_span[0])
+        bh_growth_rate_history[j] = agn_growth_rate
+
+        has_agn_delay_history = agn_delay_idx[j] >= 0
+        agn_wind_growth_rate = (
+            bh_growth_rate_history[agn_delay_idx[j]] if has_agn_delay_history else 0.0
+        )
 
         # Update gas mass
         sol = solve_ivp(
@@ -108,7 +117,8 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
                 stellar_metallicity[j - 1],
                 sfr_feedback,
                 feedback_type,
-                agn_growth_rate,
+                agn_growth_rate,       # instantaneous: BH's own accretion, a gas-mass sink
+                agn_wind_growth_rate,  # possibly delayed: drives the AGN wind term
             ),
         )
         gas_mass[j] = sol.y[0, -1]
@@ -381,6 +391,8 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
 
     sf_integral = _sf_time_integral(cosmic_time, redshift)
     delay_idx = _delay_lookback_index(cosmic_time, t_d)
+    agn_delay_idx = _delay_lookback_index(cosmic_time, agn_delay_time)
+    bh_growth_rate_history = np.zeros((N, n))
 
     for j in range(1, n):
         dt = cosmic_time[j] - cosmic_time[j - 1]
@@ -412,32 +424,46 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
         )
         bh_mass_prev = np.where(newly_seeded, seed_mass, bh_mass[:, j - 1])
         A_bh = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gm_prev
+        kappa_edd = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * bh_growth.eddington_multiplier
         bh_mass[:, j] = np.maximum(
-            _bh_growth_step(
-                bh_mass_prev, A_bh, bh_growth.EDDINGTON_RATE_PER_UNIT_MASS, dt
-            ),
+            _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, dt),
             0.0,
         )
+        # Instantaneous: this step's own accretion, always -- the mass
+        # leaves the gas reservoir when it's actually accreted, regardless
+        # of whether the *wind* it powers is delayed (see below).
         agn_growth_rate = (bh_mass[:, j] - bh_mass_prev) / dt
-        agn_forcing = agn.agn_wind_mass_rate(agn_growth_rate)
+        bh_growth_rate_history[:, j] = agn_growth_rate
 
-        # --- gas mass: dy/dt = A_acc - present_sfr(y) - ML*wind_sfr - AGN wind ---
+        # Possibly delayed: the AGN wind mirrors SN's delayed-feedback
+        # mechanism (PARAMS.bh.feedback_delay_time, default 0.0 =
+        # instantaneous, in which case agn_delay_idx[j] == j always and
+        # this reduces exactly to agn_growth_rate).
+        has_agn_delay_history = agn_delay_idx[j] >= 0
+        agn_wind_growth_rate = (
+            bh_growth_rate_history[:, agn_delay_idx[j]] if has_agn_delay_history else np.zeros(N)
+        )
+        agn_forcing = agn.agn_wind_mass_rate(agn_wind_growth_rate)
+
+        # --- gas mass: dy/dt = A_acc - present_sfr(y) - ML*wind_sfr
+        #                        - bh_accretion - AGN wind ---
         # (present_sfr is always self-referential -- it's B_sf*y for THIS
         # ode -- so it's always decay; only "instantaneous" wind_sfr is
         # also self-referential, the other two branches keep it as forcing;
-        # the AGN wind term uses this step's frozen BH growth rate, so it's
-        # forcing regardless of branch)
+        # bh_accretion (this step's own BH growth, a gas-mass sink -- see
+        # gas_evolve.update_gas_reservoir's docstring) and the AGN wind
+        # term are forcing regardless of branch, same as agn_forcing was)
         if feedback_type == "no":
             wind_sfr = np.zeros(N)
-            gas_forcing = A_acc - agn_forcing
+            gas_forcing = A_acc - agn_growth_rate - agn_forcing
             gas_decay = B_sf
         elif feedback_type == "instantaneous":
             wind_sfr = B_sf * gm_prev  # only used below, in gas_metals forcing
-            gas_forcing = A_acc - agn_forcing
+            gas_forcing = A_acc - agn_growth_rate - agn_forcing
             gas_decay = B_sf * (1.0 + ML)
         else:  # "delayed"
             wind_sfr = sfr[:, delay_idx[j]] if has_delay_history else np.zeros(N)
-            gas_forcing = A_acc - ML * wind_sfr - agn_forcing
+            gas_forcing = A_acc - ML * wind_sfr - agn_growth_rate - agn_forcing
             gas_decay = B_sf
 
         gas_mass[:, j] = _linear_ode_step(gm_prev, gas_forcing, gas_decay, dt)

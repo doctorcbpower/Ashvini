@@ -56,6 +56,8 @@ dust:
 black_holes:
   efficiency: 0.001 # BH growth efficiency (gas_mass / t_ff units, same form as SF efficiency)
   eta_agn: 0.5 # AGN wind mass-loading efficiency: Mdot_wind = eta_agn * Mdot_BH
+  eddington_multiplier: 1.0 # f_Edd: BH growth capped at f_Edd x the Eddington rate; >1 allows super-Eddington growth
+  feedback_delay_time: 0.0 # Gyr; time lag between BH accretion and the AGN wind it powers. 0.0 = instantaneous (default)
 
   seeding:
     # Three independently enable-able seeding channels, checked in priority

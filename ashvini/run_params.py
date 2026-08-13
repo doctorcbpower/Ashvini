@@ -129,6 +129,8 @@ class BlackHoleParams:
     efficiency: float
     eta_agn: float
     seeding: SeedingParams
+    eddington_multiplier: float = 1.0  # f_Edd: allows super-Eddington growth if > 1
+    feedback_delay_time: float = 0.0   # Gyr; 0.0 = instantaneous AGN wind (default, matches prior behaviour)
 
 
 @dataclass
@@ -171,6 +173,8 @@ def load_params(config_file=None) -> Params:
         bh=BlackHoleParams(
             efficiency=raw["black_holes"]["efficiency"],
             eta_agn=raw["black_holes"]["eta_agn"],
+            eddington_multiplier=raw["black_holes"].get("eddington_multiplier", 1.0),
+            feedback_delay_time=raw["black_holes"].get("feedback_delay_time", 0.0),
             seeding=SeedingParams(
                 pop3=Pop3Seeding(**raw["black_holes"]["seeding"]["pop3"]),
                 direct_collapse=DirectCollapseSeeding(

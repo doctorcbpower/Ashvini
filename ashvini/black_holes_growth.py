@@ -5,6 +5,7 @@ from .utils import Hubble_time, z_at_time
 from .run_params import PARAMS
 
 e_bh = PARAMS.bh.efficiency  # efficiency of black hole growth
+eddington_multiplier = PARAMS.bh.eddington_multiplier  # f_Edd; >1 allows super-Eddington growth
 c = 3.0e10  # speed of light in CGS (cm/s)
 G = 6.674e-8  # gravitational constant in CGS
 m_p = 1.67e-24  # proton mass in CGS
@@ -32,20 +33,22 @@ def eddington_bh_growth(M_BH):
     return kappa_per_gyr * np.asarray(M_BH)
 
 
-EDDINGTON_RATE_PER_UNIT_MASS = float(eddington_bh_growth(1.0))  # 1/Gyr
+EDDINGTON_RATE_PER_UNIT_MASS = float(eddington_bh_growth(1.0))  # 1/Gyr, f_Edd=1 (physical Eddington rate)
 
 
 def black_hole_growth_rate(t, M_BH, gas_mass):
     """
-    dM_BH/dt (Msun/Gyr): gas-supply-limited growth capped at the Eddington
-    rate. M_BH (the ODE state) is the first argument after t, matching the
-    calling convention the other RHS functions in this package
-    (update_gas_reservoir, evolve_gas_metals, ...) already use for
-    solve_ivp.
+    dM_BH/dt (Msun/Gyr): gas-supply-limited growth capped at
+    eddington_multiplier x the Eddington rate (eddington_multiplier=1 by
+    default; >1 allows super-Eddington growth, per PARAMS.bh.
+    eddington_multiplier). M_BH (the ODE state) is the first argument
+    after t, matching the calling convention the other RHS functions in
+    this package (update_gas_reservoir, evolve_gas_metals, ...) already
+    use for solve_ivp.
     """
     redshift = z_at_time(t)
     growth_rate = (e_bh / time_freefall(redshift)) * gas_mass
-    growth_rate = min(growth_rate, eddington_bh_growth(M_BH))
+    growth_rate = min(growth_rate, eddington_multiplier * eddington_bh_growth(M_BH))
     return np.asarray(growth_rate)
 
 

@@ -54,24 +54,27 @@ DEFAULT_CROSS_VALIDATION_RTOL = 0.02
 # Reference "final timestep" values for halo 0 in the 1e10 mass bin, captured
 # from the current (vectorised) run1() implementation (see module docstring).
 REFERENCE_FINAL_VALUES = {
-    # Recaptured after fixing a real bug in the delayed-SN-feedback lookback
-    # (see _delay_lookback_index in main.py): it used to be a fixed array-
-    # index offset calibrated once near the start of the run, reused for
-    # every later step regardless of how much cosmic_time it actually
-    # spanned there -- correct only for a uniform cosmic-time grid, but
-    # trees are stepped uniformly in *redshift*, whose mapping to time is
-    # highly non-uniform. bh_mass is unaffected (it never depended on the
-    # delay lookback); the others shift by a few percent (gas_mass) up to
-    # ~15-20% (stars_mass, dust_mass) now that delayed feedback is applied
-    # at approximately the intended ~15 Myr lag instead of one that had
-    # drifted to several hundred Myr by late times.
-    "gas_mass": 16774161.092892453,
-    "stars_mass": 1328613.356870733,
-    "gas_metals": 60998.48188596737,
-    "stars_metals": 2858.117290460802,
-    "dust_mass": 3009.033322847071,
-    "bh_mass": 998.4932457898989,
-    "sfr": 1018126.5822810071,
+    # Recaptured again after fixing a real gas-conservation gap: BH
+    # accretion was computed from gas_mass (via black_hole_growth_rate)
+    # but never subtracted from it -- only the *AGN wind* (eta_agn x BH
+    # growth rate) affected the gas reservoir, not the accreted mass
+    # itself. gas_evolve.update_gas_reservoir now takes a separate
+    # bh_accretion_rate (always instantaneous, a genuine sink) alongside
+    # agn_wind_growth_rate (the value the wind term uses, which can be
+    # delayed -- see PARAMS.bh.feedback_delay_time / agn_delay_time in
+    # main.py, mirroring the SN delayed-feedback mechanism; defaults to
+    # 0.0, instantaneous, matching prior behaviour for the wind). For this
+    # halo bh_mass is small relative to gas_mass throughout, so the shift
+    # here is tiny (~0.003%) -- the effect is much larger for haloes where
+    # BH growth is a significant fraction of the gas budget (see the BH
+    # on/off comparison notebook).
+    "gas_mass": 16773599.010262107,
+    "stars_mass": 1328598.9040095299,
+    "gas_metals": 60997.94576822442,
+    "stars_metals": 2858.1035534377115,
+    "dust_mass": 3008.9971514939098,
+    "bh_mass": 998.4929263552812,
+    "sfr": 1018092.4660432874,
 }
 
 

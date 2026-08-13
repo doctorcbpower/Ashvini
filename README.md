@@ -69,14 +69,21 @@ Alternatively, `run()` can generate trees live -- no intermediate file -- by set
 | `metallicity.py` | Gas-phase and stellar metal enrichment |
 | `dust.py` | Dust mass evolution |
 | `supernovae_feedback.py` | Mass-loaded supernova winds |
-| `black_holes_growth.py` | BH seeding (three configurable channels) and Eddington-limited growth |
+| `black_holes_growth.py` | BH seeding (three configurable channels) and Eddington-limited growth (`black_holes.eddington_multiplier` allows super-Eddington) |
 | `agn_feedback.py` | AGN-driven gas wind, proportional to BH accretion rate |
 | `reionization.py` | UV background suppression of gas accretion |
 | `utils.py` | Merger-tree I/O, cosmic time/redshift interpolation |
 
 ## Interactive exploration
 
-`notebooks/pymctrees_ashvini_demo.ipynb` demonstrates the live pymctrees hook end to end: generates a set of merger trees for a range of z=5 halo masses, runs Ashvini's model under both delayed and instantaneous supernova feedback (default parameters otherwise), and plots stellar mass and gas mass growth for both -- the bursty, oscillatory gas-mass signature delayed feedback is meant to produce (and its absence under instantaneous feedback) is directly visible, most strongly at the low-mass end. Open it with `jupyter notebook notebooks/pymctrees_ashvini_demo.ipynb` after `pip install -e /path/to/pymctrees[camb] jupyter`.
+`notebooks/pymctrees_ashvini_demo.ipynb` demonstrates the live pymctrees hook end to end:
+
+1. Generates trees for a few z=5 mass bins and runs Ashvini under delayed vs. instantaneous supernova feedback (default parameters otherwise) -- the bursty, oscillatory gas-mass signature delayed feedback is meant to produce (and its absence under instantaneous feedback) is directly visible, most strongly at the low-mass end.
+2. Verifies BH growth and feedback directly: seeding events, the Eddington-limited growth cap (`black_holes.eddington_multiplier`), and a sanity check that growth never exceeds it.
+3. Samples a much wider, denser mass range (24 log-spaced points, 1e7-1e11 Msun) and compares stellar/gas mass growth with vs. without BH growth and feedback (seeding disabled entirely) -- the same competitive-gas-budget mechanism `tests/test_bh_growth_feedback.py` checks as a unit test.
+4. Shows how to systematically swap the underlying dark matter model (CDM/WDM/FDM/FDM+sharp-k, by pointing `PYMCTREES_CONFIG` at a different pymctrees config file), with a worked CDM-vs-FDM comparison.
+
+Open it with `jupyter notebook notebooks/pymctrees_ashvini_demo.ipynb` after `pip install -e /path/to/pymctrees[camb] jupyter`.
 
 ### Numerical scheme
 
@@ -89,7 +96,7 @@ pip install -r requirements-dev.txt
 pytest tests/
 ```
 
-The suite runs against a small downsampled merger-tree fixture (`tests/fixtures/merger_trees_fixture.h5`, regenerated with `scripts/downsample_trees.py`) and checks output shapes/validity, a pinned reference baseline, agreement between the vectorised and reference integrators, and BH seeding/growth invariants. `test_run_params.py` and `test_run_tree_source.py` cover the `tree_source: pymctrees` config parsing (including a regression test for `run_params.yaml`'s bare-exponent-number YAML gotcha, e.g. `1e10` parsing as a string) and a full live-generation `run()` smoke test; both are skipped if pymctrees isn't installed.
+The suite runs against a small downsampled merger-tree fixture (`tests/fixtures/merger_trees_fixture.h5`, regenerated with `scripts/downsample_trees.py`) and checks output shapes/validity, a pinned reference baseline, agreement between the vectorised and reference integrators, and BH seeding/growth invariants. `test_run_params.py` and `test_run_tree_source.py` cover the `tree_source: pymctrees` config parsing (including a regression test for `run_params.yaml`'s bare-exponent-number YAML gotcha, e.g. `1e10` parsing as a string) and a full live-generation `run()` smoke test; both are skipped if pymctrees isn't installed. `test_bh_growth_feedback.py` covers BH accretion as a genuine gas-mass sink (competing with star formation for the same budget), the Eddington-growth multiplier, and the (optionally delayed) AGN wind term.
 
 ## Citation
 

@@ -1,7 +1,29 @@
 basics:
   mass_bin: 1e10
-  tree_file: "./data/inputs/merger_trees.h5"
   dir_out: "./data/outputs/"
+
+  # tree_source: "file" (default) reads tree_file below, exactly as before.
+  # tree_source: "pymctrees" instead generates a forest live via pymctrees
+  # on every run (requires pymctrees installed separately -- see
+  # ashvini/pymctrees_adapter.py -- and a pymctrees YAML config for
+  # cosmology/dm_model/window_function_type, referenced via
+  # pymctrees.config below, not duplicated here). No caching: tree
+  # generation is fast enough (seconds for typical halo counts) that
+  # regenerating each run is simpler than invalidation logic. For a forest
+  # you want to reuse across many runs, build one offline instead with
+  # scripts/build_trees_from_pymctrees.py and point tree_file at it.
+  tree_source: "file"
+  tree_file: "./data/inputs/merger_trees.h5"
+
+  # pymctrees:
+  #   config: "/path/to/pymctrees/config/planck2018_camb.yml"
+  #   n_halos: 100
+  #   z0: 5.0
+  #   z_max: 20.0
+  #   dz: 0.1
+  #   m_res: null    # Msun; null -> 1e-3 * mass_bin
+  #   backend: "numpy"   # or "numba"
+  #   seed: null
 
 star_formation:
   efficiency: 0.015
@@ -30,3 +52,33 @@ dust:
   dust_gamma: 1.3e-4
   dust_alpha: 8
   m_crit: 1.0e+5
+
+black_holes:
+  efficiency: 0.001 # BH growth efficiency (gas_mass / t_ff units, same form as SF efficiency)
+  eta_agn: 0.5 # AGN wind mass-loading efficiency: Mdot_wind = eta_agn * Mdot_BH
+  eddington_multiplier: 1.0 # f_Edd: BH growth capped at f_Edd x the Eddington rate; >1 allows super-Eddington growth
+  feedback_delay_time: 0.0 # Gyr; time lag between BH accretion and the AGN wind it powers. 0.0 = instantaneous (default)
+
+  seeding:
+    # Three independently enable-able seeding channels, checked in priority
+    # order pop3 -> direct_collapse -> halo_mass_threshold; the first one
+    # satisfied for a given halo wins. Z_gas_max thresholds are in the same
+    # Z_solar units as metallicity.Z_IGM/Z_yield above.
+    pop3:
+      enabled: True
+      z_min: 15 # only forms this early in the universe
+      M_halo_min: 1.0e+6 # minihalo mass threshold (H2-cooling, Tvir ~ 1e4 K)
+      Z_gas_max: 1.0e-4 # near-primordial gas required
+      M_seed: 1.0e+2 # light seed: Pop III remnant mass
+
+    direct_collapse:
+      enabled: True
+      z_min: 10
+      M_halo_min: 1.0e+7 # atomic-cooling halo threshold
+      Z_gas_max: 1.0e-5 # pristine gas required to suppress H2 fragmentation
+      M_seed: 1.0e+5 # heavy seed
+
+    halo_mass_threshold:
+      enabled: True
+      M_halo_min: 1.0e+10 # generic fallback: seed once the halo is massive enough
+      M_seed: 1.0e+3

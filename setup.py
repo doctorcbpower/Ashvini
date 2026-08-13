@@ -13,6 +13,6 @@ setuptools.setup(
         "scipy",
         "astropy",
         "h5py",
-        "joblib",
+        "pyyaml",
     ],
 )

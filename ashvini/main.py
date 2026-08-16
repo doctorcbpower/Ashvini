@@ -578,11 +578,18 @@ def run():
                 "a path to a pymctrees YAML config)."
             )
         print(f"\nGenerating trees live via pymctrees ({p.config}) instead of reading a file...")
-        halo_masses, halo_mass_rates, redshifts = pymctrees_adapter.build_forest_live(
+        halo_masses, halo_mass_rates, redshifts, _merger_mass = pymctrees_adapter.build_forest_live(
             pymctrees_config_path=p.config, mass_bin=PARAMS.io.mass_bin,
             n_halos=p.n_halos, z0=p.z0, z_max=p.z_max, dz=p.dz,
             m_res=p.m_res, backend=p.backend, seed=p.seed,
         )
+        # _merger_mass (per-halo, per-step discrete merger events) is
+        # already folded into halo_mass_rates above -- returned separately
+        # too, for any future merger-triggered physics (e.g. a starburst on
+        # top of the baseline accretion-driven rate), not consumed that way
+        # by run_forest() yet. Available here for callers that want it
+        # directly via pymctrees_adapter.build_forest_live() instead of
+        # run().
     elif PARAMS.io.tree_source == "file":
         halo_masses, halo_mass_rates, redshifts = utils.read_trees(
             file_path=PARAMS.io.tree_file, mass_bin=PARAMS.io.mass_bin

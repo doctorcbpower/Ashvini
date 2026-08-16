@@ -42,13 +42,15 @@ def tree_generator():
 
 def test_build_forest_for_bin_shape_and_ordering(tree_generator):
     n_halos = 20
-    halo_masses, redshifts = adapter.build_forest_for_bin(
+    halo_masses, redshifts, smooth_accretion, merger_mass = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e12, h=H, n_halos=n_halos,
         z0=0.0, z_max=5.0, m_res_msun=1e9, dz=0.5, backend="numpy", rng_seed=0,
     )
     n_steps = int(5.0 / 0.5) + 1  # +1 for the prepended M0
     assert halo_masses.shape == (n_halos, n_steps)
     assert redshifts.shape == (n_steps,)
+    assert smooth_accretion.shape == (n_halos, n_steps - 1)  # one entry per gap
+    assert merger_mass.shape == (n_halos, n_steps - 1)
 
     # index 0 = earliest (highest z); index -1 = z0 = the input M0 exactly
     assert redshifts[0] > redshifts[-1]
@@ -57,6 +59,30 @@ def test_build_forest_for_bin_shape_and_ordering(tree_generator):
 
     # mass only grows forward in (chronological) time
     assert np.all(np.diff(halo_masses, axis=1) >= -1e-6)
+    assert np.all(smooth_accretion >= 0.0)
+    assert np.all(merger_mass >= 0.0)
+
+
+def test_build_forest_for_bin_smooth_plus_merger_conserve_mass(tree_generator):
+    # The core invariant this whole decomposition exists for: summed
+    # together, chronologically, smooth_accretion + merger_mass must
+    # exactly account for the mass gained between consecutive resolved
+    # steps -- see pymctrees' own build_forest_numpy docstring for the
+    # identity this is inherited from, and build_forest_for_bin's docstring
+    # for the Msun/h-conversion and reversal that must preserve it here.
+    n_halos = 200
+    halo_masses, redshifts, smooth_accretion, merger_mass = adapter.build_forest_for_bin(
+        tree_generator, M0_msun=1e12, h=H, n_halos=n_halos,
+        z0=0.0, z_max=5.0, m_res_msun=1e9, dz=0.5, backend="numpy", rng_seed=0,
+    )
+    forward_gain = np.diff(halo_masses, axis=1)
+    channel_sum = smooth_accretion + merger_mass
+
+    both_resolved = (halo_masses[:, :-1] > 0) & (halo_masses[:, 1:] > 0)
+    assert both_resolved.sum() > 0, "expected at least one resolved gap in this sample"
+    assert np.allclose(
+        forward_gain[both_resolved], channel_sum[both_resolved], rtol=1e-6, atol=1e-3,
+    )
 
 
 def test_msun_over_h_conversion(tree_generator):
@@ -65,12 +91,12 @@ def test_msun_over_h_conversion(tree_generator):
     # Msun both times, so the *converted* trajectories should differ only
     # through the M0->M0*h step, not through some accidental double-counting)
     np.random.seed(1)
-    halo_masses_h1, _ = adapter.build_forest_for_bin(
+    halo_masses_h1, _, _, _ = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e12, h=1.0, n_halos=5,
         z0=0.0, z_max=3.0, m_res_msun=1e9, dz=0.5, backend="numpy", rng_seed=1,
     )
     np.random.seed(1)
-    halo_masses_h05, _ = adapter.build_forest_for_bin(
+    halo_masses_h05, _, _, _ = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e12, h=0.5, n_halos=5,
         z0=0.0, z_max=3.0, m_res_msun=1e9, dz=0.5, backend="numpy", rng_seed=1,
     )
@@ -83,14 +109,14 @@ def test_msun_over_h_conversion(tree_generator):
 
 
 def test_compute_growth_rates_shape(tree_generator):
-    halo_masses, redshifts = adapter.build_forest_for_bin(
+    halo_masses, redshifts, smooth_accretion, merger_mass = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e12, h=H, n_halos=10,
         z0=0.0, z_max=5.0, m_res_msun=1e9, dz=0.5, backend="numpy", rng_seed=2,
     )
-    rates = adapter.compute_growth_rates(halo_masses, redshifts)
+    rates = adapter.compute_growth_rates(smooth_accretion, merger_mass, redshifts)
     assert rates.shape == halo_masses.shape
     assert np.all(np.isfinite(rates))
-    # rates are never negative for a monotonically non-decreasing mass history
+    # smooth accretion + merger mass are both pure gains, never a sink
     assert np.all(rates >= -1e-6)
 
 
@@ -120,7 +146,7 @@ def test_build_forest_for_bin_zeroes_preformation_prefix(tree_generator):
     # _mask_unresolved_prefix's docstring for why: pymctrees can't resolve
     # a progenitor below M_res, so this stretch shouldn't be presented to
     # Ashvini as "a halo with mass" at all).
-    halo_masses, redshifts = adapter.build_forest_for_bin(
+    halo_masses, redshifts, _, _ = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e10, h=H, n_halos=20,
         z0=0.0, z_max=8.0, m_res_msun=1e2, dz=0.05, backend="numpy", rng_seed=7,
     )
@@ -137,12 +163,15 @@ def test_build_forest_for_bin_zeroes_preformation_prefix(tree_generator):
         assert np.all(row[first_nonzero:] > 0.0)
 
 
-def test_compute_growth_rates_zeroes_formation_step_not_a_spike(tree_generator):
-    halo_masses, redshifts = adapter.build_forest_for_bin(
+def test_build_forest_for_bin_zeroes_formation_gap_not_a_spike(tree_generator):
+    # Formation-step zeroing now happens inside build_forest_for_bin itself
+    # (on smooth_accretion/merger_mass directly), not inside the growth-rate
+    # function -- checked at both levels here.
+    halo_masses, redshifts, smooth_accretion, merger_mass = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e10, h=H, n_halos=20,
         z0=0.0, z_max=8.0, m_res_msun=1e2, dz=0.05, backend="numpy", rng_seed=7,
     )
-    rates = adapter.compute_growth_rates(halo_masses, redshifts)
+    rates = adapter.compute_growth_rates(smooth_accretion, merger_mass, redshifts)
     assert np.all(np.isfinite(rates))
 
     for i, row in enumerate(halo_masses):
@@ -150,8 +179,11 @@ def test_compute_growth_rates_zeroes_formation_step_not_a_spike(tree_generator):
         if len(nonzero) == 0 or nonzero[0] == 0:
             continue
         formation_idx = nonzero[0]
-        # the step whose diff spans 0 -> first resolved mass must be
-        # reported as zero growth, not a huge instantaneous-formation spike
+        # the gap spanning 0 -> first resolved mass must be reported as
+        # zero smooth accretion / zero merger mass / zero rate, not a huge
+        # instantaneous-formation spike
+        assert smooth_accretion[i, formation_idx - 1] == 0.0
+        assert merger_mass[i, formation_idx - 1] == 0.0
         assert rates[i, formation_idx - 1] == 0.0
 
 
@@ -163,11 +195,11 @@ def test_mass_bin_group_naming():
 def test_output_file_round_trips_through_read_trees_and_run1(tree_generator, tmp_path):
     import h5py
 
-    halo_masses, redshifts = adapter.build_forest_for_bin(
+    halo_masses, redshifts, smooth_accretion, merger_mass = adapter.build_forest_for_bin(
         tree_generator, M0_msun=1e10, h=H, n_halos=5,
         z0=0.0, z_max=5.0, m_res_msun=1e8, dz=0.25, backend="numpy", rng_seed=3,
     )
-    rates = adapter.compute_growth_rates(halo_masses, redshifts)
+    rates = adapter.compute_growth_rates(smooth_accretion, merger_mass, redshifts)
 
     out_path = tmp_path / "adapter_test.h5"
     with h5py.File(out_path, "w") as f:
@@ -192,9 +224,10 @@ def test_output_file_round_trips_through_read_trees_and_run1(tree_generator, tmp
 def test_build_forest_live_matches_offline_equivalent(tmp_path):
     # build_forest_live (the "live" path used by run() when
     # tree_source='pymctrees') must produce exactly the same tree as the
-    # offline build_forest_for_bin + compute_growth_rates combination it
-    # wraps, given the same parameters and seed -- they're meant to be
-    # interchangeable, not two independently-evolving implementations.
+    # offline build_forest_for_bin + compute_growth_rates
+    # combination it wraps, given the same parameters and seed -- they're
+    # meant to be interchangeable, not two independently-evolving
+    # implementations.
     config_path = tmp_path / "planck_like.yml"
     config_path.write_text(
         "Run:\n"
@@ -214,13 +247,15 @@ def test_build_forest_live_matches_offline_equivalent(tmp_path):
         "camb:\n"
     )
 
-    live_masses, live_rates, live_z = adapter.build_forest_live(
+    live_masses, live_rates, live_z, live_merger_mass = adapter.build_forest_live(
         pymctrees_config_path=str(config_path), mass_bin=1e10,
         n_halos=5, z0=0.0, z_max=3.0, dz=0.5, m_res=1e9,
         backend="numpy", seed=42,
     )
 
     assert live_masses.shape == (5, 7)  # (0, 0.5, ..., 3.0) -> 7 steps
+    assert live_merger_mass.shape == (5, 6)
     assert live_z[-1] == pytest.approx(0.0)
     assert np.allclose(live_masses[:, -1], 1e10)
     assert np.all(np.isfinite(live_rates))
+    assert np.all(live_merger_mass >= 0.0)

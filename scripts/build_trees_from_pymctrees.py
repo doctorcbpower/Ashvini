@@ -91,7 +91,7 @@ def main():
             group_name = mass_bin_group_name(mass_bin)
             print(f"  {group_name} (M0={mass_bin:.3e} Msun) ...")
 
-            halo_masses, redshifts = build_forest_for_bin(
+            halo_masses, redshifts, smooth_accretion, merger_mass = build_forest_for_bin(
                 tree_generator, mass_bin, h, args.n_halos,
                 args.z0, args.z_max, m_res, args.dz, args.backend, args.seed,
             )
@@ -110,7 +110,7 @@ def main():
                     "of a single top-level 'redshifts' dataset)."
                 )
 
-            halo_growth_rates = compute_growth_rates(halo_masses, redshifts)
+            halo_growth_rates = compute_growth_rates(smooth_accretion, merger_mass, redshifts)
 
             grp = fout.create_group(group_name)
             grp.create_dataset(

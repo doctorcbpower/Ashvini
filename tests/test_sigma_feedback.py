@@ -283,7 +283,7 @@ def test_sigma_feedback_wind_alone_does_not_cap_bh_growth_near_m_sigma(monkeypat
     monkeypatch.setattr(bh_growth, "eddington_multiplier", 50.0)
     monkeypatch.setattr(main, "sn_type", "delayed")
 
-    halo_masses, halo_growth_rates, redshifts = pymctrees_adapter.build_forest_live(
+    halo_masses, halo_growth_rates, redshifts, _merger_mass = pymctrees_adapter.build_forest_live(
         pymctrees_config_path=str(config_path), mass_bin=1e12,
         n_halos=1, z0=0.5, z_max=25.0, dz=0.02,
         m_res=100.0, backend="numpy", seed=7,

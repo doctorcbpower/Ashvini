@@ -1,5 +1,5 @@
 from pathlib import Path
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 import yaml
 
 
@@ -125,12 +125,31 @@ class SeedingParams:
 
 
 @dataclass
+class SigmaFeedbackParams:
+    """
+    black_holes.sigma_feedback -- optional isothermal-sphere M-sigma
+    self-regulation (King 2003, 2005; Power, Zubovas, Nayakshin & King 2011)
+    replacing the constant eta_agn AGN wind coupling with one that switches
+    on once M_BH crosses the self-regulation mass M_sigma(halo velocity
+    dispersion). See ashvini.black_holes_growth.velocity_dispersion/
+    m_sigma and ashvini.agn_feedback.coupling_switch, and MODELS.md's "AGN
+    feedback" section for the equations. Off by default: enabled=False
+    reproduces the prior constant-eta_agn behaviour exactly.
+    """
+    enabled: bool = False
+    f_g: float = 0.16       # baryon fraction relative to dark matter (King 2003; PZNK11)
+    kappa_es: float = None  # cm^2/g electron-scattering opacity; None -> sigma_thomson/m_p
+    transition_width: float = 0.1  # dex width of the smooth M_BH/M_sigma switch
+
+
+@dataclass
 class BlackHoleParams:
     efficiency: float
     eta_agn: float
     seeding: SeedingParams
     eddington_multiplier: float = 1.0  # f_Edd: allows super-Eddington growth if > 1
     feedback_delay_time: float = 0.0   # Gyr; 0.0 = instantaneous AGN wind (default, matches prior behaviour)
+    sigma_feedback: SigmaFeedbackParams = field(default_factory=SigmaFeedbackParams)
 
 
 @dataclass
@@ -175,6 +194,7 @@ def load_params(config_file=None) -> Params:
             eta_agn=raw["black_holes"]["eta_agn"],
             eddington_multiplier=raw["black_holes"].get("eddington_multiplier", 1.0),
             feedback_delay_time=raw["black_holes"].get("feedback_delay_time", 0.0),
+            sigma_feedback=SigmaFeedbackParams(**raw["black_holes"].get("sigma_feedback", {})),
             seeding=SeedingParams(
                 pop3=Pop3Seeding(**raw["black_holes"]["seeding"]["pop3"]),
                 direct_collapse=DirectCollapseSeeding(

@@ -10,6 +10,8 @@ The model works by balancing the mass fluxes between the baryonic components of 
 1. Dust mass
 1. Black hole mass (seeding + Eddington-limited growth + AGN feedback)
 
+See [MODELS.md](MODELS.md) for the exact governing equations behind each of these and a full parameter reference (every `run_params.yaml` key, its default, and what it physically controls).
+
 ## Installation
 
 Clone the repository:

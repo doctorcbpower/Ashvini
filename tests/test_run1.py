@@ -155,6 +155,49 @@ def test_vectorized_matches_scalar_reference(tree_data):
             )
 
 
+def test_sfr_computed_from_clamped_gas_mass_not_raw_ode_output():
+    # Regression test for a real bug: sfr used to be computed from
+    # gas_mass's raw _linear_ode_step output *before* the "enforce
+    # non-negativity" clamp ran, rather than after. The closed-form ODE
+    # update legitimately overshoots slightly negative when decay is fast
+    # relative to dt (checked directly against a real 10,000-halo run:
+    # 188,702/20,000,000 (N x n_steps) raw gas_mass updates went negative)
+    # -- gas_mass itself was still correctly clamped for every *other*
+    # purpose, but the already-computed sfr silently carried the negative
+    # value forward. That negative sfr later fed into a delayed-feedback
+    # or dust decay term (ML*wind_sfr/gas_mass, both otherwise
+    # non-negative), making the decay negative and overflowing
+    # _linear_ode_step's exp(-x) a few steps later -- the source of the
+    # rare NaN-halo cases seen in large parameter sweeps.
+    #
+    # Forces every _linear_ode_step call to return a large negative value
+    # regardless of its real inputs (deterministic, no need to reverse-
+    # engineer parameters that organically trigger the overshoot) and
+    # checks sfr is 0 (from the clamped gas_mass), never negative.
+    # Verified this test fails on the pre-fix code (sfr went to ~-1.4e11)
+    # via `git stash` before adding the fix.
+    from ashvini import main as amain
+
+    orig = amain._linear_ode_step
+
+    def force_negative(y0, forcing, decay, dt):
+        return orig(y0, forcing, decay, dt) - 1e12
+
+    amain._linear_ode_step = force_negative
+    try:
+        N, n = 3, 10
+        redshift = np.linspace(10, 5, n)
+        halo_mass = np.full((N, n), 1e10)
+        halo_mass_rate = np.full((N, n), 1e9)
+        result = amain.run_forest(halo_mass, halo_mass_rate, redshift)
+    finally:
+        amain._linear_ode_step = orig
+
+    assert np.all(result["gas_mass"] == 0.0)
+    assert np.all(result["sfr"] == 0.0)
+    assert not np.any(result["sfr"] < 0)
+
+
 def test_bh_seeding_and_growth(tree_data):
     from ashvini import black_holes_growth as bh_growth
 

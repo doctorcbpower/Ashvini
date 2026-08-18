@@ -202,11 +202,14 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         )
         dust_mass[j] = sol.y[0, -1]
 
+        # Enforce non-negativity (gas_mass first -- see run_forest's
+        # matching comment for why sfr must be computed from the clamped
+        # value, not solve_ivp's raw output)
+        gas_mass[j] = max(gas_mass[j], 0.0)
+
         # Star formation rate at current time
         sfr[j] = star_formation_rate(cosmic_time[j], gas_mass[j])
 
-        # Enforce non-negativity
-        gas_mass[j] = max(gas_mass[j], 0.0)
         gas_metals[j] = max(gas_metals[j], 0.0)
         stars_mass[j] = max(stars_mass[j], 0.0)
         stars_metals[j] = max(stars_metals[j], 0.0)
@@ -535,11 +538,20 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
             dust_mass[:, j - 1], dust_forcing, dust_decay, dt
         )
 
+        # --- enforce non-negativity (gas_mass first: sfr below must be
+        # computed from the clamped value, not the closed-form ODE
+        # update's raw output, which legitimately overshoots slightly
+        # negative when decay is fast relative to dt -- computing sfr from
+        # the unclamped value silently produced a negative sfr that was
+        # never itself clamped, later poisoning a delayed-feedback/dust
+        # decay term negative and overflowing _linear_ode_step's exp(-x)
+        # (verified directly: 188,702/20,000,000 (N x n_steps) raw
+        # gas_mass updates go negative in a typical 10,000-halo run) ---
+        gas_mass[:, j] = np.maximum(gas_mass[:, j], 0.0)
+
         # --- star formation rate at current (unfrozen) time/state ---
         sfr[:, j] = e_ff / time_freefall(redshift[j]) * gas_mass[:, j]
 
-        # --- enforce non-negativity ---
-        gas_mass[:, j] = np.maximum(gas_mass[:, j], 0.0)
         gas_metals[:, j] = np.maximum(gas_metals[:, j], 0.0)
         stars_mass[:, j] = np.maximum(stars_mass[:, j], 0.0)
         stars_metals[:, j] = np.maximum(stars_metals[:, j], 0.0)

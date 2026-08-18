@@ -72,6 +72,12 @@ black_holes:
     f_g: 0.16 # baryon fraction relative to dark matter (King 2003; Power et al. 2011)
     kappa_es: null # cm^2/g electron-scattering opacity; null -> physical sigma_thomson/m_p
     transition_width: 0.1 # dex width of the smooth M_BH/M_sigma switch
+    # Hard growth cap at Power et al. (2011) eq. 21-22's predicted ceiling
+    # (M_sigma * (1 + 0.41*sigma_200/h(z))) -- the actual "self-regulation"
+    # (halts BH growth), as opposed to sigma_feedback.enabled above (which
+    # only switches the wind's *strength*, and by itself does not cap
+    # M_BH -- see MODELS.md). Requires sigma_feedback.enabled: True.
+    growth_cap_enabled: False
 
   seeding:
     # Three independently enable-able seeding channels, checked in priority

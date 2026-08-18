@@ -141,6 +141,20 @@ class SigmaFeedbackParams:
     kappa_es: float = None  # cm^2/g electron-scattering opacity; None -> sigma_thomson/m_p
     transition_width: float = 0.1  # dex width of the smooth M_BH/M_sigma switch
 
+    # Hard growth cap at PZNK11's predicted M_BH ceiling (eq. 21-22):
+    # M_sigma * (1 + 0.41*sigma_200/h(z)). The paper does not give an
+    # explicit equation for *how* growth halts (their own words: "the most
+    # unclear part of any theory") -- only this bound on the eventual
+    # overshoot -- so a hard cutoff at the ceiling is a disclosed modelling
+    # choice, not something read off the paper directly. See
+    # black_holes_growth.growth_ceiling and MODELS.md's "AGN feedback"
+    # section. Requires sigma_feedback.enabled=True (the cap without the
+    # wind switch on is not a coherent self-regulation model). Off by
+    # default: without it, sigma_feedback is a wind-strength switch only
+    # (checked directly not to cap M_BH -- see
+    # tests/test_sigma_feedback.py::test_sigma_feedback_wind_alone_does_not_cap_bh_growth_near_m_sigma).
+    growth_cap_enabled: bool = False
+
 
 @dataclass
 class BlackHoleParams:

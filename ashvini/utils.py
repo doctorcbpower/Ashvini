@@ -83,3 +83,16 @@ def z_at_time(t):
 def Hubble_time(z):
     """Return Hubble time (Gyr) at redshift z."""
     return np.interp(z, _z_vals, _Hubble_time_vals)
+
+
+_h_of_z_vals = (cosmo.H(_z_vals) / (100 * u.km / u.s / u.Mpc)).to(u.dimensionless_unscaled).value
+
+
+def h_of_z(z):
+    """
+    Dimensionless Hubble parameter h(z) = H(z) / (100 km/s/Mpc) -- e.g. for
+    black_holes_growth.growth_ceiling's use of Power, Zubovas, Nayakshin &
+    King (2011) eq. 21-22, which is expressed in these units (not H(z) in
+    1/Gyr, which is what Hubble_time above gives the reciprocal of).
+    """
+    return np.interp(z, _z_vals, _h_of_z_vals)

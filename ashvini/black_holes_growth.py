@@ -1,6 +1,6 @@
 import numpy as np
 
-from .utils import Hubble_time, z_at_time
+from .utils import Hubble_time, z_at_time, h_of_z
 
 from .run_params import PARAMS
 
@@ -33,6 +33,7 @@ kappa_es = (
     if _sigma_feedback_params.kappa_es is not None
     else sigma_thomson / m_p
 )
+growth_cap_enabled = _sigma_feedback_params.growth_cap_enabled
 
 
 def time_freefall(redshift):
@@ -102,6 +103,37 @@ def m_sigma(sigma):
     sigma = np.asarray(sigma, dtype=float)
     M_sigma_g = (f_g * kappa_es / (np.pi * G**2)) * sigma**4
     return M_sigma_g / Msun_g
+
+
+def growth_ceiling(halo_mass, redshift):
+    """
+    Hard M_BH growth ceiling at Power, Zubovas, Nayakshin & King (2011;
+    PZNK11) eq. 21-22's predicted overshoot bound:
+
+        ceiling = M_sigma * (1 + 0.41 * sigma_200 / h(z))
+
+    where sigma_200 = sigma(halo_mass, z) / (200 km/s) and h(z) is the
+    dimensionless Hubble parameter (utils.h_of_z) -- both dimensionless
+    combinations exactly as they appear in the paper.
+
+    PZNK11 do not give an equation for *how* growth halts once M_BH
+    approaches M_sigma -- only this bound on the eventual overshoot,
+    reached "presumably" once the AGN outflow clears the bulge on its
+    dynamical time (their own words: "precisely how this last step
+    occurs is still the most unclear part of any theory"). A hard cutoff
+    at this ceiling (see black_hole_growth_rate/_bh_growth_step below) is
+    therefore a disclosed modelling choice grounded in the paper's own
+    quantitative prediction, not an equation read directly off it -- see
+    MODELS.md's "AGN feedback" section.
+
+    halo_mass <= 0 gives ceiling = 0 (an unformed halo has sigma = 0, so
+    M_sigma = 0 and the overshoot term is also 0 -- same guard pattern as
+    velocity_dispersion/m_sigma above).
+    """
+    sigma = velocity_dispersion(halo_mass, redshift)  # cm/s
+    sigma_200 = sigma / 200.0e5  # 200 km/s in cm/s
+    overshoot_frac = 0.41 * sigma_200 / h_of_z(redshift)
+    return m_sigma(sigma) * (1.0 + overshoot_frac)
 
 
 def black_hole_growth_rate(t, M_BH, gas_mass):

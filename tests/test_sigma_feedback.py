@@ -338,3 +338,137 @@ def test_run_forest_matches_scalar_reference_with_sigma_feedback_enabled(monkeyp
 
     assert np.all(np.isfinite(fast["gas_mass"]))
     assert np.all(fast["gas_mass"] >= 0)
+
+
+# ---------------------------------------------------------------------------
+# growth_ceiling (PZNK11 eq. 21-22 hard cap)
+# ---------------------------------------------------------------------------
+
+def test_growth_ceiling_zero_halo_mass_gives_zero():
+    assert bh_growth.growth_ceiling(0.0, 6.0) == 0.0
+
+
+def test_growth_ceiling_exceeds_m_sigma():
+    # ceiling = M_sigma * (1 + overshoot), overshoot > 0 for any resolved
+    # halo -- the ceiling must sit strictly above M_sigma itself, not
+    # coincide with it (PZNK11's whole point is that growth continues
+    # somewhat past M_sigma before halting).
+    sigma = bh_growth.velocity_dispersion(1e12, 6.0)
+    m_sig = bh_growth.m_sigma(sigma)
+    ceiling = bh_growth.growth_ceiling(1e12, 6.0)
+    assert ceiling > m_sig
+
+
+def test_growth_ceiling_matches_eq21_22_formula_directly():
+    # Recompute independently from the paper's own quantities (not by
+    # calling growth_ceiling piecewise) to catch a real formula bug rather
+    # than just confirming self-consistency.
+    halo_mass, z = 5e11, 4.0
+    sigma_cgs = bh_growth.velocity_dispersion(halo_mass, z)
+    sigma_200 = sigma_cgs / 200.0e5
+    h_z = utils.h_of_z(z)
+    expected_overshoot_frac = 0.41 * sigma_200 / h_z
+    expected = bh_growth.m_sigma(sigma_cgs) * (1.0 + expected_overshoot_frac)
+    assert bh_growth.growth_ceiling(halo_mass, z) == pytest.approx(expected, rel=1e-10)
+
+
+def test_growth_ceiling_increases_with_halo_mass():
+    lo = bh_growth.growth_ceiling(1e10, 6.0)
+    hi = bh_growth.growth_ceiling(1e13, 6.0)
+    assert 0.0 < lo < hi
+
+
+# ---------------------------------------------------------------------------
+# growth_cap_enabled actually caps M_BH, unlike the wind-only mechanism
+# ---------------------------------------------------------------------------
+
+def test_growth_cap_enabled_actually_holds_bh_mass_near_ceiling(monkeypatch, tmp_path):
+    # Direct counterpart to
+    # test_sigma_feedback_wind_alone_does_not_cap_bh_growth_near_m_sigma
+    # above: same sustained-accretion setup, same maximal-wind parameters,
+    # but with growth_cap_enabled=True this time -- confirms the hard cap
+    # (unlike the wind alone) actually holds M_BH near its predicted
+    # ceiling rather than letting it grow unboundedly past it.
+    pytest.importorskip("pymctrees")
+    from ashvini import pymctrees_adapter
+
+    config_path = tmp_path / "planck_like.yml"
+    config_path.write_text(
+        "Run:\n"
+        "  mode: camb\n"
+        "  pk_kmin: 1.0e-4\n"
+        "  pk_kmax: 10.0\n"
+        "  pk_npoints: 500\n"
+        "Cosmology:\n"
+        "  H0: 67.66\n"
+        "  OmegaBar: 0.048\n"
+        "  OmegaM: 0.3111\n"
+        "  OmegaK: 0.0\n"
+        "  As: 2.1e-9\n"
+        "  ns: 0.9665\n"
+        "  tau_reio: 0.0561\n"
+        "  mnu: 0.0\n"
+        "camb:\n"
+    )
+
+    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
+    monkeypatch.setattr(agn, "eta_agn", 1.0)
+    monkeypatch.setattr(bh_growth, "e_bh", 0.05)
+    monkeypatch.setattr(bh_growth, "eddington_multiplier", 50.0)
+    monkeypatch.setattr(bh_growth, "growth_cap_enabled", True)
+    monkeypatch.setattr(main, "sn_type", "delayed")
+
+    halo_masses, halo_growth_rates, redshifts, _merger_mass = pymctrees_adapter.build_forest_live(
+        pymctrees_config_path=str(config_path), mass_bin=1e12,
+        n_halos=1, z0=0.5, z_max=25.0, dz=0.02,
+        m_res=100.0, backend="numpy", seed=7,
+    )
+    result = main.run_forest(halo_masses, halo_growth_rates, redshifts)
+
+    ceiling_hist = bh_growth.growth_ceiling(halo_masses[0], redshifts)
+    bh_mass_hist = result["bh_mass"][0]
+
+    resolved = ceiling_hist > 0
+    assert resolved.any()
+    # never exceeds its own step's ceiling (small float tolerance)
+    assert np.all(bh_mass_hist[resolved] <= ceiling_hist[resolved] * (1.0 + 1e-6))
+
+    final_ratio = bh_mass_hist[-1] / ceiling_hist[-1]
+    assert final_ratio > 0.9, (
+        f"final M_BH/ceiling={final_ratio:.3g} -- expected the hard cap to "
+        f"hold M_BH close to its ceiling under sustained accretion, unlike "
+        f"the wind-only mechanism"
+    )
+
+
+def test_run_forest_matches_scalar_reference_with_growth_cap_enabled(monkeypatch):
+    # Mirrors test_run_forest_matches_scalar_reference_with_sigma_feedback_enabled
+    # above, with growth_cap_enabled also on -- both integration paths
+    # (run_forest's closed-form _bh_growth_step clip, run1_scalar's
+    # solve_ivp-endpoint clip) must agree, not just each independently
+    # produce a capped result.
+    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
+    monkeypatch.setattr(bh_growth, "e_bh", 0.3)
+    monkeypatch.setattr(bh_growth, "eddington_multiplier", 500.0)
+    monkeypatch.setattr(bh_growth, "growth_cap_enabled", True)
+
+    n = 60
+    z = np.linspace(5.0, 15.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e12, n)
+    halo_mass_rate = np.gradient(halo_mass, utils.time_at_z(z))
+
+    fast = main.run_forest(halo_mass, halo_mass_rate, z)
+    slow = main.run1_scalar(halo_mass, halo_mass_rate, z)
+
+    rtol = {"bh_mass": 0.03}
+    default_rtol = 0.02
+    for key in ("gas_mass", "stars_mass", "gas_metals", "stars_metals", "dust_mass", "bh_mass", "sfr"):
+        fast_val = fast[key][0, -1]
+        slow_val = slow[key][-1]
+        assert fast_val == pytest.approx(slow_val, rel=rtol.get(key, default_rtol)), (
+            f"{key}: vectorised {fast_val!r} diverged from scalar reference "
+            f"{slow_val!r} with growth_cap_enabled"
+        )
+
+    assert np.all(np.isfinite(fast["gas_mass"]))
+    assert np.all(fast["gas_mass"] >= 0)

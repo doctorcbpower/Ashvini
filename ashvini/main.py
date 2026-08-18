@@ -97,6 +97,14 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
             args=(gas_mass[j - 1],),
         )
         bh_mass[j] = max(sol.y[0, -1], 0.0)
+        # Optional hard cap at PZNK11's predicted ceiling (see run_forest's
+        # matching comment): dM_BH/dt is never negative in this model, so
+        # clipping solve_ivp's endpoint result is exactly equivalent to a
+        # "freeze once M_BH reaches the ceiling" ODE, without needing to
+        # thread the cap into black_hole_growth_rate's own RHS.
+        if bh_growth.growth_cap_enabled:
+            ceiling = bh_growth.growth_ceiling(halo_mass[j - 1], redshift[j - 1])
+            bh_mass[j] = min(bh_mass[j], float(ceiling))
         agn_growth_rate = (bh_mass[j] - bh_mass_y0) / (t_span[1] - t_span[0])
         bh_growth_rate_history[j] = agn_growth_rate
 
@@ -118,6 +126,8 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         bh_mass_mid = float(
             _bh_growth_step(bh_mass_y0, A_bh_mid, kappa_edd, 0.5 * (t_span[1] - t_span[0]))
         )
+        if bh_growth.growth_cap_enabled:
+            bh_mass_mid = min(bh_mass_mid, float(bh_growth.growth_ceiling(halo_mass[j - 1], z_mid)))
 
         # Update gas mass
         sol = solve_ivp(
@@ -443,10 +453,20 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
         bh_mass_prev = np.where(newly_seeded, seed_mass, bh_mass[:, j - 1])
         A_bh = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gm_prev
         kappa_edd = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * bh_growth.eddington_multiplier
-        bh_mass[:, j] = np.maximum(
-            _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, dt),
-            0.0,
-        )
+        bh_mass_uncapped = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, dt)
+        # Optional hard cap at PZNK11's predicted M_sigma-relation ceiling
+        # (black_holes.sigma_feedback.growth_cap_enabled, off by default --
+        # see black_holes_growth.growth_ceiling). _bh_growth_step's result
+        # is monotonically non-decreasing in y0 (growth rate is never
+        # negative), so simply clipping to the ceiling here is exactly
+        # equivalent to a "freeze once M_BH reaches the ceiling" ODE, no
+        # separate crossing-time solve needed -- and correctly lets a
+        # previously-capped BH resume growing if the ceiling itself rises
+        # (M_sigma grows with the halo), rather than freezing permanently.
+        if bh_growth.growth_cap_enabled:
+            ceiling = bh_growth.growth_ceiling(hm_prev, z_mid)
+            bh_mass_uncapped = np.minimum(bh_mass_uncapped, ceiling)
+        bh_mass[:, j] = np.maximum(bh_mass_uncapped, 0.0)
         # Instantaneous: this step's own accretion, always -- the mass
         # leaves the gas reservoir when it's actually accreted, regardless
         # of whether the *wind* it powers is delayed (see below).
@@ -468,6 +488,8 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
         # why this must be frozen mid-step rather than left to vary with
         # the gas ODE's own state.
         bh_mass_mid = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, 0.5 * dt)
+        if bh_growth.growth_cap_enabled:
+            bh_mass_mid = np.minimum(bh_mass_mid, bh_growth.growth_ceiling(hm_prev, z_mid))
         agn_forcing = agn.agn_wind_mass_rate(
             agn_wind_growth_rate, bh_mass=bh_mass_mid, halo_mass=hm_prev, redshift=z_mid
         )

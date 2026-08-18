@@ -10,6 +10,9 @@ from ashvini import main as amain
 from ashvini import star_formation as asf
 from ashvini import supernovae_feedback as asn
 from ashvini import reionization as areion
+from ashvini import agn_feedback as aagn
+from ashvini import black_holes_growth as abh
+from ashvini.run_params import PARAMS
 
 
 def teardown_function(_):
@@ -18,6 +21,8 @@ def teardown_function(_):
     configure.set_params(
         eps_sf=0.015, eps_fb=5, t_d=0.015, z_rei=7,
         sn_type="delayed", uv_background=True,
+        bh_enabled=True, eta_agn=0.5, sigma_feedback_enabled=False,
+        growth_cap_enabled=False, e_bh=0.001, eddington_multiplier=1.0,
     )
 
 
@@ -83,3 +88,84 @@ def test_set_params_actually_changes_run_forest_output():
     result_high_eff = amain.run_forest(halo_mass, halo_mass_rate, z)
 
     assert result_high_eff["stars_mass"][:, -1].sum() > result_fiducial["stars_mass"][:, -1].sum()
+
+
+def test_bh_enabled_false_disables_all_seeding_channels():
+    configure.set_params(bh_enabled=False)
+    seeding = PARAMS.bh.seeding
+    assert seeding.pop3.enabled is False
+    assert seeding.direct_collapse.enabled is False
+    assert seeding.halo_mass_threshold.enabled is False
+
+
+def test_bh_enabled_true_restores_all_seeding_channels():
+    configure.set_params(bh_enabled=False)
+    configure.set_params(bh_enabled=True)
+    seeding = PARAMS.bh.seeding
+    assert seeding.pop3.enabled is True
+    assert seeding.direct_collapse.enabled is True
+    assert seeding.halo_mass_threshold.enabled is True
+
+
+def test_eta_agn_patches_agn_feedback():
+    configure.set_params(eta_agn=1.0)
+    assert aagn.eta_agn == 1.0
+
+
+def test_sigma_feedback_enabled_patches_agn_feedback():
+    configure.set_params(sigma_feedback_enabled=True)
+    assert aagn.sigma_feedback_enabled is True
+
+
+def test_bh_enabled_false_actually_prevents_seeding_in_run_forest():
+    # end-to-end check: a halo well above every seeding threshold should
+    # still never grow a BH once bh_enabled=False, since
+    # seeding_mask_and_mass() reads PARAMS.bh.seeding fresh every call.
+    from ashvini import utils
+    n = 200
+    z = np.linspace(15, 5, n)
+    t = utils.time_at_z(z)
+    halo_mass_rate = np.full((2, n), 1e10)  # Msun/Gyr, well above every threshold quickly
+    halo_mass = 1e11 + np.cumsum(halo_mass_rate * np.gradient(t), axis=1)
+
+    configure.set_params(bh_enabled=True)
+    result_on = amain.run_forest(halo_mass, halo_mass_rate, z)
+    assert np.any(result_on["bh_mass"] > 0)
+
+    configure.set_params(bh_enabled=False)
+    result_off = amain.run_forest(halo_mass, halo_mass_rate, z)
+    assert np.all(result_off["bh_mass"] == 0)
+
+
+def test_growth_cap_enabled_patches_black_holes_growth():
+    configure.set_params(growth_cap_enabled=True)
+    assert abh.growth_cap_enabled is True
+
+
+def test_e_bh_patches_black_holes_growth():
+    configure.set_params(e_bh=0.05)
+    assert abh.e_bh == 0.05
+
+
+def test_e_bh_actually_changes_run_forest_bh_growth():
+    # e_bh only matters when growth is gas-supply-limited, not Eddington-
+    # limited (checked directly: with the default eddington_multiplier=1,
+    # a freshly-seeded BH's Eddington cap is so far below the gas-supply
+    # rate's implied threshold_mass that growth stays Eddington-limited --
+    # and therefore e_bh-independent -- for the whole of a typical test
+    # scenario). eddington_multiplier is pushed way up here so gas supply,
+    # not the Eddington cap, is actually the binding constraint.
+    from ashvini import utils
+    n = 200
+    z = np.linspace(15, 5, n)
+    t = utils.time_at_z(z)
+    halo_mass_rate = np.full((2, n), 1e10)
+    halo_mass = 1e11 + np.cumsum(halo_mass_rate * np.gradient(t), axis=1)
+
+    configure.set_params(e_bh=0.001, eddington_multiplier=10)
+    result_low = amain.run_forest(halo_mass, halo_mass_rate, z)
+
+    configure.set_params(e_bh=0.05, eddington_multiplier=10)
+    result_high = amain.run_forest(halo_mass, halo_mass_rate, z)
+
+    assert result_high["bh_mass"][:, -1].sum() > result_low["bh_mass"][:, -1].sum()

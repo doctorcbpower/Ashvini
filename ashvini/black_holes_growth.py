@@ -6,13 +6,7 @@ from .run_params import PARAMS
 
 e_bh = PARAMS.bh.efficiency  # efficiency of black hole growth
 eddington_multiplier = PARAMS.bh.eddington_multiplier  # f_Edd; >1 allows super-Eddington growth
-c = 3.0e10  # speed of light in CGS (cm/s)
-G = 6.674e-8  # gravitational constant in CGS
-m_p = 1.67e-24  # proton mass in CGS
-sigma_thomson = 6.65e-25  # Thomson cross section in CGS
-
-Gyr_s = 3.15576e16  # seconds per Gyr
-Msun_g = 1.98892e33  # grams per solar mass (IAU nominal)
+from .constants import G, c, m_p, sigma_thomson, Gyr_s, Msun_g
 
 # black_holes.sigma_feedback -- isothermal-sphere M-sigma self-regulation
 # (King 2003, 2005; Power, Zubovas, Nayakshin & King 2011). Only used by

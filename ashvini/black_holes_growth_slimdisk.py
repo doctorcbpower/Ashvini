@@ -57,14 +57,7 @@ from .run_params import PARAMS
 from .spin import epsilon_from_spin
 from . import black_holes_growth as pznk11  # reuse velocity_dispersion() for the King wind term
 
-G = 6.674e-8          # gravitational constant, CGS
-m_p = 1.67e-24        # proton mass, CGS
-c = 3.0e10             # speed of light, CGS
-sigma_thomson = 6.65e-25  # Thomson cross section, CGS
-
-Gyr_s = 3.15576e16
-Msun_g = 1.98892e33
-pc_cm = 3.0856775814913673e18
+from .constants import G, c, m_p, sigma_thomson, Gyr_s, Msun_g, pc_cm
 
 _slim = PARAMS.bh.slimdisk
 

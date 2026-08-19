@@ -229,6 +229,98 @@ ceiling(M_halo, z) = M_sigma * (1 + 0.41 * sigma_200 / h(z))
 
 Out of scope for this mechanism (potential follow-ups): an NFW-profile version of `sigma`/`M_sigma`; a smooth (rather than hard-cutoff) transition at the ceiling; and the competing nuclear-cluster feedback channel (Nayakshin, Wilkinson & King 2009).
 
+## Alternative BH growth model: `growth_model: "hobbs_slimdisk"` ([`black_holes_growth_slimdisk.py`](ashvini/black_holes_growth_slimdisk.py), [`spin.py`](ashvini/spin.py))
+
+Selected via `black_holes.growth_model` (default `"pznk11_freefall"`, the
+model above -- unchanged). Ported from the 2026 "Differential Growth"
+paper's standalone prototype; see
+[`docs/2026_paper_session_code_catalogue.md`](docs/2026_paper_session_code_catalogue.md)
+for provenance and what was deliberately *not* ported (a stochastic,
+time-varying compaction boost -- see below). Genuinely different physics
+from the default model above, not a bug-fix relationship -- both are
+physically motivated but make different choices; see the catalogue doc's
+comparison table.
+
+**Nuclear accretion supply** (Hobbs, Power, Nayakshin & King 2012): a
+free-fall estimate on the *total enclosed mass*, not naive Bondi-Hoyle
+(`Mdot ~ M_BH^2`), which is the wrong estimator whenever `M_BH` does not
+dominate the local enclosed mass -- exactly the light-seed case:
+
+```
+t_ff(M_enc) = sqrt(R_nuc^3 / (2*G*M_enc)),   M_enc = M_BH + M_gas + M_star
+Mdot_acc = eta_acc * (M_gas / t_ff(M_enc)) * Phi_hat^2
+```
+
+`Phi_hat` (`black_holes.slimdisk.compaction_boost`) is a Booth & Schaye
+(2009)-style density boost, anchored to Lapiner, Dekel & Dubois (2021)
+compaction events. **Simplification versus the paper's own analysis
+scripts**: the paper explored a stochastic, time-varying `Phi_hat(t)`
+(an Ornstein-Uhlenbeck process); that is not reproduced here, since it
+doesn't fit this package's "coefficients frozen over a step" closed-form
+integration scheme (see [Numerical scheme](#numerical-scheme)) --
+`compaction_boost` here is a single fixed multiplier for a given run.
+
+**Radiative efficiency / spin**: exposed as a genuine free parameter
+(`black_holes.slimdisk.a_star`, BH spin, mapped to `epsilon` via the
+Novikov-Thorne ISCO relation, `spin.epsilon_from_spin`) -- unlike the
+default model above, whose Eddington-rate constant has no `epsilon`
+dependence at all.
+
+```
+kappa_edd = [(1-epsilon)/epsilon] * 4*pi*G*m_p / (sigma_thomson*c)   [1/Gyr]
+Mdot_Edd,std(M_BH) = kappa_edd * M_BH
+```
+
+**Graded super-Eddington cap** (Watarai et al. 2000; Madau, Haardt &
+Dotti 2014; Lupi et al. 2024 slim-disc picture) -- a threshold ratio
+`r_crit`, not a hard multiplier applied at every mass:
+
+```
+cap(M_BH) = Mdot_Edd,std(M_BH)   if Mdot_acc/Mdot_Edd,std(M_BH) <= r_crit
+            Mdot_acc / r_crit    otherwise
+
+dM_BH/dt = min(Mdot_acc, cap(M_BH))
+```
+
+With `Mdot_acc` frozen over a step (same pattern as every other
+time-varying coefficient in this package), this is a three-regime
+piecewise ODE in `M_BH` -- constant (slim-disc-throttled, small `M_BH`),
+exponential (standard-Eddington-limited, intermediate `M_BH`), constant
+(gas-supply-limited, large `M_BH`) -- solved exactly in closed form by
+`bh_growth_step_slimdisk` (crossing times between regimes found
+analytically, not approximated), verified against a numerical
+`solve_ivp` reference and against the default model's own
+`_bh_growth_step` in the limit `r_crit -> infinity` (see
+`tests/test_black_holes_growth_slimdisk.py`).
+
+**AGN feedback**: King (2003) energy-driven wind, a direct, constant-`epsilon_f`
+coupling (not the default model's `M_BH/M_sigma` logistic switch):
+
+```
+Mdot_wind = (2*epsilon_f*c^2 / sigma^2) * Mdot_BH
+```
+
+`sigma` reuses the default model's isothermal-sphere `velocity_dispersion(M_halo, z)`.
+
+| Parameter | Config key | Default | Meaning |
+|---|---|---|---|
+| growth_model | `black_holes.growth_model` | `"pznk11_freefall"` | `"hobbs_slimdisk"` selects this model instead |
+| eta_acc | `black_holes.slimdisk.eta_acc` | 0.01 | Nuclear accretion efficiency |
+| R_nuc_pc | `black_holes.slimdisk.R_nuc_pc` | 100.0 | Fixed nuclear radius for the free-fall estimate, pc |
+| compaction_boost | `black_holes.slimdisk.compaction_boost` | 1.0 | Fixed `Phi_hat` multiplier (>=1); no time-varying version, see above |
+| r_crit | `black_holes.slimdisk.r_crit` | 8.0 | Supply/standard-Eddington ratio threshold for the slim-disc cap |
+| epsilon_f | `black_holes.slimdisk.epsilon_f` | 5.0e-4 | King (2003) AGN wind coupling |
+| a_star | `black_holes.slimdisk.a_star` | 0.5 | BH spin -> radiative efficiency via `spin.epsilon_from_spin` |
+
+A companion utility, [`seed_mass_function.py`](ashvini/seed_mass_function.py),
+converts a critical-seed-mass boundary curve (`M_seed,crit(M_halo)`, the
+seed mass below which strict-Eddington growth under this model cannot
+reach a target `f_BH` by some anchor redshift -- see the paper) into
+predicted boosted-fractions for standard seed-formation channels
+(Pop III / runaway-collision / direct-collapse), given illustrative
+log-normal-in-log10(mass) population models for each. Not a rigorously
+derived population synthesis -- see the module docstring.
+
 ## Reionization ([`reionization.py`](ashvini/reionization.py))
 
 Okamoto et al. (2008)-style suppression of baryonic inflow below a characteristic halo mass `M_c(z)`, active only for `z <= 10` (identically 1, i.e. no suppression, above that):

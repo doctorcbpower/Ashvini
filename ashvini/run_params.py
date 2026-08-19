@@ -157,6 +157,23 @@ class SigmaFeedbackParams:
 
 
 @dataclass
+class SlimDiskParams:
+    """
+    black_holes.slimdisk -- only read when black_holes.growth_model is
+    "hobbs_slimdisk" (see ashvini.black_holes_growth_slimdisk and
+    MODELS.md). Ported from the 2026 "Differential Growth" paper's
+    standalone prototype; see
+    docs/2026_paper_session_code_catalogue.md for provenance.
+    """
+    eta_acc: float = 0.01        # nuclear accretion efficiency (dimensionless)
+    R_nuc_pc: float = 100.0      # fixed nuclear radius for the free-fall estimate, pc
+    compaction_boost: float = 1.0  # fixed Phi_hat multiplier (>=1); see module docstring re: no time-varying/stochastic version here
+    r_crit: float = 8.0          # supply/standard-Eddington ratio threshold for the slim-disc cap to engage
+    epsilon_f: float = 5.0e-4    # King (2003) energy-driven AGN wind coupling
+    a_star: float = 0.5          # BH spin, via ashvini.spin.epsilon_from_spin -> radiative efficiency epsilon
+
+
+@dataclass
 class BlackHoleParams:
     efficiency: float
     eta_agn: float
@@ -164,6 +181,15 @@ class BlackHoleParams:
     eddington_multiplier: float = 1.0  # f_Edd: allows super-Eddington growth if > 1
     feedback_delay_time: float = 0.0   # Gyr; 0.0 = instantaneous AGN wind (default, matches prior behaviour)
     sigma_feedback: SigmaFeedbackParams = field(default_factory=SigmaFeedbackParams)
+    # "pznk11_freefall" (default): the pre-existing model above (constant
+    # free-fall time, hard eddington_multiplier cap, eta_agn/M-sigma
+    # feedback). "hobbs_slimdisk": the 2026-paper alternative in
+    # ashvini.black_holes_growth_slimdisk (enclosed-mass free-fall,
+    # graded r_crit cap, King 2003 energy-driven feedback) -- see
+    # MODELS.md. Selecting "hobbs_slimdisk" does not change any default
+    # behaviour under "pznk11_freefall".
+    growth_model: str = "pznk11_freefall"
+    slimdisk: SlimDiskParams = field(default_factory=SlimDiskParams)
 
 
 @dataclass
@@ -209,6 +235,8 @@ def load_params(config_file=None) -> Params:
             eddington_multiplier=raw["black_holes"].get("eddington_multiplier", 1.0),
             feedback_delay_time=raw["black_holes"].get("feedback_delay_time", 0.0),
             sigma_feedback=SigmaFeedbackParams(**raw["black_holes"].get("sigma_feedback", {})),
+            growth_model=raw["black_holes"].get("growth_model", "pznk11_freefall"),
+            slimdisk=SlimDiskParams(**raw["black_holes"].get("slimdisk", {})),
             seeding=SeedingParams(
                 pop3=Pop3Seeding(**raw["black_holes"]["seeding"]["pop3"]),
                 direct_collapse=DirectCollapseSeeding(

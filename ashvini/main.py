@@ -8,6 +8,7 @@ from scipy.integrate import solve_ivp
 from . import utils as utils
 from . import supernovae_feedback as sn
 from . import black_holes_growth as bh_growth
+from . import black_holes_growth_slimdisk as bh_slimdisk
 from . import agn_feedback as agn
 
 from .star_formation import star_formation_rate, time_freefall
@@ -21,6 +22,7 @@ UV_background = PARAMS.reion.UVB_enabled
 t_d = PARAMS.sn.delay_time  # delay time for SNe feedback, in Gyr
 sn_type = PARAMS.sn.type  # type of supernova feedback
 agn_delay_time = PARAMS.bh.feedback_delay_time  # Gyr; 0.0 = instantaneous AGN wind
+growth_model = PARAMS.bh.growth_model  # "pznk11_freefall" (default) or "hobbs_slimdisk" -- see MODELS.md
 e_ff = PARAMS.sf.efficiency
 IGM_metallicity = PARAMS.metals.Z_IGM
 metallicity_yield = PARAMS.metals.Z_yield
@@ -451,48 +453,72 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
             hm_prev, redshift[j - 1], gas_metallicity_prev, bh_mass[:, j - 1] > 0
         )
         bh_mass_prev = np.where(newly_seeded, seed_mass, bh_mass[:, j - 1])
-        A_bh = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gm_prev
-        kappa_edd = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * bh_growth.eddington_multiplier
-        bh_mass_uncapped = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, dt)
-        # Optional hard cap at PZNK11's predicted M_sigma-relation ceiling
-        # (black_holes.sigma_feedback.growth_cap_enabled, off by default --
-        # see black_holes_growth.growth_ceiling). _bh_growth_step's result
-        # is monotonically non-decreasing in y0 (growth rate is never
-        # negative), so simply clipping to the ceiling here is exactly
-        # equivalent to a "freeze once M_BH reaches the ceiling" ODE, no
-        # separate crossing-time solve needed -- and correctly lets a
-        # previously-capped BH resume growing if the ceiling itself rises
-        # (M_sigma grows with the halo), rather than freezing permanently.
-        if bh_growth.growth_cap_enabled:
-            ceiling = bh_growth.growth_ceiling(hm_prev, z_mid)
-            bh_mass_uncapped = np.minimum(bh_mass_uncapped, ceiling)
-        bh_mass[:, j] = np.maximum(bh_mass_uncapped, 0.0)
-        # Instantaneous: this step's own accretion, always -- the mass
-        # leaves the gas reservoir when it's actually accreted, regardless
-        # of whether the *wind* it powers is delayed (see below).
-        agn_growth_rate = (bh_mass[:, j] - bh_mass_prev) / dt
-        bh_growth_rate_history[:, j] = agn_growth_rate
 
-        # Possibly delayed: the AGN wind mirrors SN's delayed-feedback
-        # mechanism (PARAMS.bh.feedback_delay_time, default 0.0 =
-        # instantaneous, in which case agn_delay_idx[j] == j always and
-        # this reduces exactly to agn_growth_rate).
-        has_agn_delay_history = agn_delay_idx[j] >= 0
-        agn_wind_growth_rate = (
-            bh_growth_rate_history[:, agn_delay_idx[j]] if has_agn_delay_history else np.zeros(N)
-        )
-        # Step-midpoint M_BH (same closed form as bh_mass[:, j] above, but
-        # evaluated at dt/2), for agn.agn_wind_mass_rate's optional
-        # M-sigma self-regulation coupling only -- see
-        # gas_evolve.update_gas_reservoir's bh_mass_for_wind docstring for
-        # why this must be frozen mid-step rather than left to vary with
-        # the gas ODE's own state.
-        bh_mass_mid = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, 0.5 * dt)
-        if bh_growth.growth_cap_enabled:
-            bh_mass_mid = np.minimum(bh_mass_mid, bh_growth.growth_ceiling(hm_prev, z_mid))
-        agn_forcing = agn.agn_wind_mass_rate(
-            agn_wind_growth_rate, bh_mass=bh_mass_mid, halo_mass=hm_prev, redshift=z_mid
-        )
+        if growth_model == "hobbs_slimdisk":
+            # 2026-paper alternative: enclosed-mass free-fall supply,
+            # graded r_crit slim-disc cap, King (2003) energy-driven
+            # feedback -- see black_holes_growth_slimdisk.py. No PZNK11
+            # growth-ceiling analogue exists for this model.
+            sm_prev = stars_mass[:, j - 1]
+            A_bh = bh_slimdisk.nuclear_accretion_rate(gm_prev, bh_mass_prev, sm_prev)
+            kappa_edd = bh_slimdisk.EDDINGTON_RATE_PER_UNIT_MASS_FIDUCIAL
+            bh_mass_uncapped = bh_slimdisk.bh_growth_step_slimdisk(
+                bh_mass_prev, A_bh, kappa_edd, bh_slimdisk.r_crit, dt
+            )
+            bh_mass[:, j] = np.maximum(bh_mass_uncapped, 0.0)
+            agn_growth_rate = (bh_mass[:, j] - bh_mass_prev) / dt
+            bh_growth_rate_history[:, j] = agn_growth_rate
+
+            has_agn_delay_history = agn_delay_idx[j] >= 0
+            agn_wind_growth_rate = (
+                bh_growth_rate_history[:, agn_delay_idx[j]] if has_agn_delay_history else np.zeros(N)
+            )
+            agn_forcing = bh_slimdisk.king_agn_wind_rate(
+                agn_wind_growth_rate, halo_mass=hm_prev, redshift=z_mid
+            )
+        else:
+            A_bh = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gm_prev
+            kappa_edd = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * bh_growth.eddington_multiplier
+            bh_mass_uncapped = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, dt)
+            # Optional hard cap at PZNK11's predicted M_sigma-relation ceiling
+            # (black_holes.sigma_feedback.growth_cap_enabled, off by default --
+            # see black_holes_growth.growth_ceiling). _bh_growth_step's result
+            # is monotonically non-decreasing in y0 (growth rate is never
+            # negative), so simply clipping to the ceiling here is exactly
+            # equivalent to a "freeze once M_BH reaches the ceiling" ODE, no
+            # separate crossing-time solve needed -- and correctly lets a
+            # previously-capped BH resume growing if the ceiling itself rises
+            # (M_sigma grows with the halo), rather than freezing permanently.
+            if bh_growth.growth_cap_enabled:
+                ceiling = bh_growth.growth_ceiling(hm_prev, z_mid)
+                bh_mass_uncapped = np.minimum(bh_mass_uncapped, ceiling)
+            bh_mass[:, j] = np.maximum(bh_mass_uncapped, 0.0)
+            # Instantaneous: this step's own accretion, always -- the mass
+            # leaves the gas reservoir when it's actually accreted, regardless
+            # of whether the *wind* it powers is delayed (see below).
+            agn_growth_rate = (bh_mass[:, j] - bh_mass_prev) / dt
+            bh_growth_rate_history[:, j] = agn_growth_rate
+
+            # Possibly delayed: the AGN wind mirrors SN's delayed-feedback
+            # mechanism (PARAMS.bh.feedback_delay_time, default 0.0 =
+            # instantaneous, in which case agn_delay_idx[j] == j always and
+            # this reduces exactly to agn_growth_rate).
+            has_agn_delay_history = agn_delay_idx[j] >= 0
+            agn_wind_growth_rate = (
+                bh_growth_rate_history[:, agn_delay_idx[j]] if has_agn_delay_history else np.zeros(N)
+            )
+            # Step-midpoint M_BH (same closed form as bh_mass[:, j] above, but
+            # evaluated at dt/2), for agn.agn_wind_mass_rate's optional
+            # M-sigma self-regulation coupling only -- see
+            # gas_evolve.update_gas_reservoir's bh_mass_for_wind docstring for
+            # why this must be frozen mid-step rather than left to vary with
+            # the gas ODE's own state.
+            bh_mass_mid = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, 0.5 * dt)
+            if bh_growth.growth_cap_enabled:
+                bh_mass_mid = np.minimum(bh_mass_mid, bh_growth.growth_ceiling(hm_prev, z_mid))
+            agn_forcing = agn.agn_wind_mass_rate(
+                agn_wind_growth_rate, bh_mass=bh_mass_mid, halo_mass=hm_prev, redshift=z_mid
+            )
 
         # --- gas mass: dy/dt = A_acc - present_sfr(y) - ML*wind_sfr
         #                        - bh_accretion - AGN wind ---

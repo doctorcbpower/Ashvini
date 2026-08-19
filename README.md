@@ -71,7 +71,10 @@ Alternatively, `run()` can generate trees live -- no intermediate file -- by set
 | `metallicity.py` | Gas-phase and stellar metal enrichment |
 | `dust.py` | Dust mass evolution |
 | `supernovae_feedback.py` | Mass-loaded supernova winds |
-| `black_holes_growth.py` | BH seeding (three configurable channels) and Eddington-limited growth (`black_holes.eddington_multiplier` allows super-Eddington) |
+| `black_holes_growth.py` | BH seeding (three configurable channels) and Eddington-limited growth (`black_holes.eddington_multiplier` allows super-Eddington); default `growth_model: "pznk11_freefall"` |
+| `black_holes_growth_slimdisk.py` | Alternative BH growth model (`growth_model: "hobbs_slimdisk"`): enclosed-mass free-fall accretion, graded `r_crit` super-Eddington cap, King (2003) energy-driven feedback -- see MODELS.md |
+| `spin.py` | BH spin -> radiative efficiency (Novikov-Thorne ISCO relation), used by `black_holes_growth_slimdisk.py` |
+| `seed_mass_function.py` | Converts a critical-seed-mass boundary curve into predicted boosted-fractions for standard seed-formation channels |
 | `agn_feedback.py` | AGN-driven gas wind, proportional to BH accretion rate |
 | `reionization.py` | UV background suppression of gas accretion |
 | `utils.py` | Merger-tree I/O, cosmic time/redshift interpolation |

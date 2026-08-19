@@ -59,6 +59,23 @@ black_holes:
   eddington_multiplier: 1.0 # f_Edd: BH growth capped at f_Edd x the Eddington rate; >1 allows super-Eddington growth
   feedback_delay_time: 0.0 # Gyr; time lag between BH accretion and the AGN wind it powers. 0.0 = instantaneous (default)
 
+  # growth_model: "pznk11_freefall" (default, the parameters above) or
+  # "hobbs_slimdisk" -- the 2026 "Differential Growth" paper's alternative
+  # nuclear-accretion/super-Eddington-cap/feedback model (enclosed-mass
+  # free-fall a la Hobbs, Power, Nayakshin & King 2012; graded r_crit
+  # slim-disc cap; King 2003 energy-driven AGN wind). See
+  # ashvini/black_holes_growth_slimdisk.py and MODELS.md. Selecting
+  # "hobbs_slimdisk" reads the slimdisk: block below instead of
+  # efficiency/eddington_multiplier/eta_agn above.
+  growth_model: "pznk11_freefall"
+  # slimdisk:
+  #   eta_acc: 0.01            # nuclear accretion efficiency
+  #   R_nuc_pc: 100.0          # fixed nuclear radius, pc
+  #   compaction_boost: 1.0    # fixed Phi_hat multiplier (>=1; no time-varying version here, see module docstring)
+  #   r_crit: 8.0              # supply/standard-Eddington ratio threshold for the slim-disc cap
+  #   epsilon_f: 5.0e-4        # King (2003) AGN wind coupling
+  #   a_star: 0.5              # BH spin -> radiative efficiency via ashvini.spin.epsilon_from_spin
+
   # Optional replacement for the constant eta_agn coupling above: King
   # (2003, 2005) / Power, Zubovas, Nayakshin & King (2011) isothermal-sphere
   # M-sigma self-regulation. Mdot_wind = eta_agn * f_switch(M_BH/M_sigma) *

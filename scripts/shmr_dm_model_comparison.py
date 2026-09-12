@@ -101,28 +101,25 @@ def main_():
     for label, (median, halo_pts, star_pts) in results.items():
         color = COLORS[label]
         ax.scatter(halo_pts, star_pts, s=6, alpha=0.08, color=color)
-        ax.plot(median[:, 0], median[:, 1], "o-", color=color, lw=1.8, ms=5, label=label)
-        ax2.plot(median[:, 0], median[:, 1] / median[:, 0], "o-", color=color, lw=1.8, ms=5)
+        ax.plot(median[:, 0], median[:, 1], "o-", color=color, lw=2.6, ms=6, label=label)
+        ax2.plot(median[:, 0], median[:, 1] / median[:, 0], "o-", color=color, lw=2.6, ms=6)
 
-    ax.plot(mhalo_grid, moster2013_mstar(mhalo_grid), "--", color="0.3", lw=1.5, label="Moster+2013 (literature)")
-    ax.plot(mhalo_grid, behroozi2013_mstar(mhalo_grid), ":", color="0.3", lw=1.8, label="Behroozi+2013 (literature)")
-    ax2.plot(mhalo_grid, moster2013_mstar(mhalo_grid) / mhalo_grid, "--", color="0.3", lw=1.5)
-    ax2.plot(mhalo_grid, behroozi2013_mstar(mhalo_grid) / mhalo_grid, ":", color="0.3", lw=1.8)
+    ax.plot(mhalo_grid, moster2013_mstar(mhalo_grid), "--", color="0.3", lw=2.2, label="Moster+2013 (literature)")
+    ax.plot(mhalo_grid, behroozi2013_mstar(mhalo_grid), ":", color="0.3", lw=2.4, label="Behroozi+2013 (literature)")
+    ax2.plot(mhalo_grid, moster2013_mstar(mhalo_grid) / mhalo_grid, "--", color="0.3", lw=2.2)
+    ax2.plot(mhalo_grid, behroozi2013_mstar(mhalo_grid) / mhalo_grid, ":", color="0.3", lw=2.4)
 
     for a in (ax, ax2):
         a.set_xscale("log")
         a.set_yscale("log")
-        a.set_xlabel(r"$M_{\rm halo}(z=0)$ [M$_\odot$]")
+        a.set_xlabel(r"$M_{\rm halo}(z=0)$ [M$_\odot$]", fontsize=15)
+        a.tick_params(labelsize=12)
         a.grid(alpha=0.3)
-    ax.set_ylabel(r"$M_\star(z=0)$ [M$_\odot$]")
-    ax2.set_ylabel(r"$M_\star/M_{\rm halo}$ at $z=0$ (per-bin median)")
-    ax.legend(fontsize=8)
+    ax.set_ylabel(r"$M_\star(z=0)$ [M$_\odot$]", fontsize=15)
+    ax2.set_ylabel(r"$M_\star/M_{\rm halo}$ at $z=0$ (per-bin median)", fontsize=15)
+    ax.legend(fontsize=10)
 
-    fig.suptitle(
-        f"Ashvini SHMR by dark-matter model, z=0 (n_halos={N_HALOS}/bin, dz={DZ}, "
-        f"M_res={M_RES_FRACTION:.0e}*M0, z_max={Z_MAX:.0f}) -- SIDM not implemented in foraois"
-    )
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    fig.tight_layout()
     fig.savefig("shmr_dm_model_comparison.png", dpi=150)
     print("Wrote shmr_dm_model_comparison.png")
 

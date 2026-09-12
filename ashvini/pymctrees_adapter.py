@@ -64,18 +64,62 @@ still stores a single halo_growth_rates dataset with no separate merger
 channel -- extending that file format is a separate, not-yet-made decision.
 """
 
+import warnings
+
 import numpy as np
 
 from .utils import time_at_z
 
+# Empirically-derived convergence threshold on m_res/mass_bin, from a
+# joint dz x M_res grid test of the z=0 stellar-to-halo mass relation
+# (see docs/RESOLUTION_CONVERGENCE.md for the full study). Summary of what
+# that test found, since it's counterintuitive enough to be worth
+# repeating here: dz (the tree-growth timestep) has essentially NO
+# independent effect on M_star once M_res is resolved finely enough (the
+# three M_res=1e-5*M0 curves at dz=0.05/0.01/0.005 agreed to within ~2%);
+# an apparent dz sensitivity seen in an earlier, less careful test turned
+# out to be a confound of testing dz at run_params.yaml's DEFAULT
+# m_res_fraction=1e-3, which is itself badly unconverged (finer M_res
+# alone changed the lowest-mass-bin median M_star by ~7-8x per decade of
+# M_res refinement, 1e-3 -> 1e-4 -> 1e-5, with no sign of turning over by
+# 1e-5 -- i.e. full convergence was NOT established even at the finest
+# M_res tested, only that 1e-3 is clearly far short of it). This constant
+# is therefore a "known insufficient" floor, not a "verified converged"
+# ceiling -- treat any result at or above it as unreliable at the low-mass
+# end, but do not treat a smaller m_res_fraction as automatically safe
+# without checking convergence for your own specific mass range.
+_MRES_FRACTION_CONVERGENCE_WARN = 1e-3
+
+
+def _warn_if_mres_unconverged(m_res_msun, mass_bin_msun):
+    m_res_fraction = m_res_msun / mass_bin_msun
+    if m_res_fraction >= _MRES_FRACTION_CONVERGENCE_WARN:
+        warnings.warn(
+            f"build_forest_live: m_res/mass_bin={m_res_fraction:.1e} is at or above "
+            f"{_MRES_FRACTION_CONVERGENCE_WARN:.0e}, empirically shown to be badly "
+            "unconverged for z=0 stellar-mass results at low halo mass (M_star changed "
+            "by ~7-8x per decade of M_res refinement in that regime, with no sign of "
+            "convergence yet even at m_res_fraction=1e-5) -- see "
+            "docs/RESOLUTION_CONVERGENCE.md. Consider a smaller m_res (relative to "
+            "mass_bin) for any result you intend to trust at the low-mass end, and note "
+            "that dz does not fix this: dz alone has no meaningful effect once M_res is "
+            "adequately resolved.",
+            stacklevel=3,
+        )
+
 
 def _import_pymctrees():
+    # NOTE: pymctrees was renamed to foraois upstream (doctorcbpower/foraois);
+    # this function still imports the renamed package under its old local
+    # name (pymctrees_io etc.) since only the two import lines below needed
+    # to change to pick up foraois's fixes -- the rest of this module's
+    # variable/doc naming is cosmetic and left as a separate cleanup.
     try:
-        from pymctrees import cosmo_utils, PCHMergerTree
-        from pymctrees.utils import io as pymctrees_io
+        from foraois import cosmo_utils, PCHMergerTree
+        from foraois.utils import io as pymctrees_io
     except ImportError as exc:
         raise ImportError(
-            "pymctrees is required for tree_source='pymctrees' (or the "
+            "foraois (formerly pymctrees) is required for tree_source='pymctrees' (or the "
             "build_trees_from_pymctrees.py script), and is not an Ashvini "
             "dependency (see the code audit, Section 7.4, for why CLASS/"
             "CAMB are kept optional). Install it with:\n"
@@ -272,6 +316,7 @@ def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
     run_params = pymctrees_io.get_params(pymctrees_config_path)
     h = run_params["Cosmology"]["h"]
     m_res_msun = m_res if m_res is not None else 1e-3 * mass_bin
+    _warn_if_mres_unconverged(m_res_msun, mass_bin)
 
     cosmo_data = cosmo_utils.CosmoData(run_params, redshift=[z0])
     tree_generator = PCHMergerTree(cosmo_data, run_params)

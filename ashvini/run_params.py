@@ -165,7 +165,7 @@ class SlimDiskParams:
     standalone prototype; see
     docs/2026_paper_session_code_catalogue.md for provenance.
     """
-    eta_acc: float = 0.01        # nuclear accretion efficiency (dimensionless)
+    eta_acc: float = 0.005       # nuclear accretion efficiency (dimensionless)
     R_nuc_pc: float = 100.0      # fixed nuclear radius for the free-fall estimate, pc
     compaction_boost: float = 1.0  # fixed Phi_hat multiplier (>=1); see module docstring re: no time-varying/stochastic version here
     r_crit: float = 8.0          # supply/standard-Eddington ratio threshold for the slim-disc cap to engage

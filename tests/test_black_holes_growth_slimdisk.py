@@ -93,6 +93,37 @@ def test_slimdisk_reduces_to_pznk11_two_regime_model_as_rcrit_to_infinity():
     assert slimdisk_huge_rcrit == pytest.approx(reference, rel=1e-6)
 
 
+def test_slimdisk_r_crit_equal_one_is_not_strict_eddington():
+    # Regression test for a real, previously-undiscovered bug (2026-09-15,
+    # see docs/2026_paper_session_code_catalogue.md and the
+    # ashvini_chi_crit_eddington_bug memory note): r_crit=1.0 makes the
+    # closed form's two mass boundaries, M1=A_bh/(kappa_edd*r_crit) and
+    # M2=A_bh/kappa_edd=M1*r_crit, coincide exactly, collapsing the genuine
+    # Eddington-limited (exponential) regime to zero width. The result is
+    # growth equal to the raw, uncapped supply rate A_bh at every mass,
+    # completely independent of kappa_edd -- i.e. NOT strict
+    # Eddington-limited growth, despite r_crit=1 having once been used
+    # (wrongly) as the "strict Eddington" default in both
+    # paper_reservoir.critical_seed_paper and critical_seed.critical_seed.
+    # This test exists so that bug cannot silently return: it checks that
+    # r_crit=1 and r_crit=1e12 give genuinely different growth whenever the
+    # supply rate exceeds the Eddington rate (the regime where the bug bites).
+    y0 = np.array([1e6])
+    A_bh = np.array([1e10])  # supply far exceeds the Eddington rate at this mass
+    kappa_edd = 20.0
+    dt = 0.1
+
+    growth_r_crit_one = bs.bh_growth_step_slimdisk(y0, A_bh, kappa_edd, 1.0, dt)
+    growth_strict_eddington = bs.bh_growth_step_slimdisk(y0, A_bh, kappa_edd, 1e12, dt)
+
+    # r_crit=1 must reduce to the raw, uncapped supply rate (the bug's
+    # actual behaviour) ...
+    assert growth_r_crit_one[0] == pytest.approx(y0[0] + A_bh[0] * dt, rel=1e-8)
+    # ... and must NOT match genuine Eddington-limited growth, which caps
+    # the rate at kappa_edd * M and so grows far more slowly here.
+    assert growth_strict_eddington[0] < 0.5 * growth_r_crit_one[0]
+
+
 @pytest.mark.parametrize("y0,A_bh,kappa_edd,r_crit,dt", [
     (100.0, 1e8, 20.0, 8.0, 0.01),      # starts in regime S, crosses into E within the step
     (100.0, 1e8, 20.0, 8.0, 0.5),       # starts in S, crosses S->E->G within the step
@@ -182,7 +213,7 @@ def test_run_forest_default_growth_model_unaffected_by_slimdisk_module_import():
     # Importing black_holes_growth_slimdisk (done at main.py's module
     # level now) must not change anything about the default
     # "pznk11_freefall" path's behaviour.
-    assert main.growth_model == "pznk11_freefall"
+    assert main._DEFAULT_GROWTH_MODEL == "pznk11_freefall"
 
     n = 40
     z = np.linspace(5.0, 15.0, n)[::-1]
@@ -193,14 +224,12 @@ def test_run_forest_default_growth_model_unaffected_by_slimdisk_module_import():
     assert np.all(result["bh_mass"] >= 0)
 
 
-def test_run_forest_hobbs_slimdisk_switch_produces_finite_nonnegative_output(monkeypatch):
-    monkeypatch.setattr(main, "growth_model", "hobbs_slimdisk")
-
+def test_run_forest_hobbs_slimdisk_switch_produces_finite_nonnegative_output():
     n = 40
     z = np.linspace(5.0, 15.0, n)[::-1]
     halo_mass = np.linspace(1e10, 1e12, n)
     halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
-    result = main.run_forest(halo_mass, halo_mass_rate, z)
+    result = main.run_forest(halo_mass, halo_mass_rate, z, growth_model="hobbs_slimdisk")
 
     assert np.all(np.isfinite(result["bh_mass"]))
     assert np.all(result["bh_mass"] >= 0)
@@ -208,3 +237,141 @@ def test_run_forest_hobbs_slimdisk_switch_produces_finite_nonnegative_output(mon
     assert np.all(result["gas_mass"] >= 0)
     # Some seeding channel should have fired given the halo mass range above
     assert result["bh_mass"][:, -1].max() > 0
+
+
+# ---------------------------------------------------------------------------
+# run_forest's per-call slimdisk parameter overrides (a_star, r_crit,
+# epsilon_f, eta_acc): added so paper-analysis scripts can scan these
+# without reloading run_params.yaml/re-importing the module per point.
+# ---------------------------------------------------------------------------
+
+def _run_slimdisk(halo_mass, halo_mass_rate, z, **overrides):
+    return main.run_forest(halo_mass, halo_mass_rate, z, growth_model="hobbs_slimdisk", **overrides)
+
+
+def test_run_forest_a_star_override_changes_bh_mass_via_epsilon():
+    n = 40
+    z = np.linspace(5.0, 15.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e12, n)
+    halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
+
+    bh_low_spin = _run_slimdisk(halo_mass, halo_mass_rate, z, a_star=0.0)["bh_mass"][:, -1]
+    bh_high_spin = _run_slimdisk(halo_mass, halo_mass_rate, z, a_star=0.998)["bh_mass"][:, -1]
+    # Higher spin -> higher radiative efficiency -> lower kappa_edd (see
+    # black_holes_growth_slimdisk.eddington_rate_std_per_unit_mass) -> a
+    # black hole restricted to (or near) Eddington-limited growth ends up
+    # less massive at fixed halo/gas history.
+    assert bh_high_spin.max() < bh_low_spin.max()
+
+    # And the a_star=0.5 default (no override) must match the fiducial
+    # module-level constant exactly -- overrides shouldn't perturb the
+    # existing default path.
+    bh_default = main.run_forest(halo_mass, halo_mass_rate, z, growth_model="hobbs_slimdisk")["bh_mass"]
+    bh_explicit_fiducial = _run_slimdisk(halo_mass, halo_mass_rate, z, a_star=bs.a_star)["bh_mass"]
+    assert np.allclose(bh_default, bh_explicit_fiducial)
+
+
+def test_run_forest_r_crit_override_changes_bh_mass():
+    # r_crit sets both the width of the super-Eddington-capped mass range
+    # (M1 = A_bh/(kappa_edd*r_crit), shrinks as r_crit grows) and the
+    # capped growth rate within it (A_bh/r_crit, also shrinks as r_crit
+    # grows) -- see bh_growth_step_slimdisk's docstring. These two effects
+    # pull in opposite directions, so the net effect on final M_BH is not
+    # guaranteed monotonic in r_crit; this only checks the override
+    # actually changes the result (the wiring), not a specific direction.
+    n = 40
+    z = np.linspace(5.0, 15.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e12, n)
+    halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
+
+    # NB: r_crit=1.0 is NOT strict Eddington-limited growth -- it is
+    # actually uncapped, supply-limited growth (see
+    # test_slimdisk_r_crit_equal_one_is_not_strict_eddington above); it is
+    # used here only as a convenient second r_crit value to confirm the
+    # override changes the result, not as a "strict Eddington" reference.
+    bh_r_crit_one = _run_slimdisk(halo_mass, halo_mass_rate, z, r_crit=1.0)["bh_mass"][:, -1]
+    bh_super_eddington = _run_slimdisk(halo_mass, halo_mass_rate, z, r_crit=100.0)["bh_mass"][:, -1]
+    assert not np.allclose(bh_super_eddington, bh_r_crit_one)
+
+
+def test_run_forest_eta_acc_override_changes_bh_mass():
+    n = 40
+    z = np.linspace(5.0, 15.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e12, n)
+    halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
+
+    bh_low_eta = _run_slimdisk(halo_mass, halo_mass_rate, z, eta_acc=bs.eta_acc / 10.0)["bh_mass"][:, -1]
+    bh_high_eta = _run_slimdisk(halo_mass, halo_mass_rate, z, eta_acc=bs.eta_acc * 10.0)["bh_mass"][:, -1]
+    assert bh_high_eta.max() >= bh_low_eta.max()
+
+
+def test_run_forest_epsilon_direct_override_matches_a_star_when_equivalent():
+    n = 40
+    z = np.linspace(5.0, 15.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e12, n)
+    halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
+
+    from ashvini.spin import epsilon_from_spin
+    eps = epsilon_from_spin(0.9)
+    bh_via_a_star = _run_slimdisk(halo_mass, halo_mass_rate, z, a_star=0.9)["bh_mass"]
+    bh_via_epsilon = _run_slimdisk(halo_mass, halo_mass_rate, z, epsilon=eps)["bh_mass"]
+    assert np.allclose(bh_via_a_star, bh_via_epsilon)
+
+
+def test_run_forest_rejects_both_a_star_and_epsilon():
+    n = 5
+    z = np.linspace(5.0, 10.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e11, n)
+    halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
+    with pytest.raises(ValueError, match="at most one"):
+        main.run_forest(halo_mass, halo_mass_rate, z, a_star=0.5, epsilon=0.1)
+
+
+def test_run_forest_initial_reservoir_masses_default_to_zero():
+    n = 20
+    z = np.linspace(5.0, 15.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e12, n)
+    halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
+    result = main.run_forest(halo_mass, halo_mass_rate, z)
+    assert result["gas_mass"][:, 0] == 0.0
+    assert result["stars_mass"][:, 0] == 0.0
+
+
+def test_run_forest_nonzero_initial_reservoir_masses_take_effect():
+    n = 20
+    z = np.linspace(5.0, 15.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e12, n)
+    halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
+    result = main.run_forest(halo_mass, halo_mass_rate, z, gas_mass0=1e5, stars_mass0=1e3)
+    assert result["gas_mass"][0, 0] == 1e5
+    assert result["stars_mass"][0, 0] == 1e3
+    # Should propagate forward, not be reset by the first step's update.
+    assert result["stars_mass"][0, 1] >= 1e3
+
+
+def test_run_forest_epsilon_f_override_changes_bh_mass():
+    # A stronger AGN wind removes gas directly (dGas/dt's agn_forcing
+    # term), but also feeds back nonlinearly onto BH growth (a
+    # gas-starved nucleus grows more slowly, which lowers agn_forcing
+    # itself the following step) -- so the net effect is not guaranteed
+    # to be monotonic in epsilon_f; this only checks the override
+    # actually changes the result.
+    #
+    # Checked against bh_mass, not gas_mass: gas_mass along this
+    # particular synthetic halo trajectory settles into a self-regulating
+    # quasi-equilibrium (continued inflow refills whatever the wind
+    # removes) whose final-step value is essentially independent of
+    # epsilon_f -- confirmed directly, not an artefact of step count --
+    # even though the wind measurably changes how much mass the black
+    # hole and stellar component accumulate along the way. eta_acc is
+    # pinned explicitly (rather than left at the module default) so this
+    # test's own discriminating power doesn't silently depend on whatever
+    # SlimDiskParams.eta_acc happens to default to.
+    n = 40
+    z = np.linspace(5.0, 15.0, n)[::-1]
+    halo_mass = np.linspace(1e10, 1e12, n)
+    halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
+
+    bh_weak_wind = _run_slimdisk(halo_mass, halo_mass_rate, z, eta_acc=0.02, epsilon_f=1e-6)["bh_mass"][:, -1]
+    bh_strong_wind = _run_slimdisk(halo_mass, halo_mass_rate, z, eta_acc=0.02, epsilon_f=1e-4)["bh_mass"][:, -1]
+    assert not np.allclose(bh_strong_wind, bh_weak_wind)

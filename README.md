@@ -78,6 +78,8 @@ Alternatively, `run()` can generate trees live -- no intermediate file -- by set
 | `agn_feedback.py` | AGN-driven gas wind, proportional to BH accretion rate |
 | `reionization.py` | UV background suppression of gas accretion |
 | `utils.py` | Merger-tree I/O, cosmic time/redshift interpolation |
+| `critical_seed.py` | General-purpose bisection for the black-hole seed mass at which strict Eddington-limited growth reaches a target overmassiveness (`M_BH(z_anchor) = f_bh*M_star(z_anchor)`), against `main.run_forest()`; vectorised across an ensemble of haloes/trees, one independent bisection per halo |
+| `paper_reservoir.py` | Standalone reservoir integrator for the 2026 "Differential Growth" paper's own bespoke gas-supply model -- **not** `main.run_forest()`'s general-purpose physics, see the module's own docstring for why the two aren't interchangeable. Implements tree-based halo growth, a UV+cold/hot-mode preventive-feedback window, a low-spin angular-momentum selection for what fraction of the galaxy's gas can reach the nuclear region, and the paper's own `critical_seed_paper()` boundary search. Provisional/paper-specific: see `docs/2026_paper_session_code_catalogue.md` for status and open items (fiducial $\eta_{\rm acc}/\epsilon_{\rm sf}$ margin, $M_{\rm res}$ convergence, $\sigma_{\ln j}$) before trusting any number from it as final |
 
 ## Interactive exploration
 

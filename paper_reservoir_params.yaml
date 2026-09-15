@@ -1,0 +1,36 @@
+# Fiducial parameters for ashvini/paper_reservoir.py (the 2026
+# "Differential Growth" paper's reservoir model). Parsed by
+# ashvini.paper_reservoir_params.load_paper_reservoir_params into the
+# module-level PAPER_PARAMS singleton, which paper_reservoir.py's own
+# module-level *_FIDUCIAL constants and function-signature defaults are
+# sourced from. See that module's docstring for the rationale.
+#
+# Note: YAML 1.1's safe_load only parses a bare-exponent number (1e11)
+# as a float if it has a decimal point AND an explicit sign on the
+# exponent (1.0e+11) -- write every exponent that way here, not as a
+# bare "1e11", or it silently comes back as a str.
+
+f_b: 0.156
+delta_vir: 200.0
+omega_m: 0.308
+omega_lambda: 0.692
+
+M_hot: 4.0e+11
+phi_coldhot: 4.0
+lam_median: 0.035
+sigma_lnj: 0.5
+
+epsilon_sf: 0.015
+
+epsilon: 0.1
+chi_crit: 10.0
+strict_eddington_chi_crit: 1.0e+12
+epsilon_f: 5.0e-4
+eta_acc: 0.005
+R_nuc_pc: 100.0
+compaction_boost: 1.0
+
+f_bh: 0.5
+
+gas_mass0: 1.0e+5
+stars_mass0: 1.0e+3

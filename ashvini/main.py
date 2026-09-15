@@ -10,6 +10,7 @@ from . import supernovae_feedback as sn
 from . import black_holes_growth as bh_growth
 from . import black_holes_growth_slimdisk as bh_slimdisk
 from . import agn_feedback as agn
+from .spin import epsilon_from_spin
 
 from .star_formation import star_formation_rate, time_freefall
 from .gas_evolve import gas_inflow_rate, update_gas_reservoir
@@ -22,7 +23,7 @@ UV_background = PARAMS.reion.UVB_enabled
 t_d = PARAMS.sn.delay_time  # delay time for SNe feedback, in Gyr
 sn_type = PARAMS.sn.type  # type of supernova feedback
 agn_delay_time = PARAMS.bh.feedback_delay_time  # Gyr; 0.0 = instantaneous AGN wind
-growth_model = PARAMS.bh.growth_model  # "pznk11_freefall" (default) or "hobbs_slimdisk" -- see MODELS.md
+_DEFAULT_GROWTH_MODEL = PARAMS.bh.growth_model  # "pznk11_freefall" (default) or "hobbs_slimdisk" -- see MODELS.md
 e_ff = PARAMS.sf.efficiency
 IGM_metallicity = PARAMS.metals.Z_IGM
 metallicity_yield = PARAMS.metals.Z_yield
@@ -391,23 +392,80 @@ def _bh_growth_step(y0, A_bh, kappa_edd, dt):
     )
 
 
-def run_forest(halo_mass, halo_mass_rate, redshift):
+def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
+               a_star=None, epsilon=None, r_crit=None, epsilon_f=None, eta_acc=None,
+               gas_mass0=0.0, stars_mass0=0.0):
     """
     Vectorised replacement for joblib.Parallel(run1_scalar): integrates all
     N haloes in halo_mass/halo_mass_rate (shape (N, n)) simultaneously,
     looping only over the n shared redshift steps instead of over N haloes.
     See the module-level comment above for the numerical scheme.
+
+    growth_model, a_star, epsilon, r_crit, epsilon_f, eta_acc : optional
+    overrides for the "hobbs_slimdisk" branch's physics parameters, each
+    defaulting to None (= use the module-level value derived from
+    run_params.yaml at import time, i.e. current behaviour, unchanged).
+    black_holes_growth_slimdisk.py's own functions (nuclear_accretion_rate,
+    eddington_rate_std_per_unit_mass, king_agn_wind_rate) already accept
+    these as call-time kwargs; what was missing is that this function
+    always called them with no override, baking in whatever run_params.yaml
+    said at import -- these are exactly the parameters the 2026 paper's
+    sensitivity scans (spin/epsilon, r_crit, epsilon_f, eta_acc/f_am) need
+    to vary run-to-run, without reloading run_params.yaml and re-importing
+    the module per parameter point. growth_model overrides the
+    module-level PARAMS.bh.growth_model choice frozen at import (see the
+    module-level `_DEFAULT_GROWTH_MODEL = PARAMS.bh.growth_model` line
+    above); a_star/epsilon/r_crit/epsilon_f/eta_acc are only read when the
+    effective growth_model is "hobbs_slimdisk" (silently unused otherwise,
+    same as the existing bh.slimdisk config block).
+
+    epsilon, if given, sets the radiative efficiency directly, bypassing
+    spin.epsilon_from_spin(a_star) entirely -- the paper's own fiducial
+    calculation uses epsilon=0.1 as a free parameter in its own right (see
+    Section "Integration of the reservoir equations"), independent of the
+    a_star=0.5 -> epsilon=0.0821 spin-derived value used specifically for
+    the Novikov-Thorne spin/angular-momentum sensitivity scan (Section
+    5.5) -- these are two different, both legitimate, uses of the same
+    kappa_edd normalisation, not a bug in either. Passing both a_star and
+    epsilon raises ValueError (ambiguous which should win).
+
+    gas_mass0, stars_mass0 : initial gas/stellar reservoir masses (Msun)
+    at redshift[0] (z_seed), each defaulting to 0.0 (this function's prior,
+    only behaviour). The paper's own fiducial calculation instead starts
+    from M_gas(z_seed)=1e5 Msun, M_star(z_seed)=1e3 Msun (small but
+    nonzero, representing whatever pre-existing reservoir a freshly
+    resolved halo is assumed to already hold) -- scalars (same initial
+    value for every halo) or (N,)-shaped arrays (per-halo).
     """
+    if a_star is not None and epsilon is not None:
+        raise ValueError("run_forest: pass at most one of a_star, epsilon (ambiguous which should set kappa_edd).")
+
     halo_mass = np.atleast_2d(halo_mass)
     halo_mass_rate = np.atleast_2d(halo_mass_rate)
+
+    growth_model = growth_model if growth_model is not None else _DEFAULT_GROWTH_MODEL
+
+    # Resolved once per call (not per step): these are run-level constants,
+    # only actually used below when growth_model == "hobbs_slimdisk".
+    _r_crit = r_crit if r_crit is not None else bh_slimdisk.r_crit
+    _epsilon_f = epsilon_f if epsilon_f is not None else bh_slimdisk.epsilon_f
+    _eta_acc = eta_acc if eta_acc is not None else bh_slimdisk.eta_acc
+    if epsilon is not None:
+        _kappa_edd_slimdisk = bh_slimdisk.eddington_rate_std_per_unit_mass(epsilon)
+    elif a_star is not None:
+        _kappa_edd_slimdisk = bh_slimdisk.eddington_rate_std_per_unit_mass(epsilon_from_spin(a_star))
+    else:
+        _kappa_edd_slimdisk = bh_slimdisk.EDDINGTON_RATE_PER_UNIT_MASS_FIDUCIAL
 
     cosmic_time = utils.time_at_z(redshift)  # Gyr
     n = len(cosmic_time)
     N = halo_mass.shape[0]
 
     gas_mass = np.zeros((N, n))
+    gas_mass[:, 0] = gas_mass0
     gas_metals = np.zeros((N, n))
     stars_mass = np.zeros((N, n))
+    stars_mass[:, 0] = stars_mass0
     stars_metals = np.zeros((N, n))
     sfr = np.zeros((N, n))
     stellar_metallicity = np.zeros((N, n))
@@ -460,10 +518,10 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
             # feedback -- see black_holes_growth_slimdisk.py. No PZNK11
             # growth-ceiling analogue exists for this model.
             sm_prev = stars_mass[:, j - 1]
-            A_bh = bh_slimdisk.nuclear_accretion_rate(gm_prev, bh_mass_prev, sm_prev)
-            kappa_edd = bh_slimdisk.EDDINGTON_RATE_PER_UNIT_MASS_FIDUCIAL
+            A_bh = bh_slimdisk.nuclear_accretion_rate(gm_prev, bh_mass_prev, sm_prev, eta_acc=_eta_acc)
+            kappa_edd = _kappa_edd_slimdisk
             bh_mass_uncapped = bh_slimdisk.bh_growth_step_slimdisk(
-                bh_mass_prev, A_bh, kappa_edd, bh_slimdisk.r_crit, dt
+                bh_mass_prev, A_bh, kappa_edd, _r_crit, dt
             )
             bh_mass[:, j] = np.maximum(bh_mass_uncapped, 0.0)
             agn_growth_rate = (bh_mass[:, j] - bh_mass_prev) / dt
@@ -474,7 +532,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift):
                 bh_growth_rate_history[:, agn_delay_idx[j]] if has_agn_delay_history else np.zeros(N)
             )
             agn_forcing = bh_slimdisk.king_agn_wind_rate(
-                agn_wind_growth_rate, halo_mass=hm_prev, redshift=z_mid
+                agn_wind_growth_rate, halo_mass=hm_prev, redshift=z_mid, epsilon_f=_epsilon_f
             )
         else:
             A_bh = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gm_prev

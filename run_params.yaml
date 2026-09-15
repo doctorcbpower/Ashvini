@@ -69,7 +69,7 @@ black_holes:
   # efficiency/eddington_multiplier/eta_agn above.
   growth_model: "pznk11_freefall"
   # slimdisk:
-  #   eta_acc: 0.01            # nuclear accretion efficiency
+  #   eta_acc: 0.005           # nuclear accretion efficiency
   #   R_nuc_pc: 100.0          # fixed nuclear radius, pc
   #   compaction_boost: 1.0    # fixed Phi_hat multiplier (>=1; no time-varying version here, see module docstring)
   #   r_crit: 8.0              # supply/standard-Eddington ratio threshold for the slim-disc cap

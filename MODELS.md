@@ -321,6 +321,85 @@ predicted boosted-fractions for standard seed-formation channels
 log-normal-in-log10(mass) population models for each. Not a rigorously
 derived population synthesis -- see the module docstring.
 
+## Critical seed mass ([`critical_seed.py`](ashvini/critical_seed.py))
+
+General-purpose companion to `seed_mass_function.py` above: given a halo's
+assembly history, finds the black-hole seed mass `M_seed,crit(M_halo)` at
+which strict Eddington-limited growth (`growth_model: "hobbs_slimdisk"`,
+super-Eddington cap disabled -- see below) reaches a target
+overmassiveness by a chosen anchor redshift,
+
+```
+M_BH(z_anchor; M_seed,crit) = f_BH * M_star(z_anchor),   f_BH = 0.5 fiducial
+```
+
+`M_seed < M_seed,crit` means Eddington-limited growth alone cannot reach
+the target by `z_anchor` (a super-Eddington episode, earlier formation, or
+a lower effective radiative efficiency would be needed to explain an
+observed overmassive black hole); `M_seed >= M_seed,crit` means it can.
+This is the light-seed-problem boundary itself, computed directly against
+`main.run_forest()` rather than the paper-specific reservoir model of
+`paper_reservoir.critical_seed_paper` -- any caller with a halo assembly
+history (`halo_mass`, `halo_mass_rate`, `redshift`, the same triple
+`build_forest_live`/`build_forest_for_bin` return) can use it, not only
+the 2026 paper's own bespoke gas-supply model.
+
+**Strict Eddington-limited growth means `r_crit -> infinity`, not
+`r_crit=1`.** `black_holes_growth_slimdisk.bh_growth_step_slimdisk`'s
+closed-form update has three regimes with boundaries
+`M1=A_bh/(kappa_edd*r_crit)` and `M2=A_bh/kappa_edd=M1*r_crit`; at
+`r_crit=1`, `M1=M2` exactly, so the genuine Eddington-limited
+(exponential, `kappa_edd`-dependent) regime between them has zero width
+and growth equals the raw, uncapped nuclear supply rate `A_bh` at every
+black hole mass -- i.e. `r_crit=1` *removes* the Eddington cap entirely,
+the opposite of what an earlier version of this module assumed. This was
+a real bug (found and fixed 2026-09-15, in both this module and the
+sibling `paper_reservoir.critical_seed_paper`, which reimplements the
+identical bisection against `paper_reservoir.run_reservoir_paper` instead
+of `main.run_forest`): `critical_seed()`'s `r_crit` parameter used to
+default to `1.0`, silently computing an *uncapped*-growth seed-mass
+boundary while claiming to compute the strict-Eddington one.
+`STRICT_EDDINGTON_R_CRIT = 1e12` is now the default, verified directly
+against `bh_growth_step_slimdisk` to reproduce pure Eddington-exponential
+growth (no crossover into the supply-limited regime) over the seed-mass
+range this search brackets. Passing a smaller, finite `r_crit` computes a
+*different*, still well-defined quantity -- a seed-mass boundary under a
+permitted super-Eddington episode -- just not "M_seed,crit" in the
+paper's strict-Eddington sense.
+
+Implementation: vectorised bisection in log-seed-mass, one root per halo,
+against `excess(seed_mass) = M_BH(z_anchor) - f_BH*M_star(z_anchor)`.
+Well-posed because growth is monotonically non-decreasing in seed mass at
+`r_crit=STRICT_EDDINGTON_R_CRIT` (the two-regime closed form is monotonic
+in its initial condition), provided AGN feedback's own dependence on seed
+mass (via `epsilon_f`) doesn't overwhelm that monotonicity -- true for any
+realistic `epsilon_f`, since the AGN wind is a small perturbation on the
+gas budget, not a dominant term (see AGN feedback above). Seeding is
+injected at each halo's own first-resolved step (not a fixed halo-mass
+threshold) by temporarily repointing the existing
+`black_holes.seeding.halo_mass_threshold` channel at a per-halo trial
+seed-mass array and restoring the original config afterward -- no core
+seeding-channel changes were needed for this.
+
+| Parameter | Meaning | Default |
+|---|---|---|
+| f_bh | Target overmassiveness `M_BH(z_anchor)/M_star(z_anchor)` | 0.5 |
+| seed_mass_lo, seed_mass_hi | Bisection bracket, Msun | 1.0, 1.0e8 |
+| n_iter | Bisection iterations | 50 |
+| m_halo_min | Halo-mass floor for the seeding-injection trick above, Msun | 1.0 |
+| r_crit | Super-Eddington cap threshold; `STRICT_EDDINGTON_R_CRIT` (1e12) for the paper's strict-Eddington sense | `STRICT_EDDINGTON_R_CRIT` |
+
+Returns `M_seed_crit` (NaN where the bracket doesn't resolve a root: either
+`seed_mass_hi` never reaches the target, or `seed_mass_lo` already exceeds
+it -- both returned as separate boolean masks so a caller can tell which
+failure mode fired and widen the bracket accordingly) plus `**overrides`
+(`a_star`, `epsilon_f`, `eta_acc`) forwarded unchanged to `run_forest()`.
+Not yet re-exercised against real data since the `r_crit` fix, unlike the
+sibling `paper_reservoir.critical_seed_paper`, which was stress-tested
+extensively as part of the 2026 paper session (see
+`docs/2026_paper_session_code_catalogue.md`) -- callers relying on this
+module should re-verify their own results were computed after the fix.
+
 ## Reionization ([`reionization.py`](ashvini/reionization.py))
 
 Okamoto et al. (2008)-style suppression of baryonic inflow below a characteristic halo mass `M_c(z)`, active only for `z <= 10` (identically 1, i.e. no suppression, above that):

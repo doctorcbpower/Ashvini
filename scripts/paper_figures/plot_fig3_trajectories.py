@@ -22,6 +22,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 HERE = Path(__file__).parent
 OUTDIR = HERE / "output"
@@ -41,6 +42,7 @@ titles = [
 ]
 
 regime_color = {"S": "#fde0dd", "E": "#deebf7", "G": "#e5f5e0"}
+regime_label = {"S": "S: supply-rich/throttled", "E": "E: Eddington-limited", "G": "G: gas-supply-limited"}
 
 fig, axes = plt.subplots(1, 3, figsize=(7.0, 2.6), sharey=False)
 
@@ -85,9 +87,10 @@ for ax, mkey, title in zip(axes, masses, titles):
     ax.set_title(title, fontsize=8.0)
     ax.set_ylabel(r"Mass $[M_\odot]$")
 
-handles, labels = axes[0].get_legend_handles_labels()
-fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 1.12),
-           ncol=4, fontsize=7.5, frameon=False)
+line_handles, line_labels = axes[0].get_legend_handles_labels()
+regime_handles = [Patch(facecolor=regime_color[k], edgecolor="none", label=regime_label[k]) for k in ["S", "E", "G"]]
+fig.legend(line_handles + regime_handles, line_labels + [h.get_label() for h in regime_handles],
+           loc="upper center", bbox_to_anchor=(0.5, 1.16), ncol=4, fontsize=7.0, frameon=False)
 
 fig.tight_layout()
 outpath = OUTDIR / "fig_representative_trajectories.png"

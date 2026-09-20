@@ -121,3 +121,49 @@ The two working sentences of 2026-09-20 were overstated; both were tested by `c1
 3. How to describe M_hot: as a modelling dependence of the high-mass boundary, with the location varied but not the sharpness.
 4. The old-model numbers (crib sheet, section 3) must not appear.
 5. How prominently the efficiency dependence (R8) and its provenance appear, given that eta_acc has no independent calibration in the sources checked (`docs/mvm_efficiency_literature_check.md`).
+
+## 10. Proposed paper pitch (2026-09-20) against the evidence
+
+Status: a proposal from the author, assessed here; not adopted wording. The manuscript is untouched. The pitch reframes the paper from a critical-seed calculation to a mechanism paper: growth is gated first by nuclear accessibility, then becomes a competition with star formation for a shared reservoir, and the critical seed follows from that. Related working notes: `docs/mvm_feeding_efficiency_discussion.md` (efficiency provenance; torque-equation comparison) and `docs/mvm_discussion_alignment.md` (old-model sentences that conflict with the MVM).
+
+**Pitch sentence, tightened to the evidence:** *In a baryon-cycle model of early black-hole growth, whether a seed grows is set first by whether gas can reach the nucleus. Once it can, growth becomes a competition with star formation for a shared reservoir, which erases much of the seed memory within the available time at the halo masses tested.*
+
+The agreed central sentence still governs the framing: the result is a conditional statement about the initial BH mass required to reach a specified M_BH/M_star,tot target within this baryon-cycle model, not a prediction of how black-hole seeds are formed.
+
+### 10.1 Pitch statements
+
+| Pitch statement | Status | Evidence | Constraint on the wording |
+|---|---|---|---|
+| Growth begins with access, not with the seed | Supported as a statement about the model | H2, H3, R5, S1; light-seed transition near R_nuc 125 to 150 pc (sigma_j 0.5) or sigma_j 0.7 to 0.8 (R_nuc 100 pc) | The accessibility parameterisation (lognormal j, memoryless galaxy cut, sigma_j, R_nuc) has no independent calibration; the paper cannot say which regime real z > 7 nuclei occupy |
+| The critical seed grows by only a few per cent | Supported at the fiducial only | H2, H3; G_BH 1.03 to 1.08 | Quote "close to unity" (Q2: G_BH - 1 shrinks with dt); the fiducial is Regime I |
+| The critical seed is set mostly by the stellar mass the host builds | Supported, and near-definitional at the fiducial | H2: M_seed,crit = f_BH M_star,tot / G_BH | If the BH barely grows, the boundary approaches the target BH mass by construction; say so explicitly |
+| Regime I (inaccessible): the BH remembers its seed | Supported | H4: ratio about M_seed / M_star,tot; 4.0e-7 (1e2), 4.1e-6 (1e3), 4.2e-2 (1e7) at 3e10 | Frozen fiducial, chosen as such; the light-seed threshold is a result of the model, not a physical threshold |
+| Regime II (accessible): small seeds grow by orders of magnitude | Supported | C9, C18 test 1: G median 5.1e4 (1e2 seed, 3e10), 1.0e6 (3e11) at sigma_j = 1.5, R_nuc = 300 | Transition map rests on the 20 and 60-tree grids (C9, C9b), not the production ensemble |
+| Regime III: shared-reservoir competition, finite-time relaxation | Supported in mechanism (S5, R8) | C18: d ln R/dt = Mdot_BH/M_BH - Mdot_star/M_star; restoring crossing at 0.108 (3e10) and 0.154 (3e11) for z <= 7 with AGN on | One accessibility cell (sigma_j = 1.5, R_nuc = 300 pc), two masses, 100 trees; z = 5 is not an asymptote; not "attractor" |
+| Seeds five decades apart end within a factor of a few | Partly | S3, C18 test 1 | Three lightest seeds (1e2 to 1e5): x1.2 (3e10), x1.4 (3e11). All four seeds (to 1e7): x5.3, x2.05. Not at 3e13 (x51), where hot-mode supply limits growth; the 1e7 seed is still falling at z = 5 |
+| The seed sets how long the system takes to forget it | Consistent with, not measured | dispersion across seeds, median ratio max/min: 1.45e3 (z = 10), 48.6 (z = 7), 5.3 (z = 5) at 3e10; 1.06e3, 12.3, 2.2 at 3e11 | No relaxation timescale was measured; do not quote one |
+| M_BH/M_star of 0.1 to 0.2 is not a universal scale | Supported | S3, R8 | The ratio is approximately eta_acc/eps_sf times a feedback factor, and not a function of the ratio alone (equal-ratio pairs differ) |
+| The fiducial M_BH/M_star is a high-side estimate | **Not yet** | `docs/mvm_feeding_efficiency_discussion.md` section 2: eta_acc = 0.005 is about x2.4 above the eps_T = 5 equivalent for one nucleus | Rests on a torque equation taken from the author's message, not checked by me, and one nucleus; high-side only in eta_acc at fixed eps_sf, and eps_sf is uncertain in both directions; keep out of the abstract until eq. 2 is checked |
+| Early BH growth is controlled by two bottlenecks (access, then competition) | Supported as a statement within the model | as above | Keep the conditional form ("within this baryon-cycle model"); omitted: super-Eddington growth, BH mergers, nuclear dark matter, recycling |
+| An observed high M_BH/M_star is not uniquely diagnostic of a heavy seed | Conditional on the regime | S3, R8, H4 | If nuclei are inaccessible, only heavy seeds are visible; if accessible, the ratio reflects eta_acc/eps_sf and feedback more than the seed. Observations do not yet distinguish these. Light seeds do not reach ratios of 0.5 in the explored models, so the inference cuts both ways. The model ends at z = 5 and uses M_star,tot, not an aperture stellar mass |
+
+### 10.2 What the paper must say plainly if this pitch is adopted
+
+1. The fiducial is in the inaccessible regime by construction. The critical seed there is about 4e3 to 5e4 times the host's baryons at first resolution (H5: medians 5.1e3, 4.9e4, 3.8e3), so no physically formed seed reaches the target in that configuration. This is a property of the frozen accessibility, not a result about nature.
+2. Regime placement of real nuclei is unconstrained. sigma_j, R_nuc and eta_acc are uncalibrated (R8; provenance note).
+3. The accessible-regime evidence is one cell, two masses, finite time. It does not hold at 3e13.
+4. The critical seed is insensitive to eta_acc (R6: x1.17 to 1.27 for eta_acc x0.1; tested only to x0.1) while the accessible-regime ratio is not (R8).
+
+### 10.3 Evidence gaps for the pitch, in order of value
+
+* Seed convergence at an intermediate accessibility (for example sigma_j = 1.0), which would show whether Regime III is a single cell or a range. Optional; not run; the author's instruction is not to expand the sweeps.
+* Verification of the torque equation (Angles-Alcazar et al. 2017, eq. 2 and the eps_T range), on which the "high-side" statement and the feeding-efficiency discussion rest.
+* Evaluation of the torque expression along stored MVM nuclear states against the model's Mdot_acc. This needs no new simulation. It depends on the previous item.
+
+The transition map (Regime II) would need to be drawn from the 60-tree reach grid (C9b) or rerun at production tree number if it is to be a headline figure.
+
+### 10.4 Open decisions from the pitch
+
+* Whether the paper is reframed as a mechanism paper or remains a critical-seed paper with a mechanism section (affects which of Figs 1 to 3 and `sat_fig1, 2, 7, 8` are headline).
+* Title: the candidate "Black-hole growth in the early Universe: nuclear accessibility and competition for a shared gas reservoir" is acceptable; a subtitle naming the model ("in a baryon-cycle model") avoids promising a result about nature.
+* Whether the JWST implication is stated at all before the regime placement can be discussed.

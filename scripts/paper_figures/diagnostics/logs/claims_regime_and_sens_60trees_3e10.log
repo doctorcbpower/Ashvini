@@ -1,0 +1,14 @@
+##### M0=3e+10: base median M_seed,crit = 9.630e+07
+(a) regime and achieved M_BH/M*_tot for fixed seeds:
+  critical seed         : final/seed x     1.028;  Eddington-limited steps   0.0% of growth steps,   0.0% of the BH mass gained;  e-folds used =  0.028 of 20.8 available;  M_BH/M*_tot(z=5) = 5.00e-01
+  seed 1e2 (Pop III)    : final/seed x     1.000;  Eddington-limited steps   0.0% of growth steps,   0.0% of the BH mass gained;  e-folds used =  0.000 of 20.8 available;  M_BH/M*_tot(z=5) = 3.89e-07
+  seed 1e3 (runaway)    : final/seed x     1.008;  Eddington-limited steps   0.0% of growth steps,   0.0% of the BH mass gained;  e-folds used =  0.008 of 20.8 available;  M_BH/M*_tot(z=5) = 3.94e-06
+  seed 2e5 (direct collapse): final/seed x     1.019;  Eddington-limited steps   0.0% of growth steps,   0.0% of the BH mass gained;  e-folds used =  0.019 of 20.8 available;  M_BH/M*_tot(z=5) = 7.92e-04
+  seed 1e7              : final/seed x     1.024;  Eddington-limited steps   0.0% of growth steps,   0.0% of the BH mass gained;  e-folds used =  0.024 of 20.8 available;  M_BH/M*_tot(z=5) = 4.08e-02
+(b) paired ratios of M_seed,crit to base:
+  eta_acc x0.1    : median 1.138e+08, ratio 1.173 [1.144, 1.207]
+  eta_acc x10     : median 7.342e+07, ratio 0.749 [0.724, 0.786]
+  eps_rad 0.057   : median 1.002e+08, ratio 1.037 [1.030, 1.046]
+  eps_rad 0.32    : median 8.683e+07, ratio 0.903 [0.882, 0.917]
+  f_BH = 0.1      : median 2.355e+07, ratio 0.240 [0.232, 0.250]
+  f_BH = 0.9      : median 1.521e+08, ratio 1.582 [1.535, 1.612]

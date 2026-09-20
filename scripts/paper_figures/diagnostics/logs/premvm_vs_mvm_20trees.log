@@ -1,0 +1,22 @@
+
+################ M0=3e+10, the same 20 trees for both models ################
+  median M_seed,crit:  pre-MVM 9.346e+07 [16,84 = 7.48e+07, 9.84e+07]   MVM 9.736e+07 [7.72e+07, 1.01e+08]   (never 0, above 0, max|F|=1.5e-11)
+  per-tree ratio MVM/pre-MVM: median 1.034, range [1.019, 1.047]
+  BH growth at the critical seed (MVM): median x1.047  [16,84 = 1.042, 1.052];  pre-MVM x1.048
+  M*_tot/M_halo = 6.83e-03;  M_seed,crit/M*_tot = 0.478  (identity check: M_BH/(0.5 M*) - 1 = 7.8e-12)
+  nuclear star formation: time-integrated share of M*_tot = 0.067; per-step share median 0.499, 25/75th pct 0.006/0.987;  SFR_nuc/SFR_gal (time-integrated) = 0.071
+  wind cap (feedback demand > available gas): 3488 of 3843 steps with gas = 90.8%;  limiter_nuc 0 steps, limiter_gal 0 steps
+  baryon budget at z=5 (fraction of total accreted mass): stars 0.037, BH gain 0.0008, unavailable 6.0e-04, remaining gas 0.210, ejected by AGN 0.231, by stellar wind 0.520
+  ejected mass ratio AGN : stellar = 0.450;  baryon residual max 1.3e-15
+  F(seed) sign changes per tree over a 25-point seed grid: [ 0 20  0  0] trees with 0/1/2/3 sign changes
+
+################ M0=3e+11, the same 20 trees for both models ################
+  median M_seed,crit:  pre-MVM 1.509e+09 [16,84 = 1.26e+09, 1.60e+09]   MVM 1.518e+09 [1.28e+09, 1.61e+09]   (never 0, above 0, max|F|=1.4e-11)
+  per-tree ratio MVM/pre-MVM: median 1.006, range [1.005, 1.011]
+  BH growth at the critical seed (MVM): median x1.097  [16,84 = 1.087, 1.106];  pre-MVM x1.098
+  M*_tot/M_halo = 1.12e-02;  M_seed,crit/M*_tot = 0.456  (identity check: M_BH/(0.5 M*) - 1 = 1.0e-11)
+  nuclear star formation: time-integrated share of M*_tot = 0.133; per-step share median 0.715, 25/75th pct 0.001/0.998;  SFR_nuc/SFR_gal (time-integrated) = 0.153
+  wind cap (feedback demand > available gas): 3740 of 3839 steps with gas = 97.4%;  limiter_nuc 0 steps, limiter_gal 0 steps
+  baryon budget at z=5 (fraction of total accreted mass): stars 0.066, BH gain 0.0027, unavailable 4.5e-04, remaining gas 0.322, ejected by AGN 0.209, by stellar wind 0.400
+  ejected mass ratio AGN : stellar = 0.542;  baryon residual max 9.3e-16
+  F(seed) sign changes per tree over a 25-point seed grid: [ 0 20  0  0] trees with 0/1/2/3 sign changes

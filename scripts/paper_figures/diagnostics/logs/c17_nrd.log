@@ -1,0 +1,6 @@
+n_rd test: paired 100 trees per mass, 801 steps; n_rd = 5, 10 (fiducial), 20
+  M0=3e+10: median M_seed,crit n_rd=5: 1.072e+08 (paired ratio 1.112 [1.041,1.370], M*/Mh 7.33e-03, G 1.026) | n_rd=10: 9.522e+07 (paired ratio 1.000 [1.000,1.000], M*/Mh 6.53e-03, G 1.028) | n_rd=20: 7.484e+07 (paired ratio 0.792 [0.676,0.868], M*/Mh 5.13e-03, G 1.029)
+  M0=3e+11: median M_seed,crit n_rd=5: 1.764e+09 (paired ratio 1.232 [1.093,1.424], M*/Mh 1.23e-02, G 1.047) | n_rd=10: 1.420e+09 (paired ratio 1.000 [1.000,1.000], M*/Mh 9.94e-03, G 1.047) | n_rd=20: 1.006e+09 (paired ratio 0.714 [0.627,0.792], M*/Mh 7.02e-03, G 1.046)
+  M0=3e+13: median M_seed,crit n_rd=5: 5.116e+09 (paired ratio 1.057 [1.012,1.151], M*/Mh 3.67e-04, G 1.078) | n_rd=10: 4.854e+09 (paired ratio 1.000 [1.000,1.000], M*/Mh 3.48e-04, G 1.078) | n_rd=20: 3.911e+09 (paired ratio 0.802 [0.731,0.848], M*/Mh 2.80e-04, G 1.076)
+
+DONE nrd in 100s

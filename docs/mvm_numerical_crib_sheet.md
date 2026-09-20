@@ -248,12 +248,80 @@ pre-MVM model is a separate result; it is a reference.
 Unavailable (failed the galaxy cut): 4e-4 to 6e-4 of the accreted mass. By step count the AGN wind dominates the ejecta,
 cumulatively the stellar wind does. Do not say: that AGN feedback removes most of the gas (it removes 19 to 35 per cent at 801 steps).
 
-### C17. Not yet tested in the MVM
+### C17. Tests of the remaining structural items (branching from 695b114; the frozen model is unchanged)
 
-z_seed, n_rd (fixed at 10), NFW concentration (only c = 3 and 8 in the exploratory model, at most 4 per cent), M_hot and the
-sharpness of the cold/hot step, the UV-suppression parameters and z_reion, lambda, f_b, the alternative tree
-algorithm, and the 3e13 halo mass for sigma_j, eps_sf, R_nuc, f_mom and eta_SN. Any statement about them in the paper is
-untested by the frozen model.
+Scripts and logs: `diagnostics/c17_diagnostics.py`, `c17_smooth_assembly.py`, `c17_pch08_check*.py`; `logs/c17_*.log`.
+Each script refuses to run unless `reservoir_stock.py` matches the hash in the production JSON. 100 paired trees per mass, 801-step production dt.
+
+**z_seed** (15, 20, 25, 30, 35; step fixed at the production dt; one tree set per mass with z_max = 40). Paired per-tree ratio of M_seed,crit to z_seed = 25:
+
+| Mass | z_seed = 15 | 20 | 30 | 35 |
+|---|---|---|---|---|
+| 3e10 (median at 25: 9.90e7) | 1.0002 [1.000, 1.003] | 1.0000 | 1.0000 | 1.0000 [0.999, 1.001] |
+| 3e11 (1.36e9) | 1.0003 [1.000, 1.006] | 1.0000 | 1.0000 | 1.0000 [0.999, 1.001] |
+| 3e13 (4.85e9) | 1.0040 [1.000, 1.034] | 1.0001 [0.996, 1.003] | 1.0000 [0.998, 1.001] | 0.9998 [0.993, 1.004] |
+
+M_seed,crit is insensitive to z_seed from 15 to 35. Reason: before the host halo exists nothing happens, and gas accreted early is tiny and
+ejected. The fraction of trees whose halo already exists at z_seed is 3% (3e10), 34% (3e11), 98% (3e13) at z_seed = 25 and 100% at z_seed = 15.
+Caveat: the MVM starts with an empty galaxy at z_seed, so a later z_seed also discards baryons already accreted. Do not say: that this is the
+old paper's z_seed argument (the old text's reason, "the halo has assembled little mass", does not apply as stated); that z_seed = 25 is
+a physical formation redshift.
+
+**M_hot** (x0.5, x1, x2 of 4e11 Msun; same trees per mass). Median M_seed,crit [Msun] and paired ratio to the fiducial M_hot:
+
+| M0 | M_hot = 2e11 | 4e11 | 8e11 | ratio (2e11, 8e11) | M_star,tot/M_halo (2e11, 4e11, 8e11) |
+|---|---|---|---|---|---|
+| 3.0e10 | 9.27e7 | 9.28e7 | 9.28e7 | 1.000, 1.000 | 6.4e-3, 6.4e-3, 6.4e-3 |
+| 9.5e10 | 3.77e8 | 3.82e8 | 3.83e8 | 0.987, 1.002 | 8.2e-3, 8.3e-3, 8.4e-3 |
+| 3.0e11 | 1.09e9 | 1.41e9 | 1.48e9 | 0.778, 1.049 | 7.6e-3, 9.8e-3, 1.03e-2 |
+| 9.5e11 | 1.60e9 | 2.94e9 | 4.60e9 | 0.534, 1.543 | 3.6e-3, 6.6e-3, 1.03e-2 |
+| 3.0e12 | 1.87e9 | 3.97e9 | 7.93e9 | 0.466, 1.997 | 1.3e-3, 2.8e-3, 5.7e-3 |
+| 9.5e12 | 2.04e9 | 4.56e9 | 9.59e9 | 0.449, 2.119 | 4.6e-4, 1.0e-3, 2.2e-3 |
+| 3.0e13 | 2.14e9 | 4.87e9 | 1.06e10 | 0.444, 2.177 | 1.5e-4, 3.5e-4, 7.7e-4 |
+
+The low-mass end (3e10) does not depend on M_hot. Above about 1e12 the boundary scales almost linearly with M_hot (x0.44 to 0.47 for M_hot halved,
+x2.0 to 2.2 for doubled), through the accreted baryon fraction (accreted/(f_b M_halo) at 3e13 = 0.008, 0.017, 0.034). The kink moves with M_hot:
+the local log-slope drops from about 1.2 to below 0.3 at lower halo mass for smaller M_hot. Only the location of the step was varied, not its sharpness (phi = 4).
+Do not say: that the high-mass boundary is independent of M_hot, that M_seed,crit(3e13) is a robust number without the qualifier "for M_hot = 4e11",
+or that the hot-mode step is tested beyond its location.
+
+**Halo-assembly description.** The alternative tree algorithm, PCH08, cannot be used at the required resolution (evidence in `logs/c17_pch08_check.log`):
+
+* foraois PCH08 gives a near-deterministic, much earlier main-progenitor history at M_res = 1e4 Msun: for M0 = 3e10 anchored at z0 = 5, M(z=10)/M0 = 0.40
+  (16-84 = 0.40, 0.40) against 0.035 [0.016, 0.082] for Zhang & Hui; the same at every dz from 0.02 to 0.2 and with the numpy and numba backends.
+* At the standard anchor z0 = 0, M0 = 1e12: M(z=1)/M0 = 0.843 [0.84, 0.84] (PCH08) against 0.535 [0.36, 0.76] (Zhang & Hui).
+* Cause: at M_res = 1e4 PCH08 resolves a merger in 2.3% of steps (Zhang & Hui: 41%) and books almost all accretion as smooth (merged/smooth mass 8e-6).
+  PCH08 resembles Zhang & Hui only at M_res = 1e10 (about 1% of M0): M(z=1)/M0 = 0.540 [0.343, 0.662] against 0.495 [0.302, 0.667]. That cannot follow
+  the assembly to z of about 20, which the MVM needs.
+* The MVM run on those PCH08 trees (M_seed,crit 1.00e8, 1.68e9, 2.72e9 with zero scatter) is therefore not a result and must not be quoted.
+
+As an independent description of assembly the frozen MVM was run on the deterministic Fakhouri, Ma & Boylan-Kolchin (2010) mean accretion history
+(calibrated at z below about 2 and extrapolated here), anchored to M_halo(z=5) by shooting (`c17_smooth_assembly.py`):
+
+| M0 | smooth M(z=10)/M0 | M_seed,crit (smooth) | Zhang & Hui median | ratio | M_star,tot/M_halo (smooth / Zhang & Hui) |
+|---|---|---|---|---|---|
+| 3e10 | 0.103 | 8.48e7 | 9.45e7 | 0.897 | 5.8e-3 / 6.5e-3 |
+| 3e11 | 0.061 | 1.27e9 | 1.40e9 | 0.908 | 8.8e-3 / 9.7e-3 |
+| 3e13 | 0.016 | 4.56e9 | 4.85e9 | 0.939 | 3.3e-4 / 3.5e-4 |
+
+The boundary changes by 6 to 10 per cent between two assembly descriptions whose halos differ by a factor of 2.5 in mass at z = 10 (at 3e10). Do not say: that PCH08
+was tested, or that the result is independent of every assembly algorithm; say that it is insensitive to the difference between the Zhang & Hui ensemble and a smooth mean history.
+The statement of the old paper, "PCH08 within 0.02 to 0.14 dex", cannot be reproduced and must not be reused.
+
+**n_rd** (galaxy scale in disc scale lengths; 5, 10 fiducial, 20; paired). M_seed,crit paired ratio to n_rd = 10 [min, max]:
+
+| M0 | n_rd = 5 | 20 | M_star,tot/M_halo (5, 10, 20) | G_BH (5, 10, 20) |
+|---|---|---|---|---|
+| 3e10 | 1.112 [1.041, 1.370] | 0.792 [0.676, 0.868] | 7.3e-3, 6.5e-3, 5.1e-3 | 1.026, 1.028, 1.029 |
+| 3e11 | 1.232 [1.093, 1.424] | 0.714 [0.627, 0.792] | 1.23e-2, 9.9e-3, 7.0e-3 | 1.047, 1.047, 1.046 |
+| 3e13 | 1.057 [1.012, 1.151] | 0.802 [0.731, 0.848] | 3.7e-4, 3.5e-4, 2.8e-4 | 1.078, 1.078, 1.076 |
+
+n_rd acts only through M_star,tot (G_BH does not change): it sets R_gal and hence the galaxy-scale free-fall time in the star-formation clock. Its effect (about 6 to 23 per cent
+for a halving, 20 to 29 per cent for a doubling) is comparable to the other star-formation sensitivities of C12. Do not say: that n_rd is an accessibility parameter.
+
+**Still untested in the MVM:** the UV-suppression parameters and z_reion, lambda, f_b, the NFW concentration (only c = 3 and 8 in the exploratory model, at most 4 per cent,
+so it matters only at the galaxy-scale threshold), the sharpness of the cold/hot step, and the 3e13 mass for sigma_j, eps_sf, R_nuc, f_mom and eta_SN.
+Any statement about them in the paper is untested by the frozen model.
 
 ## 2. Consolidated "do not say" list
 
@@ -270,6 +338,10 @@ untested by the frozen model.
 11. The fiducial critical-seed result depends on proximity to the light-seed threshold. (It does not: see C9.)
 12. Numerical convergence is established at 3e13 for dz and M_res, or that 801 steps is converged.
 13. Anything about the Eddington time as the operative constraint on the critical seed.
+14. The high-mass boundary (above about 1e12) is independent of M_hot; it scales almost linearly with it.
+15. PCH08 (or any second stochastic tree algorithm) was tested. Only a smooth mean history was, and PCH08 is not usable at this resolution.
+16. z_seed matters (or does not) for the reason the old paper gave; in the MVM nothing happens before the host exists.
+17. n_rd is an accessibility parameter; it enters through the star-formation clock.
 
 ## 3. Old-model numbers that must not be reused
 

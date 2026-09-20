@@ -143,3 +143,6 @@ data/inputs/*.hdf5
 # Notebook-generated plot images (re-derivable by re-running the notebook;
 # already embedded inline as cell outputs in the .ipynb itself)
 notebooks/*.png
+
+# MVM diagnostics: these logs are the only record of tree ensembles that cannot be regenerated with the same seed (numba sampling)
+!scripts/paper_figures/diagnostics/logs/*.log

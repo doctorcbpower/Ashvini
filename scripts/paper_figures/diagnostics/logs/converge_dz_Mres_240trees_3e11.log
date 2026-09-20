@@ -1,0 +1,8 @@
+##### MVM tree-resolution follow-up, M0=3e+11: 240 trees per setting, two independent sets each
+[   34s] dz=0.1    M_res=1e+04: medians 1.3573e+09, 1.3337e+09  mean 1.3455e+09  (rep-to-rep 0.0076 dex)
+[   66s] dz=0.05   M_res=1e+04: medians 1.3645e+09, 1.3592e+09  mean 1.3618e+09  (rep-to-rep 0.0017 dex)
+[   96s] dz=0.025  M_res=1e+04: medians 1.4086e+09, 1.4037e+09  mean 1.4062e+09  (rep-to-rep 0.0015 dex)
+[  127s] dz=0.05   M_res=1e+05: medians 1.3629e+09, 1.3566e+09  mean 1.3598e+09  (rep-to-rep 0.0020 dex)
+[  157s] dz=0.05   M_res=1e+03: medians 1.3877e+09, 1.4005e+09  mean 1.3941e+09  (rep-to-rep 0.0040 dex)
+ratios to the (dz=0.05, M_res=1e4) mean: {'dz=0.1,Mres=1e+04': 0.988, 'dz=0.05,Mres=1e+04': 1.0, 'dz=0.025,Mres=1e+04': 1.033, 'dz=0.05,Mres=1e+05': 0.998, 'dz=0.05,Mres=1e+03': 1.024}
+DONE

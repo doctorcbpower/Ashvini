@@ -1,0 +1,31 @@
+
+===== M0=3e+13, 240 trees, 401 steps  [14s] =====
+ M_seed,crit: median 4.628e+09  [16,84]=[4.36e+09, 4.88e+09]  (bracket failures: never 0, above 0; max|F|=2e-11)
+ M_seed,crit / M_halo(z=5) = 1.54e-04;  M*_tot/M_halo = 3.65e-04;  M_seed,crit/M*_tot = 0.425
+ BH growth G_BH = M_BH(z=5)/M_seed at the critical seed: median 1.177 [16,84 = 1.158, 1.200], max 1.276
+ halo first resolved at z = 24.7;  M_seed,crit / (f_b M_halo) at that time: median 2.56e+03 [16,84 = 7.2e+02, 1.6e+04]
+    z=20: M_BH / (f_b M_halo) median 1.46e+02  (fraction of trees with the BH heavier than its host's baryons: 1.00, host resolved in 100% of trees)
+    z=15: M_BH / (f_b M_halo) median 6.53e+00  (fraction of trees with the BH heavier than its host's baryons: 0.97, host resolved in 100% of trees)
+    z=10: M_BH / (f_b M_halo) median 1.69e-01  (fraction of trees with the BH heavier than its host's baryons: 0.03, host resolved in 100% of trees)
+    z= 7: M_BH / (f_b M_halo) median 1.10e-02  (fraction of trees with the BH heavier than its host's baryons: 0.00, host resolved in 100% of trees)
+    z= 5: M_BH / (f_b M_halo) median 1.17e-03  (fraction of trees with the BH heavier than its host's baryons: 0.00, host resolved in 100% of trees)
+ accreted baryons / (f_b M_halo(z=5)) = 0.017 (cold/hot + UV suppression);  stars/accreted 0.138; gas left 0.119; ejected: AGN 0.381, stellar 0.346; unavailable 4.9e-04
+ nuclear share of M*_tot 0.225
+ feedback-limited (demand > gas): 28.9% of 93319 feedback steps;  by z: 25-15: 100%, 15-10: 80%, 10-7: 5%, 7-5: 0%
+ inflow switched off (hot-mode) in 9.8% of steps with an existing halo;  baryon residual max 3e-15; limiters 0/0
+
+===== M0=3e+13, 240 trees, 801 steps  [60s] =====
+ M_seed,crit: median 4.862e+09  [16,84]=[4.56e+09, 5.15e+09]  (bracket failures: never 0, above 0; max|F|=2e-11)
+ M_seed,crit / M_halo(z=5) = 1.62e-04;  M*_tot/M_halo = 3.50e-04;  M_seed,crit/M*_tot = 0.464
+ BH growth G_BH = M_BH(z=5)/M_seed at the critical seed: median 1.077 [16,84 = 1.070, 1.084], max 1.095
+ halo first resolved at z = 24.8;  M_seed,crit / (f_b M_halo) at that time: median 2.96e+03 [16,84 = 8.2e+02, 1.9e+04]
+    z=20: M_BH / (f_b M_halo) median 1.52e+02  (fraction of trees with the BH heavier than its host's baryons: 1.00, host resolved in 100% of trees)
+    z=15: M_BH / (f_b M_halo) median 6.67e+00  (fraction of trees with the BH heavier than its host's baryons: 0.96, host resolved in 100% of trees)
+    z=10: M_BH / (f_b M_halo) median 1.61e-01  (fraction of trees with the BH heavier than its host's baryons: 0.03, host resolved in 100% of trees)
+    z= 7: M_BH / (f_b M_halo) median 1.07e-02  (fraction of trees with the BH heavier than its host's baryons: 0.00, host resolved in 100% of trees)
+    z= 5: M_BH / (f_b M_halo) median 1.12e-03  (fraction of trees with the BH heavier than its host's baryons: 0.00, host resolved in 100% of trees)
+ accreted baryons / (f_b M_halo(z=5)) = 0.017 (cold/hot + UV suppression);  stars/accreted 0.133; gas left 0.129; ejected: AGN 0.345, stellar 0.383; unavailable 4.7e-04
+ nuclear share of M*_tot 0.108
+ feedback-limited (demand > gas): 26.3% of 187491 feedback steps;  by z: 25-15: 100%, 15-10: 70%, 10-7: 2%, 7-5: 0%
+ inflow switched off (hot-mode) in 9.7% of steps with an existing halo;  baryon residual max 4e-15; limiters 0/0
+ F(seed) sign changes per tree (40 trees, 25-seed grid): [ 0 40  0  0] trees with 0/1/2/3

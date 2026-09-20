@@ -1,0 +1,4 @@
+FMBK10 mean accretion history (smooth, deterministic) against the Zhang & Hui ensemble (production medians)
+M0=3e+10: smooth M_halo(z=10)/M0 = 0.103, (z=15)/M0 = 0.0160, halo mass at z_seed=25: 2.56e+07 Msun (converged=True); M_seed,crit(smooth) = 8.478e+07 vs ZH median 9.452e+07 (ratio 0.897); M*_tot/M_halo = 5.80e-03 vs ZH 6.48e-03; accreted/(f_b Mh) = 0.997 vs ZH 1.158; G_BH 1.026; |F|=7e-16
+M0=3e+11: smooth M_halo(z=10)/M0 = 0.061, (z=15)/M0 = 0.0069, halo mass at z_seed=25: 7.48e+07 Msun (converged=True); M_seed,crit(smooth) = 1.266e+09 vs ZH median 1.395e+09 (ratio 0.908); M*_tot/M_halo = 8.80e-03 vs ZH 9.73e-03; accreted/(f_b Mh) = 0.927 vs ZH 1.069; G_BH 1.042; |F|=9e-15
+M0=3e+13: smooth M_halo(z=10)/M0 = 0.016, (z=15)/M0 = 0.0009, halo mass at z_seed=25: 4.33e+08 Msun (converged=True); M_seed,crit(smooth) = 4.555e+09 vs ZH median 4.853e+09 (ratio 0.939); M*_tot/M_halo = 3.26e-04 vs ZH 3.48e-04; accreted/(f_b Mh) = 0.015 vs ZH 0.017; G_BH 1.072; |F|=2e-14

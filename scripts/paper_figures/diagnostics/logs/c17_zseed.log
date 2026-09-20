@@ -1,0 +1,28 @@
+z_seed test: fixed dt (production), one tree set per mass (100 trees, z_max=40); ratios paired per tree to z_seed=25
+NOTE: the MVM starts with an empty galaxy at z_seed, so a later z_seed also discards baryons the halo had already accreted.
+
+M0=3e+10   (steps at z_seed=15/20/25/30/35: [694, 763, 801, 824, 839])
+  z_seed | median M_seed,crit | paired ratio to 25 [min,max] | halo already resolved at z_seed | M*_tot/M_halo | G_BH | bracket fails
+    15   | 9.909e+07        | 1.0002 [1.000, 1.003]      | 100.0%                        | 6.78e-03     | 1.027 | 0
+    20   | 9.900e+07        | 1.0000 [1.000, 1.000]      |  76.0%                        | 6.79e-03     | 1.028 | 0
+    25   | 9.900e+07        | 1.0000 [1.000, 1.000]      |   3.0%                        | 6.79e-03     | 1.028 | 0
+    30   | 9.899e+07        | 1.0000 [1.000, 1.000]      |   0.0%                        | 6.79e-03     | 1.028 | 0
+    35   | 9.899e+07        | 1.0000 [0.999, 1.001]      |   0.0%                        | 6.79e-03     | 1.028 | 0
+
+M0=3e+11   (steps at z_seed=15/20/25/30/35: [694, 763, 801, 824, 839])
+  z_seed | median M_seed,crit | paired ratio to 25 [min,max] | halo already resolved at z_seed | M*_tot/M_halo | G_BH | bracket fails
+    15   | 1.360e+09        | 1.0003 [1.000, 1.006]      | 100.0%                        | 9.48e-03     | 1.044 | 0
+    20   | 1.359e+09        | 1.0000 [1.000, 1.001]      |  99.0%                        | 9.48e-03     | 1.046 | 0
+    25   | 1.359e+09        | 1.0000 [1.000, 1.000]      |  34.0%                        | 9.48e-03     | 1.046 | 0
+    30   | 1.359e+09        | 1.0000 [1.000, 1.000]      |   1.0%                        | 9.48e-03     | 1.046 | 0
+    35   | 1.359e+09        | 1.0000 [0.999, 1.001]      |   0.0%                        | 9.48e-03     | 1.046 | 0
+
+M0=3e+13   (steps at z_seed=15/20/25/30/35: [694, 763, 801, 824, 839])
+  z_seed | median M_seed,crit | paired ratio to 25 [min,max] | halo already resolved at z_seed | M*_tot/M_halo | G_BH | bracket fails
+    15   | 4.886e+09        | 1.0040 [1.000, 1.034]      | 100.0%                        | 3.47e-04     | 1.065 | 0
+    20   | 4.858e+09        | 1.0001 [0.996, 1.003]      | 100.0%                        | 3.48e-04     | 1.077 | 0
+    25   | 4.851e+09        | 1.0000 [1.000, 1.000]      |  98.0%                        | 3.48e-04     | 1.077 | 0
+    30   | 4.853e+09        | 1.0000 [0.998, 1.001]      |  28.0%                        | 3.48e-04     | 1.077 | 0
+    35   | 4.859e+09        | 0.9998 [0.993, 1.004]      |   0.0%                        | 3.49e-04     | 1.078 | 0
+
+DONE zseed in 144s

@@ -1,0 +1,16 @@
+
+M0=3e+10: steps with any feedback demand: 7568;  of these the demand exceeds the available gas (reservoirs emptied) in 3031 = 40.1%
+   AGN share of the ejected mass per step: median 0.72; steps where AGN demand alone exceeds stellar: 4262 of 7568
+   z 25->15: steps with feedback  784, demand > gas in 100.0%
+   z 15->10: steps with feedback 1469, demand > gas in 100.0%
+   z 10-> 7: steps with feedback 2175, demand > gas in  35.8%
+   z  7-> 5: steps with feedback 3140, demand > gas in   0.0%
+   steps (halo accreting) that END with both reservoirs exactly empty: 3031 of 7241
+
+M0=3e+11: steps with any feedback demand: 7600;  of these the demand exceeds the available gas (reservoirs emptied) in 3676 = 48.4%
+   AGN share of the ejected mass per step: median 0.90; steps where AGN demand alone exceeds stellar: 4688 of 7600
+   z 25->15: steps with feedback  905, demand > gas in 100.0%
+   z 15->10: steps with feedback 1455, demand > gas in 100.0%
+   z 10-> 7: steps with feedback 2100, demand > gas in  62.1%
+   z  7-> 5: steps with feedback 3140, demand > gas in   0.4%
+   steps (halo accreting) that END with both reservoirs exactly empty: 3676 of 7229

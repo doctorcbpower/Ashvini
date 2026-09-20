@@ -1,0 +1,15 @@
+##### M0=3e+10, 20 trees, 801 steps: light-seed regime map. cell = peak Mdot_acc/Mdot_Edd (median over trees) / growth factor G, seed 1e3
+sigma_j \ R_nuc[pc]                 100               125               150               200               250               300
+    0.5                 0.09/    1.01      0.4/    1.07      1.2/    1.19       36/    3.64       70/    15.6       69/    35.6
+    0.6                 0.16/    1.03     0.76/    1.13        3/    1.32       91/    15.1       81/    43.9    1e+02/     120
+    0.7                 0.42/    1.07      3.1/    1.28       65/    7.92       95/    53.9  1.3e+02/     352  1.2e+02/     764
+    0.8                   15/    1.77  1.2e+02/    20.4  1.1e+02/    59.9  1.9e+02/     781  1.2e+02/1.17e+03       98/2.56e+03
+    1.0              2.3e+02/1.48e+03    2e+02/2.54e+03  1.8e+02/3.32e+03  1.4e+02/3.85e+03  1.1e+02/4.07e+03       90/ 4.3e+03
+F(seed) sign changes over a 25-point seed grid (20 trees) in the accessible corners:
+   fiducial                : trees with 0/1/2/3+ sign changes = [0, 20, 0, 0]
+   s=1.0,R=100             : trees with 0/1/2/3+ sign changes = [0, 20, 0, 0]
+   s=0.5,R=300             : trees with 0/1/2/3+ sign changes = [0, 20, 0, 0]
+   s=1.5,R=300             : trees with 0/1/2/3+ sign changes = [0, 20, 0, 0]
+   s=1.5,R=300,eta=0.05    : trees with 0/1/2/3+ sign changes = [0, 20, 0, 0]
+   s=0.5,R=100,eta=0.5     : trees with 0/1/2/3+ sign changes = [0, 20, 0, 0]
+DONE

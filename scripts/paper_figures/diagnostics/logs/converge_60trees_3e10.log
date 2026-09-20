@@ -1,0 +1,20 @@
+##### MVM convergence, M0=3e+10  (fixed R_nuc=100 pc, n_rd=10, c=4, sigma_j=0.5, momentum AGN f_mom=1, f_BH=0.5; base: 60 trees, 401 steps, dz=0.05, M_res=1e4)
+== A. number of trees: disjoint sets of 60, then pooled ==
+[    5s] set 0                              median 9.3106e+07 [16,84]=[7.58e+07,1.03e+08] bracket-fail 0 max|F|=1e-11
+[   10s] set 1                              median 9.4658e+07 [16,84]=[7.98e+07,1.02e+08] bracket-fail 0 max|F|=1e-11
+[   14s] set 2                              median 9.5535e+07 [16,84]=[8.02e+07,1.05e+08] bracket-fail 0 max|F|=1e-11
+[   19s] set 3                              median 9.3749e+07 [16,84]=[8.40e+07,1.05e+08] bracket-fail 0 max|F|=2e-11
+   std of log10(median) across the four 60-tree sets: 0.0042 dex
+[   25s] pooled 120                         median 9.3860e+07 [16,84]=[7.72e+07,1.03e+08] bracket-fail 0 max|F|=1e-11
+[   36s] pooled 240                         median 9.4636e+07 [16,84]=[8.04e+07,1.04e+08] bracket-fail 0 max|F|=2e-11
+== B. time step (uniform in cosmic time, z=25->5), same 60 trees ==
+[   38s] n_steps=201                        median 9.1756e+07 [16,84]=[7.49e+07,1.02e+08] bracket-fail 0 max|F|=1e-11  per-tree ratio to base: median 0.9897 [min 0.9620, max 1.0044]
+[   42s] n_steps=401                        median 9.3106e+07 [16,84]=[7.58e+07,1.03e+08] bracket-fail 0 max|F|=1e-11  per-tree ratio to base: median 1.0000 [min 1.0000, max 1.0000]
+[   55s] n_steps=801                        median 9.3979e+07 [16,84]=[7.61e+07,1.04e+08] bracket-fail 0 max|F|=1e-11  per-tree ratio to base: median 1.0051 [min 1.0011, max 1.0127]
+== C. tree resolution (new tree sets, N=60, same seed) ==
+[   59s] dz=0.05, M_res=1e+04  (x1.000 of ref) median 9.5252e+07 [16,84]=[7.69e+07,1.05e+08] bracket-fail 0 max|F|=2e-11
+[   64s] dz=0.1, M_res=1e+04  (x0.963 of ref) median 9.1703e+07 [16,84]=[7.43e+07,1.02e+08] bracket-fail 0 max|F|=1e-11
+[   68s] dz=0.025, M_res=1e+04  (x1.046 of ref) median 9.9610e+07 [16,84]=[8.04e+07,1.08e+08] bracket-fail 0 max|F|=2e-11
+[   73s] dz=0.05, M_res=1e+05  (x0.968 of ref) median 9.2213e+07 [16,84]=[7.29e+07,1.05e+08] bracket-fail 0 max|F|=1e-11
+[   77s] dz=0.05, M_res=1e+03  (x1.013 of ref) median 9.6535e+07 [16,84]=[8.49e+07,1.07e+08] bracket-fail 0 max|F|=1e-11
+DONE

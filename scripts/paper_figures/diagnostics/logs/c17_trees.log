@@ -1,0 +1,18 @@
+tree-algorithm test: Zhang & Hui (fiducial) against PCH08; 240 independent trees each, dz=0.05, M_res=1e4, 801 steps
+
+M0=3e+10
+  ZH : median M_seed,crit 9.543e+07 [16,84 = 7.69e+07, 1.05e+08], 16-84 width 0.135 dex; M*_tot/M_halo 6.54e-03; G_BH 1.028; median M_halo at z=20/15/10: 2.98e+06 / 5.56e+07 / 1.12e+09; halo resolved at z=20: 78%; accreted/(f_b Mh) 1.149
+  PCH: median M_seed,crit 1.000e+08 [16,84 = 1.00e+08, 1.00e+08], 16-84 width 0.000 dex; M*_tot/M_halo 6.86e-03; G_BH 1.028; median M_halo at z=20/15/10: 2.02e+09 / 4.90e+09 / 1.20e+10; halo resolved at z=20: 100%; accreted/(f_b Mh) 0.972
+  PCH08/ZH ratio of medians: M_seed,crit 1.048 (+0.020 dex); M*_tot 1.049
+
+M0=3e+11
+  ZH : median M_seed,crit 1.411e+09 [16,84 = 1.09e+09, 1.61e+09], 16-84 width 0.169 dex; M*_tot/M_halo 9.85e-03; G_BH 1.046; median M_halo at z=20/15/10: 1.45e+07 / 2.66e+08 / 7.06e+09; halo resolved at z=20: 98%; accreted/(f_b Mh) 1.067
+  PCH: median M_seed,crit 1.677e+09 [16,84 = 1.68e+09, 1.68e+09], 16-84 width 0.000 dex; M*_tot/M_halo 1.17e-02; G_BH 1.047; median M_halo at z=20/15/10: 1.81e+10 / 4.48e+10 / 1.14e+11; halo resolved at z=20: 100%; accreted/(f_b Mh) 0.903
+  PCH08/ZH ratio of medians: M_seed,crit 1.189 (+0.075 dex); M*_tot 1.188
+
+M0=3e+13
+  ZH : median M_seed,crit 4.852e+09 [16,84 = 4.52e+09, 5.14e+09], 16-84 width 0.056 dex; M*_tot/M_halo 3.49e-04; G_BH 1.078; median M_halo at z=20/15/10: 2.17e+08 / 4.91e+09 / 1.92e+11; halo resolved at z=20: 100%; accreted/(f_b Mh) 0.017
+  PCH: median M_seed,crit 2.720e+09 [16,84 = 2.72e+09, 2.72e+09], 16-84 width 0.000 dex; M*_tot/M_halo 1.81e-04; G_BH 1.000; median M_halo at z=20/15/10: 1.05e+12 / 2.99e+12 / 9.10e+12; halo resolved at z=20: 100%; accreted/(f_b Mh) 0.004
+  PCH08/ZH ratio of medians: M_seed,crit 0.561 (-0.251 dex); M*_tot 0.519
+
+DONE trees in 199s

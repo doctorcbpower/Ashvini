@@ -1,0 +1,5 @@
+##### M0=3e+11, same 60 trees at each time step
+ n=  201: M_seed,crit median 1.2876e+09; M*_tot median 3.208e+09; G_BH 1.224; nuclear share 0.275; share of M*_tot formed at z>10: 0.101
+ n=  401: M_seed,crit median 1.3253e+09 (paired ratio to 401: 1.0000); M*_tot median 2.911e+09 (ratio 1.0000); G_BH 1.093; nuclear share 0.128; share of M*_tot formed at z>10: 0.052
+ n=  801: M_seed,crit median 1.3431e+09 (paired ratio to 401: 1.0129); M*_tot median 2.813e+09 (ratio 0.9692); G_BH 1.046; nuclear share 0.066; share of M*_tot formed at z>10: 0.026
+ n= 1601: M_seed,crit median 1.3507e+09 (paired ratio to 401: 1.0183); M*_tot median 2.776e+09 (ratio 0.9568); G_BH 1.027; nuclear share 0.039; share of M*_tot formed at z>10: 0.013

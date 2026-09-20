@@ -357,6 +357,94 @@ for a halving, 20 to 29 per cent for a doubling) is comparable to the other star
 so it matters only at the galaxy-scale threshold), the sharpness of the cold/hot step, and the 3e13 mass for sigma_j, eps_sf, R_nuc, f_mom and eta_SN.
 Any statement about them in the paper is untested by the frozen model.
 
+### C18. Seed memory, feedback decomposition, phase space and the efficiency ratio (branching from 695b114; frozen model unchanged)
+
+Scripts and logs: `diagnostics/c18_saturation_tests.py`, `c18_test4_phase.py`, `c18_eta_eps.py`; `logs/c18_*.log`; data `output/c18_*.json`; figures
+`output/sat_fig1` to `sat_fig8`. All at sigma_j = 1.5, R_nuc = 300 pc unless stated ("high accessibility"), 100 paired trees per mass, 801-step dt,
+hash asserted. R = M_BH/M_star,tot, masked where M_star,tot < 1e5 Msun (undefined before stars exist). Two or three masses only. Interpretation:
+this is a mechanism found in the model, not a physical scale (see the claim map, S3, S5, R8).
+
+**Test 1, seed memory** (final R at z = 5, median; per-tree max/min across seeds):
+
+| Mass | seed 1e2 | 1e3 | 1e5 | 1e7 | max/min, four seeds | max/min, three lightest | fiducial accessibility, max/min |
+|---|---|---|---|---|---|---|---|
+| 3e10 | 0.071 | 0.074 | 0.084 | 0.374 | 5.3 | 1.2 | 1.05e5 |
+| 3e11 | 0.074 | 0.094 | 0.115 | 0.163 | 2.05 | 1.41 | 1.03e5 |
+| 3e13 | 0.0019 | 0.0056 | 0.039 | 0.096 | 51 | 16 | 1.05e5 |
+
+The dispersion of the median R across seeds falls with time: 3e10: 1.45e3 (z = 10), 48.6 (z = 7), 5.3 (z = 5); 3e11: 1.06e3, 12.3, 2.2; 3e13: 3.4e3, 56, 50.
+Light seeds are still rising and the 1e7 seed still falling at z = 5, so this is finite-time relaxation, not a demonstrated asymptote. There is no funnel at 3e13.
+Individual trees follow their medians (`sat_fig1`).
+
+**Test 2, AGN strength** (final R, median; f_mom = 0, 0.3, 1, 3, 10):
+
+| Mass, seed | f_mom = 0 | 0.3 | 1 | 3 | 10 |
+|---|---|---|---|---|---|
+| 3e10, 1e3 | 0.215 | 0.129 | 0.074 | 0.039 | 0.017 |
+| 3e10, 1e7 | 0.299 | 0.318 | 0.374 | 0.509 | 0.858 |
+| 3e11, 1e3 | 0.219 | 0.150 | 0.094 | 0.052 | 0.024 |
+| 3e11, 1e7 | 0.270 | 0.213 | 0.163 | 0.116 | 0.078 |
+| 3e13, 1e3 | 0.0077 | 0.0071 | 0.0056 | 0.0030 | 0.0017 |
+| 3e13, 1e7 | 0.184 | 0.132 | 0.096 | 0.073 | 0.051 |
+
+Light seeds: R falls roughly as f_mom^-0.5. With the AGN off the ratio stays at 0.2 to 0.3 (does not go to unity). The 1e7 seed at 3e10 goes the opposite way
+(AGN suppresses stars faster than the black hole).
+
+**Test 3, all gas accessible** (every galaxy-to-nucleus transfer succeeds; the transfer function is replaced at run time, the frozen file is unchanged). Final R, median:
+
+| Mass, seed | fiducial | high accessibility | all accessible, R_nuc = 100 | all accessible, 300 |
+|---|---|---|---|---|
+| 3e10, 1e3 | 4.2e-6 | 0.074 | 0.135 | 0.079 |
+| 3e10, 1e7 | 0.044 | 0.374 | 0.394 | 0.756 |
+| 3e11, 1e3 | 2.7e-7 | 0.094 | 0.155 | 0.077 |
+| 3e11, 1e7 | 2.8e-3 | 0.163 | 0.217 | 0.172 |
+| 3e13, 1e3 | 7.1e-8 | 0.0056 | 0.0041 | 0.0025 |
+
+Fraction of galaxy gas delivered to the nucleus: 0.15 to 0.36 (high accessibility), 1.00 (all accessible). With R_nuc = 300 pc the light-seed (1e2 to 1e5) all-accessible ratios lie within about 0.8 to 1.3 of the high-accessibility ones (3e10: 0.069, 0.079, 0.107 against 0.071, 0.074, 0.084); the 1e7 seed at 3e10 is a factor of 2 higher (0.756 against 0.374).
+At R_nuc = 100 pc the light-seed ratio is higher than at high accessibility by 1.5 to 1.8. At 3e13 all-accessible is lower than high accessibility by factors of 1.1 to 2.9 across seeds (seed 1e3: 0.0041 and 0.0025 against 0.0056). Reading: raising the delivered gas fraction from 0.15 to 0.36 to 1.0 moves the ratio by factors of order unity, not by orders of magnitude; the orders of magnitude come from the fiducial accessibility.
+
+**Test 4, stellar wind x AGN** (final R, median; the 2x2):
+
+| Mass, seed | wind on, AGN on | wind on, AGN off | wind off, AGN on | wind off, AGN off |
+|---|---|---|---|---|
+| 3e10, 1e3 | 0.072 | 0.215 | 0.064 | 0.267 |
+| 3e10, 1e7 | 0.372 | 0.296 | 0.353 | 0.312 |
+| 3e11, 1e3 | 0.100 | 0.227 | 0.056 | 0.189 |
+| 3e11, 1e7 | 0.165 | 0.268 | 0.167 | 0.290 |
+
+Removing the stellar wind moves the AGN-off floor by +24% (3e10) and -17% (3e11), within the tree scatter. With all feedback off, M_BH and M_star,tot both rise by about a factor of 10
+(3e10, seed 1e3: 5.3e7 -> 6.7e8 and 2.5e8 -> 2.7e9) and R stays 0.19 to 0.31 for both seeds. The floor is therefore not set by feedback.
+
+**Phase space** (d ln R/dt = d ln M_BH/dt - d ln M_star/dt over a +-20-step window of about 26 Myr, pooled over seeds 1e2, 1e3, 1e5, 1e7; `sat_fig7`). Median zero crossings of d ln R/dt (positive below, negative above), in R:
+
+| Case | 3e10 (z>10 / 7-10 / z<=7) | 3e11 (z>10 / 7-10 / z<=7) |
+|---|---|---|
+| high accessibility, AGN on | 0.048 / 0.068 / 0.108 | 0.038 / 0.127 / 0.154 |
+| AGN off | 0.163 / 0.227 / 0.264 | 0.028 / 0.244 / 0.267 |
+| stellar wind off | 0.060 / 0.078 / 0.130 | none / 0.142 / 0.164 |
+| fiducial accessibility (control) | none | none |
+
+The median d ln R/dt is positive below the crossing and negative above it: at 7 < z <= 10 about +10 to +12 per Gyr at the lowest R and -4 to -10 per Gyr at R of order 1 (3e10), and much closer to zero near the crossing at z <= 7 (|d ln R/dt| about 0.3 to 1.5 per Gyr within a factor of 2 of it). The crossing drifts upward with time. The z > 10 band is in the feedback-limited, step-dependent regime and is not read (at 3e11 it has a second, noise-level crossing at R = 0.0035 to 0.005).
+Do not say "attractor": this restoring behaviour follows from the competition for one reservoir (d ln R/dt = Mdot_BH/M_BH - Mdot_star/M_star).
+
+**Efficiency grid** (eta_acc in {0.001, 0.005, 0.02} x eps_sf in {0.0075, 0.015, 0.03}; `sat_fig8`). No feedback (f_mom = 0, eta_SN = 0): R follows about eta_acc/eps_sf over a factor of about 80.
+
+| | 3e10 | 3e11 |
+|---|---|---|
+| R/(eta_acc/eps_sf), seed 1e3 | 0.60 to 0.92 | 0.31 to 0.76 |
+| R/(eta_acc/eps_sf), seed 1e7 | 0.84 to 0.99 | 0.72 to 0.94 |
+| log-log slope of median R against eta_acc/eps_sf (seed 1e3 / 1e7) | 0.91 / 0.97 | 0.79 / 0.98 |
+| zero crossing (z <= 7) / (eta_acc/eps_sf), seed pool, nine cells | 0.78 to 1.10 | 0.60 to 1.08 |
+
+With AGN and stellar wind on: R/(eta_acc/eps_sf) for seed 1e3 at 3e10 is 0.40 to 0.44, 0.20 to 0.23, 0.08 to 0.11 for eta_acc = 0.001, 0.005, 0.02 (log-log slope 0.56); 3e11: 0.55 to 0.58, 0.26 to 0.35, 0.10 to 0.16 (slope 0.57).
+Heavy seeds at low ratio stay above the line (3e10, ratio 0.033: R = 0.087 for seed 1e7, 0.0135 for seed 1e3).
+The fiducial values: no-feedback floor 0.27 is about 0.8 of eta_acc/eps_sf = 1/3; with feedback R = 0.07 to 0.10 is about 0.2 to 0.3 of it.
+Two grid points with the same ratio 0.667, (eta_acc, eps_sf) = (0.005, 0.0075) and (0.02, 0.03), give R = 0.546 and 0.401 (3e10, seed 1e3), 0.373 and 0.241 (3e11): the ratio alone is not sufficient.
+Eddington-capped steps (supply above the Eddington rate) are 20% to 62% of the accreting steps for seed 1e3 in every cell, and carry a median 5% to 21% (3e10) or 12% to 37% (3e11) of the BH mass gained without feedback, more at larger eta_acc (with AGN and wind: 31% to 47%); so the seed-1e3 numbers include an Eddington-limited early phase and R/(eta_acc/eps_sf) is not a pure supply-limited statement there.
+Provenance of the two efficiencies: `docs/mvm_efficiency_literature_check.md` (eps_sf inherited, applied per local free-fall time; eta_acc has no independent calibration in the sources checked).
+
+Do not say: that 0.1 to 0.2 is a physical ceiling, attractor or characteristic scale; that the ratio equals eta_acc/eps_sf exactly; that the mechanism holds at 3e13; that the relaxation is an asymptote; that the z > 10 phase-space statistics mean anything.
+
 ## 2. Consolidated "do not say" list
 
 1. The Eddington limit is irrelevant. (It is irrelevant to the critical boundary at the fiducial; it may be decisive for light seeds near the accessibility threshold.)
@@ -376,6 +464,9 @@ Any statement about them in the paper is untested by the frozen model.
 15. PCH08 (or any second stochastic tree algorithm) was tested. Only a smooth mean history was, and PCH08 is not usable at this resolution.
 16. z_seed matters (or does not) for the reason the old paper gave; in the MVM nothing happens before the host exists.
 17. n_rd is an accessibility parameter; it enters through the star-formation clock.
+18. M_BH/M_star of 0.1 to 0.2 is a universal saturation scale, ceiling or attractor (it is the nuclear supply partition, about eta_acc/eps_sf, reduced by feedback).
+19. The critical seed is insensitive to accessibility (sigma_j of 1 to 1.5 reduces it to 0.4 to 0.11 of its fiducial value).
+20. eta_acc and eps_sf are independently calibrated (eps_sf is inherited; eta_acc has no independent calibration in the sources checked).
 
 ## 3. Old-model numbers that must not be reused
 

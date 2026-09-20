@@ -21,10 +21,16 @@ differ by sampling noise (about 1 to 2 per cent in a 60-tree median). All runs u
 | `c17_diagnostics.py zseed\|mhot\|nrd\|trees` | `c17_zseed`, `c17_mhot`, `c17_nrd`, `c17_trees` | 100 paired (240 for trees), 801-step dt | z_seed, M_hot, n_rd, and the (invalid) PCH08 comparison |
 | `c17_smooth_assembly.py` | `c17_smooth_assembly` | 1 deterministic history | frozen MVM on the Fakhouri et al. (2010) mean accretion history |
 | `c17_accessibility_reach.py` | `c17_accessibility_reach` | 60, 801-step dt | fixed-seed reach of f_BH and critical-seed ratio across (sigma_j, R_nuc) cells |
+| `c18_saturation_tests.py` | `c18_saturation_tests` | 100 paired, 801-step dt | seed memory, AGN strength (f_mom), all-gas-accessible control at sigma_j = 1.5, R_nuc = 300 pc |
+| `c18_test4_phase.py` | `c18_test4_phase` | 100 paired, 801-step dt | stellar wind x AGN 2x2; phase-space d ln R/dt against R |
+| `c18_eta_eps.py` | `c18_eta_eps` | 100 paired, 801-step dt | eta_acc x eps_sf grid, with and without feedback |
 | `c17_pch08_check*.py` | `c17_pch08_check` | 40 to 60 | why PCH08 cannot be used here (near-deterministic, too-early main-progenitor history at small M_res) |
 
 `c17_*` diagnostics assert that `reservoir_stock.py` has the hash recorded in the production JSON, so they branch from the frozen commit.
 `logs/c17_trees.log` reports the PCH08 comparison run **as it was run**; it is not a valid result (see the PCH08 evidence in the crib sheet, C17).
+
+`c18_*` scripts assert the frozen module hash as well. The all-accessible control replaces `nuclear_transfer` at run time and restores it; the frozen file is not edited.
+Data and figures: `output/c18_*.json`, `output/sat_fig1` to `sat_fig8` (`plot_c18_saturation.py`, `plot_c18_test4_phase.py`, `plot_c18_eta_eps.py`).
 
 Caveats on individual logs:
 

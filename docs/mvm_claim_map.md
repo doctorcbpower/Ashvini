@@ -15,7 +15,8 @@ except where marked. Nothing in this file is manuscript text.
 | 2 | foraois | `9d5fdae` | PCH08 diagnostic note, reproduction script, ROADMAP entry (no source change) |
 | 3 | Ashvini | `695b114` | frozen MVM, pre-MVM reference, production ensemble, figures, original diagnostic scripts (its logs were omitted by mistake; see 4) |
 | 4 | Ashvini | `8ffb61e` | C17 checks, PCH08 diagnosis, all 27 diagnostic logs, crib-sheet update; corrects 3 (which did not contain the logs) |
-| 5 | Ashvini | (this commit) | claim map, accessibility-reach diagnostic and log, crib-sheet C9b |
+| 5 | Ashvini | `fdb2138`, `59418eb` | claim map, accessibility-reach diagnostic and log, crib-sheet C9b; agreed wording |
+| 6 | Ashvini | (the C18 commit) | C18 saturation/mechanism tests, phase-space diagnostic, efficiency grid, their logs, data and figures; efficiency literature check; claim-map and crib-sheet updates |
 
 * Between foraois `1ba7073` (the last commit before this work) and `9d5fdae`, the only source change is `src/foraois/cosmo_utils.py` (the barrier fix), so the
   foraois code at `ed28326` is the state that generated the production trees.
@@ -39,8 +40,9 @@ except where marked. Nothing in this file is manuscript text.
 |---|---|---|---|---|
 | S1 | Light seeds can enter an Eddington-limited transition when nuclear accessibility is increased | C7, C8, C9; Fig 2 dashed | 1e3 seed: peak Mdot_acc/Mdot_Edd 0.09 at the fiducial (3e10), crossing 1 between R_nuc 125 and 150 pc (sigma_j = 0.5) or sigma_j 0.7 and 0.8 (R_nuc = 100); at R_nuc = 250 pc median G = 13 (3e10), 272 (3e11) | threshold location approximate: 20 trees, cells of 25 to 50 pc and 0.1 in sigma_j, mass-dependent; the R_nuc = 250 pc case is a labelled experiment, not the model |
 | S2 | In the R_nuc = 250 pc test light seeds remain far below the target | C7; Fig 2 dashed | highest 84th-percentile ratio 5.9e-4 (1e3 seed), 2.93 dex below f_BH = 0.5 | does not generalise to stronger accessibility (S3) |
-| S3 | Accessible growth approaches a characteristic BH-to-stellar mass ratio of order 0.1 to 0.2 in the explored models, with weak dependence on seed mass; the critical seed falls by up to a factor of about 9 but remains supply-limited | C9, C9b | sigma_j = 1.5, R_nuc = 100: 1e3 seed 0.072 [0.052, 0.094] (3e10), 0.092 [0.069, 0.12] (3e11); 1e7 seed 0.42 (3e10), 0.17 (3e11); critical seed ratio to fiducial 0.14 (3e10), 0.11 (3e11); peak Mdot_acc/Mdot_Edd at the critical seed at most 0.48 | **Not established as a universal saturation scale.** It may reflect the momentum-driven feedback prescription, the accessible angular-momentum distribution, the nuclear radius, the star-formation law, the range of sigma_j explored, or their interaction; accessibility range and feedback/nuclear prescriptions remain model-dependent. Do not write "BH growth saturates at 0.1 to 0.2 M_star". 60 trees (C9b) and 20 trees (C9); no cell has more than 5% of trees at f_BH = 0.5; Eddington-limited critical seeds only with eta_acc of 0.05 or more (C9), outside the physically motivated range at 0.5 |
+| S3 | In the accessible, supply-limited regime the model rapidly reduces seed-mass dependence, because black hole growth and nuclear star formation compete for the same gas reservoir. In the no-feedback limit the resulting M_BH/M_star,tot scales approximately with the ratio of the adopted BH accretion and star-formation efficiencies; AGN feedback further suppresses it. The critical seed falls by up to a factor of about 9 but remains supply-limited | C9, C9b, C18 | 3e10 and 3e11 only; five decades of seed mass compress to a factor 5.3 (3e10) and 2.05 (3e11) by z = 5 (seeds 1e2 to 1e7), or 1.2 and 1.4 for the three lightest; no-feedback R/(eta_acc/eps_sf) = 0.6 to 0.99 (3e10), 0.3 to 0.94 (3e11), log-log slope 0.79 to 0.98; AGN on: slope 0.56 to 0.69 and R/(eta_acc/eps_sf) of 0.08 to 0.44 (3e10, seed 1e3); critical seed ratio to fiducial 0.14 (3e10), 0.11 (3e11) at sigma_j = 1.5 | **The resulting M_BH/M_star of about 0.1 to 0.2 at the fiducial efficiencies is a model-dependent consequence of the adopted nuclear sink efficiencies and feedback prescription, not an independent prediction of a characteristic BH-to-stellar mass scale.** Finite-time relaxation to z = 5, not an asymptote; not at 3e13 (max/min across seeds 51); two masses, 100 trees, one accessibility cell plus a fiducial control |
 | S4 | f_BH rescales the boundary and does not change its shape | C11 | f_BH = 0.1: x0.24, x0.23, x0.25; f_BH = 0.9: x1.58, x1.65, x1.59 (3e10, 3e11, 3e13) | near-linear because G_BH is close to 1 |
+| S5 | The restoring tendency of R: d ln R/dt is positive below and negative above a moving zero crossing in the accessible regime, and has no crossing at the fiducial accessibility | C18 (phase space); `sat_fig7_phase.png` | median crossings (z <= 7): 0.108 (3e10), 0.154 (3e11) with AGN on; 0.264, 0.267 with AGN off; 0.13, 0.164 with the stellar wind off; drift from 0.048 to 0.108 (3e10) with time; no crossing at fiducial accessibility | describe as restoring behaviour / finite-time relaxation, not an attractor: it follows from d ln R/dt = Mdot_BH/M_BH - Mdot_star/M_star with both drawing on the same reservoir; the z > 10 band is in the resolution-dependent feedback-limited regime and is not read |
 
 ## 3. Robustness, model dependence and sensitivity
 
@@ -53,6 +55,7 @@ except where marked. Nothing in this file is manuscript text.
 | R5 | The boundary depends on nuclear accessibility through sigma_j much more than through R_nuc | C12, C9b | R_nuc 50 / 200 pc: x1.10 to 1.11 / x0.87 to 0.89; sigma_j 0.75: x0.67 to 0.69; sigma_j 1.0: x0.39 to 0.40; sigma_j 1.5: x0.11 to 0.14 | different tree sets in C12 and C9b; R_nuc beyond 250 pc only at 20 trees |
 | R6 | Accretion efficiency and radiative efficiency | C12 | eta_acc x0.1 / x10: 1.17 to 1.27 / 0.52 to 0.75; radiative efficiency 0.057 / 0.32: 1.04 to 1.05 / 0.87 to 0.91 | radiative efficiency is weak because the Eddington limit does not bind at the critical seed |
 | R7 | The simplification from the exploratory model to the MVM changes the boundary by 0.6 to 3.4% | C15 | per-tree ratio 1.034 (3e10), 1.006 (3e11) | 20 trees, 401 steps, identical trees |
+| R8 | The accessible-regime ratio depends on the adopted efficiencies: the no-feedback floor scales as about eta_acc/eps_sf, but not exactly as the ratio alone | C18 (efficiency grid); `sat_fig8_eta_eps.png`; `docs/mvm_efficiency_literature_check.md` | over a factor of about 80 in the ratio, log-log slope 0.79 to 0.98 (no feedback); the two grid points with equal ratio 0.667, (0.005, 0.0075) and (0.02, 0.03), give R = 0.546 and 0.401 (3e10, seed 1e3), 0.373 and 0.241 (3e11) | absolute efficiencies matter because they change the gas trajectory and the Eddington limitation (for seed 1e3, 20 to 62% of accreting steps are Eddington-capped in every cell of the grid, carrying 5 to 37% of the BH mass gained without feedback); AGN feedback adds a further dependence; heavy seeds at low ratio retain their seed memory. eps_sf = 0.015 is inherited (applied per local free-fall time in the MVM, per Hubble-scale clock in the source) and eta_acc = 0.005 has no independent calibration in the sources checked: the ratio is not independently motivated |
 
 ## 4. Numerical qualifications
 
@@ -84,6 +87,9 @@ except where marked. Nothing in this file is manuscript text.
 10. That the model has been comprehensively parameter-tested: z_reion and UV suppression, lambda, f_b, the NFW concentration and the sharpness of the cold/hot step are untested in the MVM.
 11. That the R_nuc = 250 pc experiment is a second physical model or a candidate fiducial.
 12. That 1e7 Msun is a seed-formation channel (it is a benchmark seed mass).
+13. That M_BH/M_star of 0.1 to 0.2 is a universal physical ceiling, an attractor, or an emergent characteristic scale. It is the model's nuclear supply partition (about eta_acc/eps_sf) reduced by feedback.
+14. That eta_acc and eps_sf are independently calibrated, or that the black hole-to-stellar partition is a prediction. It is conditional on the adopted efficiencies.
+15. That the critical seed is close to the target unconditionally: it requires poor accessibility (the fiducial) or eta_acc/eps_sf times the feedback factor below f_BH.
 
 ## 7. Figures and claims
 
@@ -92,6 +98,7 @@ except where marked. Nothing in this file is manuscript text.
 | 1 | `output/mvm_fig1_boundary.png` | H1, H2 (lower panel), R3 (kink location), Q4 (band) |
 | 2 | `output/mvm_fig2_inverse.png` | H4, S1, S2 (dashed curves and band); caption must say the accessibility test is an experiment and that the median is not the individual growth |
 | 3 | `output/mvm_fig3_hostbaryons.png` | H5 |
+| C18 | `output/sat_fig1_trajectories.png`, `sat_fig2_final_vs_seed.png`, `sat_fig3_fmom.png`, `sat_fig4_fmom_trajectories.png`, `sat_fig5_all_accessible.png`, `sat_fig6_test4.png`, `sat_fig7_phase.png`, `sat_fig8_eta_eps.png` | S3, S5, R8 (diagnostic figures; not proposed for the manuscript without a decision) |
 
 ## 8. Corrections to the working sentences (found by checking against the data) and the agreed wording
 
@@ -104,11 +111,13 @@ The two working sentences of 2026-09-20 were overstated; both were tested by `c1
   True for the R_nuc = 250 pc test (light seeds at least 2.9 dex short) but not for stronger accessibility: at sigma_j = 1.5 light seeds reach 0.07 to 0.12 of M_star,tot, a factor of about 4 to 7 short of 0.5, and a 1e7 Msun seed reaches 0.42 at 3e10 (5% of trees at or above 0.5).
   **Agreed:** *Increasing nuclear accessibility can drive orders-of-magnitude growth of light seeds, but in the explored models the resulting BH mass saturates at a substantial fraction of the stellar mass rather than generically reaching the adopted M_BH/M_star = 0.5 target.*
   (Read "saturates" as a description of the explored models, not a claim of a universal ceiling: see S3.)
+* After C18 the second sentence has a mechanism: the light-seed ratio approaches a level set by the competition between black hole growth and nuclear star formation (S3, R8), which for the fiducial efficiencies lies below f_BH. "Saturates" describes the explored models and is conditional on eta_acc/eps_sf.
 * What this says: accessibility matters, but it matters by changing how much black hole growth can be achieved from a given seed, not by turning the critical solution into a conventional Eddington-growth problem.
 
 ## 9. Open narrative decisions
 
 1. Which figures go into the manuscript, and whether the inverse figure (Fig 2) is presented as central or interpretive.
-2. S3 is retained as a model result with the qualification beside it. Open: whether the 0.1 to 0.2 scale survives one carefully chosen physical stress test (for example the feedback and star-formation prescriptions at sigma_j = 1.5), which would decide whether it belongs in a paper at all.
+2. S3 is retained as a mechanism, not a physical scale (see the wording in S3 and the not-claimed items 13 to 15). The stress test that could have made it a result of the paper has been run (C18) and reduced it to the model's efficiencies; no further sweeps are planned.
 3. How to describe M_hot: as a modelling dependence of the high-mass boundary, with the location varied but not the sharpness.
 4. The old-model numbers (crib sheet, section 3) must not appear.
+5. How prominently the efficiency dependence (R8) and its provenance appear, given that eta_acc has no independent calibration in the sources checked (`docs/mvm_efficiency_literature_check.md`).

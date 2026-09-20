@@ -152,6 +152,39 @@ Do not say: that the critical seed is ever Eddington-limited at the fiducial; do
 physical corner (half the nuclear reservoir consumed per free-fall time, beyond the paper's own eta_acc^(-1/beta)
 ceiling); do not multiply a median G by a median M_seed,crit (heavy tails).
 
+#### C9b. How far do fixed seeds get across the accessibility range? (D: `c17_accessibility_reach.log`, 60 trees, 801-step dt)
+
+Direct per-tree M_BH(z=5)/M_star,tot(z=5), median [16,84]; "reach" = fraction of trees at or above f_BH = 0.5; Mcrit = median critical seed (f_BH = 0.5) and its
+ratio to the fiducial cell (same trees in every cell).
+
+3e10:
+
+| sigma_j, R_nuc [pc] | Mcrit [Msun] (ratio to fiducial) | seed 1e3 | seed 2e5 | seed 1e7 |
+|---|---|---|---|---|
+| 0.5, 100 (fiducial) | 9.0e7 (1.00) | 4.4e-6 [3.7e-6, 5.3e-6] | 8.7e-4 [7.5e-4, 1.1e-3] | 4.5e-2 [3.9e-2, 5.5e-2] |
+| 0.5, 250 (accessibility test) | 7.9e7 (0.88) | 6.4e-5 [1.7e-5, 2.8e-4] | 9.5e-4 [8.1e-4, 1.3e-3] | 4.7e-2 [4.1e-2, 5.7e-2] |
+| 1.0, 100 | 3.6e7 (0.40) | 6.3e-3 [1.5e-3, 1.1e-2] | 2.8e-3 [1.5e-3, 5.2e-3] | 8.9e-2 [7.8e-2, 1.1e-1] |
+| 1.5, 100 | 1.3e7 (0.14) | 7.2e-2 [5.2e-2, 9.4e-2] | 9.2e-2 [7.2e-2, 1.0e-1] | 0.42 [0.40, 0.45], reach 5.0% |
+| 1.0, 300 | 2.8e7 (0.31) | 3.7e-2 [3.1e-2, 4.6e-2] | 3.9e-2 [2.9e-2, 4.9e-2] | 0.18 [0.14, 0.22] |
+| 1.5, 300 | 1.4e7 (0.16) | 7.1e-2 [5.3e-2, 8.8e-2] | 8.9e-2 [7.2e-2, 1.0e-1] | 0.38 [0.34, 0.42], reach 3.3% |
+
+3e11:
+
+| sigma_j, R_nuc [pc] | Mcrit [Msun] (ratio to fiducial) | seed 1e3 | seed 2e5 | seed 1e7 |
+|---|---|---|---|---|
+| 0.5, 100 (fiducial) | 1.4e9 (1.00) | 2.9e-7 [2.3e-7, 3.7e-7] | 5.8e-5 [4.8e-5, 7.6e-5] | 2.9e-3 [2.4e-3, 3.8e-3] |
+| 0.5, 250 (accessibility test) | 1.1e9 (0.82) | 6.3e-5 [3.8e-6, 2.7e-4] | 7.6e-5 [5.8e-5, 9.7e-5] | 3.1e-3 [2.5e-3, 4.0e-3] |
+| 1.0, 100 | 5.3e8 (0.39) | 6.8e-3 [2.8e-3, 1.1e-2] | 1.7e-3 [5.0e-4, 6.2e-3] | 5.5e-3 [4.9e-3, 6.9e-3] |
+| 1.5, 100 | 1.5e8 (0.11) | 9.2e-2 [6.9e-2, 1.2e-1] | 0.12 [8.5e-2, 0.14] | 0.17 [0.15, 0.18] |
+| 1.0, 300 | 4.0e8 (0.29) | 5.4e-2 [4.6e-2, 5.8e-2] | 4.8e-2 [3.8e-2, 5.8e-2] | 4.2e-2 [3.4e-2, 5.7e-2] |
+| 1.5, 300 | 1.7e8 (0.13) | 9.3e-2 [7.2e-2, 1.2e-1] | 0.11 [8.0e-2, 0.13] | 0.16 [0.13, 0.17] |
+
+* In the accessible cells the black hole mass saturates at about 0.1 to 0.2 of M_star,tot, almost independent of the seed (3e11, sigma_j = 1.5: 0.09, 0.12, 0.17 for
+  seeds 1e3, 2e5, 1e7). At the fiducial and in the R_nuc = 250 pc test it does not (the ratio tracks the seed). No cell has more than 5 per cent of trees at f_BH = 0.5.
+* The critical seed falls to 0.11 to 0.16 of its fiducial value at sigma_j = 1.5, and to 0.29 to 0.40 at sigma_j = 1.0, while remaining supply-limited (C9) and at least 1.3e7 Msun at 3e10.
+* Do not say: that accessibility leaves the critical boundary unchanged; that increased accessibility "does not approach" f_BH = 0.5 (it is a factor of about 4 to 7 short for light seeds at sigma_j = 1.5); that the
+  R_nuc = 250 pc test is representative of stronger accessibility. The R_nuc = 250 pc test leaves light seeds at least 2.9 dex below f_BH = 0.5 (C7).
+
 ### C10. Seed against host baryons
 
 | Quantity | Result (P) | Caveat | Do not say |

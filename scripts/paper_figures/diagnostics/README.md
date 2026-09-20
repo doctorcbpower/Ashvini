@@ -20,6 +20,7 @@ differ by sampling noise (about 1 to 2 per cent in a 60-tree median). All runs u
 | `mvm_cap.py` | `feedback_limited_by_z_20trees` | 20, 401 | feedback-limited fraction by redshift |
 | `c17_diagnostics.py zseed\|mhot\|nrd\|trees` | `c17_zseed`, `c17_mhot`, `c17_nrd`, `c17_trees` | 100 paired (240 for trees), 801-step dt | z_seed, M_hot, n_rd, and the (invalid) PCH08 comparison |
 | `c17_smooth_assembly.py` | `c17_smooth_assembly` | 1 deterministic history | frozen MVM on the Fakhouri et al. (2010) mean accretion history |
+| `c17_accessibility_reach.py` | `c17_accessibility_reach` | 60, 801-step dt | fixed-seed reach of f_BH and critical-seed ratio across (sigma_j, R_nuc) cells |
 | `c17_pch08_check*.py` | `c17_pch08_check` | 40 to 60 | why PCH08 cannot be used here (near-deterministic, too-early main-progenitor history at small M_res) |
 
 `c17_*` diagnostics assert that `reservoir_stock.py` has the hash recorded in the production JSON, so they branch from the frozen commit.

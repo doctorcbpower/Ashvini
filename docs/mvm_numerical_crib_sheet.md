@@ -179,8 +179,9 @@ ratio to the fiducial cell (same trees in every cell).
 | 1.0, 300 | 4.0e8 (0.29) | 5.4e-2 [4.6e-2, 5.8e-2] | 4.8e-2 [3.8e-2, 5.8e-2] | 4.2e-2 [3.4e-2, 5.7e-2] |
 | 1.5, 300 | 1.7e8 (0.13) | 9.3e-2 [7.2e-2, 1.2e-1] | 0.11 [8.0e-2, 0.13] | 0.16 [0.13, 0.17] |
 
-* In the accessible cells the black hole mass saturates at about 0.1 to 0.2 of M_star,tot, almost independent of the seed (3e11, sigma_j = 1.5: 0.09, 0.12, 0.17 for
+* In the accessible cells the black hole mass approaches about 0.1 to 0.2 of M_star,tot, with weak dependence on the seed (3e11, sigma_j = 1.5: 0.09, 0.12, 0.17 for
   seeds 1e3, 2e5, 1e7). At the fiducial and in the R_nuc = 250 pc test it does not (the ratio tracks the seed). No cell has more than 5 per cent of trees at f_BH = 0.5.
+  This is a result of the explored models, not an established saturation scale: it may reflect the feedback prescription, the angular-momentum distribution, the nuclear radius or the star-formation law.
 * The critical seed falls to 0.11 to 0.16 of its fiducial value at sigma_j = 1.5, and to 0.29 to 0.40 at sigma_j = 1.0, while remaining supply-limited (C9) and at least 1.3e7 Msun at 3e10.
 * Do not say: that accessibility leaves the critical boundary unchanged; that increased accessibility "does not approach" f_BH = 0.5 (it is a factor of about 4 to 7 short for light seeds at sigma_j = 1.5); that the
   R_nuc = 250 pc test is representative of stronger accessibility. The R_nuc = 250 pc test leaves light seeds at least 2.9 dex below f_BH = 0.5 (C7).

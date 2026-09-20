@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).parent
 OUTDIR = HERE / "output"
-plt.style.use(str(HERE / "mnras_science.mplstyle"))
-plt.rcParams["axes.grid"] = False
+import paper_style
+paper_style.apply()
 
 D = json.load(open(OUTDIR / "mvm_production_results.json"))
 R = sorted(D["results"], key=lambda r: r["M0"])
@@ -23,22 +23,22 @@ crit = pct("Mcrit")
 tgt = np.array([np.nanpercentile(FBH * np.array(r["Mstar"]), [16, 50, 84]) for r in R])
 ratio = np.array([np.nanpercentile(np.array(r["Mcrit"]) / (FBH * np.array(r["Mstar"])), [16, 50, 84]) for r in R])
 
-fig, (ax, bx) = plt.subplots(2, 1, figsize=(3.5, 4.5), sharex=True, gridspec_kw=dict(height_ratios=[2.3, 1], hspace=0.06))
+fig, (ax, bx) = plt.subplots(2, 1, figsize=(paper_style.COL, 4.4), sharex=True, gridspec_kw=dict(height_ratios=[2.3, 1], hspace=0.06))
 ax.fill_between(M, crit[:, 0], crit[:, 2], color="C0", alpha=0.25, lw=0, label=r"$M_{\rm seed,crit}$, 16--84\% (trees)")
 ax.plot(M, crit[:, 1], color="C0", lw=1.8, label=r"$M_{\rm seed,crit}$, median")
-ax.plot(M, tgt[:, 1], color="C3", lw=1.0, ls="--", label=r"$f_{\rm BH}M_{\star,{\rm tot}}(z=5)$, median")
+ax.plot(M, tgt[:, 1], color=paper_style.RED, lw=1.0, ls="--", label=r"$f_{\rm BH}M_{\star,{\rm tot}}(z=5)$, median")
 # the three halo masses with the deepest diagnostic coverage (convergence, sensitivities, regime map): small unlabelled markers
 diag = np.array([np.argmin(abs(M - m0)) for m0 in (3e10, 3e11, 3e13)])
 ax.plot(M[diag], crit[diag, 1], ls="none", marker="o", ms=3.0, mfc="white", mec="C0", mew=0.8, zorder=6)
 for lab, mass in (("Pop III", 1e2), ("runaway", 1e3), ("direct collapse", 2e5)):
     ax.axhline(mass, color="0.45", lw=0.6, ls=":", zorder=0)
-    ax.text(M.max() * 0.93, mass * 1.25, lab, fontsize=6.5, ha="right", va="bottom", color="0.35")
+    ax.text(M.max() * 0.93, mass * 1.25, lab, fontsize=7, ha="right", va="bottom", color="0.3")
 ax.axvline(4e11, color="0.6", lw=0.6, ls="-.", zorder=0)
-ax.text(4.4e11, 2.0e2, r"$M_{\rm hot}$", fontsize=7, color="0.4", va="bottom")
+ax.text(4.4e11, 2.0e2, r"$M_{\rm hot}$", fontsize=7, color="0.3", va="bottom")
 ax.set_yscale("log")
 ax.set_ylabel(r"$M_{\rm seed,crit}\ [M_\odot]$")
 ax.set_ylim(5e1, 3e10)
-ax.legend(loc="upper left", fontsize=6.5)
+ax.legend(loc="upper left", fontsize=7)
 
 bx.fill_between(M, ratio[:, 0], ratio[:, 2], color="C0", alpha=0.25, lw=0)
 bx.plot(M, ratio[:, 1], color="C0", lw=1.8)
@@ -51,7 +51,7 @@ lo = min(0.8, np.nanmin(ratio) - 0.03)
 bx.set_ylim(lo, 1.02)
 bx.set_xlim(M.min() * 0.9, M.max() * 1.1)
 out = OUTDIR / "mvm_fig1_boundary.png"
-fig.savefig(out, dpi=300)
+paper_style.save(fig, OUTDIR / "mvm_fig1_boundary")
 print("saved", out)
 for r, c, q in zip(R, crit[:, 1], ratio[:, 1]):
     print(f"  M0={r['M0']:.2e}: median M_seed,crit={c:.3e}, ratio={q:.3f}, bracket fails={r['bracket_fail']}, max|F|={r['max_abs_F']:.0e}")

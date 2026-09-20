@@ -11,14 +11,15 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).parent
 OUTDIR = HERE / "output"
-plt.style.use(str(HERE / "mnras_science.mplstyle"))
-plt.rcParams["axes.grid"] = False
+import paper_style
+paper_style.apply()
 
 D = json.load(open(OUTDIR / "mvm_production_results.json"))
 R = {round(np.log10(r["M0"]), 2): r for r in D["results"]}
-picks = [(10.48, "C0", r"$3\times10^{10}$"), (11.48, "C1", r"$3\times10^{11}$"), (13.48, "C3", r"$3\times10^{13}$")]
+MC = paper_style.seq(3)
+picks = [(10.48, MC[0], r"$3\times10^{10}$"), (11.48, MC[1], r"$3\times10^{11}$"), (13.48, MC[2], r"$3\times10^{13}$")]
 
-fig, ax = plt.subplots(figsize=(3.5, 3.0))
+fig, ax = plt.subplots(figsize=(paper_style.COL, 3.0))
 for key, c, lab in picks:
     r = R[key]
     z = np.array(r["z"])
@@ -36,9 +37,9 @@ ax.set_xlim(25, 5)
 ax.set_ylim(1e-4, 3e6)
 ax.set_xlabel(r"$z$")
 ax.set_ylabel(r"$M_{\rm BH}\,/\,(f_{\rm b}M_{\rm halo})$")
-ax.legend(loc="upper right", fontsize=6.3)
+ax.legend(loc="upper right", fontsize=7)
 out = OUTDIR / "mvm_fig3_hostbaryons.png"
-fig.savefig(out, dpi=300)
+paper_style.save(fig, OUTDIR / "mvm_fig3_hostbaryons")
 print("saved", out)
 for key, c, lab in picks:
     r = R[key]

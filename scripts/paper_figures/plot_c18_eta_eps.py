@@ -8,13 +8,15 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 HERE = Path(__file__).parent; OUT = HERE / "output"
-plt.style.use(str(HERE / "mnras_science.mplstyle")); plt.rcParams["axes.grid"] = False
+import paper_style
+paper_style.apply()
 D = json.load(open(OUT / "c18_eta_eps_results.json"))
 LAB = {3e10: r"$3\times10^{10}$", 3e11: r"$3\times10^{11}$"}
 CELL = {"nofb": "all feedback off", "fb": "AGN + stellar wind on"}
-ETA_C = {0.001: "C0", 0.005: "C2", 0.02: "C3"}
+_EC = paper_style.seq(3)
+ETA_C = {0.001: _EC[0], 0.005: _EC[1], 0.02: _EC[2]}
 EPS_M = {0.0075: "^", 0.015: "o", 0.03: "s"}
-fig, axes = plt.subplots(2, 2, figsize=(7.0, 6.0), sharex=True, sharey=True)
+fig, axes = plt.subplots(2, 2, figsize=(paper_style.FULL, 6.0), sharex=True, sharey=True)
 x = np.logspace(-1.6, 0.6, 50)
 for i, r in enumerate(D):
     for j, cell in enumerate(("nofb", "fb")):
@@ -28,13 +30,14 @@ for i, r in enumerate(D):
             if row["cross_late"]:
                 ax.plot(row["ratio"], 10 ** row["cross_late"][0], marker="x", color="k", ms=4, ls="none", mew=0.7)
         ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlim(0.02, 4); ax.set_ylim(0.005, 5)
-        ax.set_title(LAB[r["M0"]] + r" $M_\odot$: " + CELL[cell], fontsize=7)
+        ax.set_title(LAB[r["M0"]] + r" $M_\odot$: " + CELL[cell], fontsize=8)
         if i == 1: ax.set_xlabel(r"$\eta_{\rm acc}/\epsilon_{\rm sf}$")
         if j == 0: ax.set_ylabel(r"$M_{\rm BH}/M_{\star,{\rm tot}}\,(z=5)$")
 h = [Line2D([0], [0], color=c, marker="o", ls="none", ms=4, label=rf"$\eta_{{\rm acc}}={e:g}$") for e, c in ETA_C.items()]
 h += [Line2D([0], [0], color="0.3", marker=m, ls="none", ms=4, label=rf"$\epsilon_{{\rm sf}}={e:g}$") for e, m in EPS_M.items()]
 h += [Line2D([0], [0], color="0.3", marker="o", ls="none", ms=4, label="seed $10^3$"), Line2D([0], [0], color="0.3", marker="o", mfc="white", ls="none", ms=4, label="seed $10^7$"),
       Line2D([0], [0], color="k", marker="x", ls="none", ms=4, label=r"phase-space zero crossing ($z\le7$)"), Line2D([0], [0], color="k", ls="--", lw=0.8, label=r"$R=\eta_{\rm acc}/\epsilon_{\rm sf}$")]
-axes[0, 0].legend(handles=h, fontsize=5.3, loc="lower right", ncol=2)
-fig.tight_layout(); fig.savefig(OUT / "sat_fig8_eta_eps.png", dpi=250)
+fig.tight_layout(rect=(0, 0.09, 1, 1))
+fig.legend(handles=h, loc="lower center", ncol=4, fontsize=7, frameon=False)
+paper_style.save(fig, OUT / "sat_fig8_eta_eps")
 print("saved sat_fig8_eta_eps.png")

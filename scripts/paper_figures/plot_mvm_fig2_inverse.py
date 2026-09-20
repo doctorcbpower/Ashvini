@@ -12,8 +12,8 @@ from matplotlib.lines import Line2D
 
 HERE = Path(__file__).parent
 OUTDIR = HERE / "output"
-plt.style.use(str(HERE / "mnras_science.mplstyle"))
-plt.rcParams["axes.grid"] = False
+import paper_style
+paper_style.apply()
 
 D = json.load(open(OUTDIR / "mvm_production_results.json"))
 R = sorted(D["results"], key=lambda r: r["M0"])
@@ -23,9 +23,10 @@ labels = {1e2: r"$10^{2}$ (Pop III)", 1e3: r"$10^{3}$ (runaway)", 2e5: r"$2\time
 med = lambda case, s: np.array([np.nanmedian(r["fixed_seed"][case][str(s)]["ratio"]) for r in R])
 band = lambda case, s: np.array([np.nanpercentile(r["fixed_seed"][case][str(s)]["ratio"], [16, 84]) for r in R])
 
-fig, ax = plt.subplots(figsize=(3.6, 3.3))
+fig, ax = plt.subplots(figsize=(paper_style.COL, 3.4))
+SEEDC = paper_style.seq(4)
 for k, s in enumerate(seeds):
-    c = f"C{k}"
+    c = SEEDC[k]
     ax.fill_between(M, band("fiducial", s)[:, 0], band("fiducial", s)[:, 1], color=c, alpha=0.15, lw=0)
     ax.plot(M, med("fiducial", s), color=c, lw=1.5, ls="-", label=labels[s])
     ax.fill_between(M, band("accessible_R250", s)[:, 0], band("accessible_R250", s)[:, 1], color=c, alpha=0.10, lw=0)
@@ -40,12 +41,12 @@ ax.set_ylabel(r"$M_{\rm BH}(z=5)\,/\,M_{\star,{\rm tot}}(z=5)$")
 ax.set_ylim(1e-11, 3)
 h1, l1 = ax.get_legend_handles_labels()
 style = [Line2D([0], [0], color="0.3", lw=1.5, ls="-"), Line2D([0], [0], color="0.3", lw=1.2, ls="--")]
-leg1 = ax.legend(h1, l1, title=r"seed [$M_\odot$]", loc="lower left", fontsize=6.5, title_fontsize=6.5)
+leg1 = ax.legend(h1, l1, title=r"seed [$M_\odot$]", loc="lower left", fontsize=7, title_fontsize=7)
 ax.add_artist(leg1)
-ax.legend(style, [r"fiducial ($R_{\rm nuc}=100$ pc)", r"accessibility test ($R_{\rm nuc}=250$ pc)"], loc="upper right", fontsize=6.5,
+ax.legend(style, [r"fiducial ($R_{\rm nuc}=100$ pc)", r"accessibility test ($R_{\rm nuc}=250$ pc)"], loc="upper right", fontsize=7,
           bbox_to_anchor=(1.0, 0.86))
 out = OUTDIR / "mvm_fig2_inverse.png"
-fig.savefig(out, dpi=300)
+paper_style.save(fig, OUTDIR / "mvm_fig2_inverse")
 print("saved", out)
 for case in ("fiducial", "accessible_R250"):
     print(case)

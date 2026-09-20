@@ -30,6 +30,9 @@ OUTDIR.mkdir(exist_ok=True)
 
 run_params = pymctrees_io.get_params(FORAOIS_CONFIG)
 h = run_params["Cosmology"]["h"]
+# P(k)/sigma(M) are evaluated at the anchor redshift z0=5, and foraois normalises the collapse
+# barrier to the same redshift (delta_col(z) = 1.686 D(5)/D(z)), so the trees are identical to
+# those built with P(k) at z=0. Requires foraois with CosmoData.pk_redshift (2026-09-20 fix).
 cosmo_data = cosmo_utils.CosmoData(run_params, redshift=[5.0])
 tree_gen = ZhangHuiMergerTree(cosmo_data, run_params, model="cdm")
 

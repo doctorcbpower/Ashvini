@@ -48,6 +48,27 @@ class PaperReservoirParams:
     # Critical-seed boundary target
     f_bh: float = 0.5                # overmassiveness target, M_BH(z_anchor) = f_bh*M_star(z_anchor)
 
+    # Stellar-wind (supernova) outflow. `stellar_winds` is an option of the old run_reservoir_paper only and defaults to
+    # False so that model behaves as at the last commit; the MVM always includes the stellar outflow.
+    stellar_winds: bool = False      # include Ashvini's SN mass-loading outflow in run_reservoir_paper (metal-poor limit)
+    eta_sn_scale: float = 1.0        # multiplier on supernovae_feedback.mass_loading_factor (used by the MVM)
+
+    # Fields below are used by ashvini.reservoir_stock (the MVM) as follows: n_rd, c_nfw, f_mom, eta_sn_scale.
+    # epsilon_sf_ext, wind_mode, wind_driver, R_nuc_rd, dm_nuclear, sf_ext_timescale, agn_wind_type, agn_wind_sink
+    # exist only for the frozen pre-MVM reference (ashvini.reservoir_stock_premvm); the MVM has no such options.
+    # Stock reservoir: galaxy-wide star formation and wind modes
+    epsilon_sf_ext: float = 0.015    # galaxy-scale (outside R_nuc) star-formation efficiency
+    wind_mode: str = "extranuclear"  # 'none' | 'extranuclear' | 'galaxy' (whole galaxy, in proportion to gas mass)
+    wind_driver: str = "total"       # 'total' | 'nuclear': the SFR that drives the stellar wind
+    R_nuc_rd: float | None = None    # if set, the nuclear scale is R_nuc_rd * R_d(t) (R_d = lam R_vir/sqrt2) instead of R_nuc_pc
+    n_rd: float = 10.0               # galaxy scale in units of the disc scale length R_d = lam R_vir / sqrt(2); inf = no galaxy cut
+    c_nfw: float = 4.0               # NFW concentration of the halo (assumed; not calibrated at z > 5)
+    dm_nuclear: bool = False         # include the dark matter inside R_nuc in M_enc(R_nuc) (always included at the galaxy scale)
+    sf_ext_timescale: str = "freefall"  # galaxy-scale star formation: 'freefall' (t_ff(R_gal)) | 'hubble' (0.141 t_H(z))
+    agn_wind_type: str = "momentum"    # 'energy' (King 2003, epsilon_f) | 'momentum' (Mdot_out v_out = f_mom L/c, v_out = sigma)
+    f_mom: float = 1.0               # momentum coupling of the momentum-driven wind (1 = L/c)
+    agn_wind_sink: str = "galaxy"    # 'galaxy' | 'nuclear': gas the King AGN wind is drawn from (galaxy: in proportion to gas mass)
+
     # Reservoir initial conditions
     gas_mass0: float = 1.0e5
     stars_mass0: float = 1.0e3

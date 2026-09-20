@@ -1,0 +1,30 @@
+# MVM diagnostics (2026-09-20)
+
+Scripts and logs behind the numbers in `docs/mvm_numerical_crib_sheet.md` that do **not** come from the
+production ensemble (`output/mvm_production_results.json`). The merger-tree sampler (numba backend) is not
+seed-reproducible, so every log is the record of its own tree ensemble; two logs of "the same" experiment
+differ by sampling noise (about 1 to 2 per cent in a 60-tree median). All runs use the frozen MVM
+(`ashvini/reservoir_stock.py`) at the fiducial parameters unless the script varies them, and f_BH = 0.5.
+
+| Script | Log(s) in `logs/` | Trees / steps | What it tests |
+|---|---|---|---|
+| `mvm_converge.py` | `converge_60trees_*` | 60 (240 pooled), 201/401/801, dz, M_res | sampling, time step, first look at dz and M_res (60 trees) |
+| `mvm_converge2.py` | `converge_dz_Mres_240trees_*` | 240 x 2 sets, 401 | dz and M_res with 240 trees per setting |
+| `mvm_dtscan.py` | `timestep_paired_60trees_*` | 60 paired, 201/401/801/1601 | time-step convergence; nuclear share, early star formation, G_BH |
+| `mvm_mass.py` | `mass_scaling_240trees_*` | 240, 801 (3e13 also 401) | mass scaling, host-baryon fractions, budget, feedback-limited fractions |
+| `mvm_sens.py` | `sensitivities_60trees_*` | 60 paired, 801 | sigma_j, eps_sf, R_nuc, f_mom, eta_SN, wind off |
+| `mvm_claims.py` | `claims_regime_and_sens_60trees_*` | 60 paired, 801 | Eddington regime for fixed seeds; eta_acc, radiative efficiency, f_BH |
+| `mvm_regime.py` | `regime_grid_20trees_*` | 20, 801 | (sigma_j, R_nuc) grid and eta_acc series: peak Mdot_acc/Mdot_Edd, capped fraction, G |
+| `mvm_regime2.py` | `regime_lightseed_map_20trees_*` | 20, 801 | fine light-seed map; F(seed) sign changes in accessible corners |
+| `mvm_compare.py` | `premvm_vs_mvm_20trees` | 20 paired, 401 | frozen pre-MVM against MVM on identical trees |
+| `mvm_cap.py` | `feedback_limited_by_z_20trees` | 20, 401 | feedback-limited fraction by redshift |
+
+Caveats on individual logs:
+
+* `premvm_vs_mvm_20trees.log`: the line "wind cap ... steps with gas" uses a wrong denominator (steps with gas at the
+  start of the step) and can exceed 100 per cent. Use `feedback_limited_by_z_20trees.log`, whose denominator is
+  the steps with any feedback demand, or the 801-step figures in `mass_scaling_240trees_*`.
+* Diagnostics that scale with the time step (nuclear share of M_star, star formation before z = 10, G_BH - 1,
+  the feedback-limited fraction) are resolution-dependent; see `timestep_paired_60trees_*`.
+* `regime_*` and `converge_*` logs use fewer trees (20 or 60) than production; quote them for regimes and
+  ratios, not as precision values of M_seed,crit.

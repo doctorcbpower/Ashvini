@@ -61,6 +61,7 @@ from scipy.special import erf
 
 from . import black_holes_growth_slimdisk as bh_slimdisk
 from . import reionization as reion
+from . import supernovae_feedback as sn
 from .constants import G, Msun_g, pc_cm
 from .reionization import s as _okamoto_step
 from .spin import epsilon_from_spin
@@ -458,6 +459,7 @@ def run_reservoir_paper(
     sigma_lnj=PAPER_PARAMS.sigma_lnj, lam_median=LAMBDA_MEDIAN_FIDUCIAL,
     gas_mass0=PAPER_PARAMS.gas_mass0, stars_mass0=PAPER_PARAMS.stars_mass0,
     halo_growth_rate=None,
+    stellar_winds=PAPER_PARAMS.stellar_winds, eta_sn_scale=PAPER_PARAMS.eta_sn_scale,
 ):
     """
     Integrates the paper's own gas/star/BH reservoir ODEs (Eqs. gas,
@@ -527,6 +529,17 @@ def run_reservoir_paper(
     by construction (e.g. shoot_smooth_halo_trajectory's output), since
     that closed-form rate has no notion of a real tree's merger jumps.
 
+    stellar_winds / eta_sn_scale : supernova/stellar-wind outflow, in
+    addition to the King (2003) AGN wind. Reuses Ashvini's own
+    supernovae_feedback.mass_loading_factor (Menon & Power 2024,
+    eta ~ M_halo^(-1/3) (1+z)^(-1/2)) in its metal-poor limit
+    (stellar_metallicity=0, appropriate at z>5), applied instantaneously
+    to the star-formation rate: Mdot_out,SN = eta_sn_scale * eta(M_halo,z)
+    * Mdot_star, with Mdot_star the (nuclear) star-formation rate, removed
+    only from gas outside R_nuc and capped at that gas per step.
+    eta_sn_scale=0 (or stellar_winds=False) recovers the AGN-only model
+    exactly.
+
     Returns a dict: bh_mass, gas_mass, stars_mass, halo_mass, cosmic_time,
     redshift (each (N, n) except cosmic_time/redshift, shape (n,)), plus
     mdot_in/mdot_out (each (N, n)) for the outflow/inflow crossing-redshift
@@ -552,6 +565,7 @@ def run_reservoir_paper(
     bh_mass = np.zeros((N, n))
     mdot_in = np.zeros((N, n))
     mdot_out = np.zeros((N, n))
+    mdot_out_sn = np.zeros((N, n))
     A_bh_hist = np.zeros((N, n))  # nuclear BH accretion supply (pre-cap), Msun/Gyr -- diagnostic only
 
     gas_mass[:, 0] = gas_mass0
@@ -626,14 +640,25 @@ def run_reservoir_paper(
         sfr = gas_nuc_prev / (t_ff / epsilon_sf)
 
         # --- Eq. gas: dGas/dt = Mdot_in - Mdot_star - Mdot_BH - Mdot_out (full galaxy reservoir depleted, not just the nuclear subset) ---
-        gas_new = gm_prev + dt * (A_acc - sfr - bh_growth_rate - wind_rate)
+        if stellar_winds:
+            # driver: SFR of stars formed inside R_nuc (nuclear-only star formation);
+            # sink: gas OUTSIDE R_nuc only (gas inside R_nuc is never lost to the
+            # wind), capped at what that extranuclear gas can supply this step
+            gas_ext_prev = np.maximum(gm_prev - gas_nuc_prev, 0.0)
+            sn_wind = eta_sn_scale * sn.mass_loading_factor(z_mid, hm_prev, 0.0) * sfr
+            sn_wind = np.minimum(sn_wind, gas_ext_prev / dt)
+        else:
+            sn_wind = np.zeros(N)
+        mdot_out[:, j] = wind_rate + sn_wind
+        mdot_out_sn[:, j] = sn_wind
+        gas_new = gm_prev + dt * (A_acc - sfr - bh_growth_rate - wind_rate - sn_wind)
         gas_mass[:, j] = np.maximum(gas_new, 0.0)
         stars_mass[:, j] = sm_prev + dt * sfr
 
     return dict(
         bh_mass=bh_mass, gas_mass=gas_mass, stars_mass=stars_mass,
         halo_mass=halo_mass, cosmic_time=cosmic_time, redshift=redshift,
-        mdot_in=mdot_in, mdot_out=mdot_out,
+        mdot_in=mdot_in, mdot_out=mdot_out, mdot_out_sn=mdot_out_sn,
         A_bh=A_bh_hist, kappa_edd=float(np.asarray(kappa_edd).item()) if np.asarray(kappa_edd).size == 1 else kappa_edd,
     )
 
@@ -663,7 +688,7 @@ STRICT_EDDINGTON_CHI_CRIT = PAPER_PARAMS.strict_eddington_chi_crit
 
 def critical_seed_paper(
     halo_mass, redshift, f_bh=PAPER_PARAMS.f_bh, seed_mass_lo=1.0, seed_mass_hi=1.0e8, n_iter=50,
-    chi_crit=STRICT_EDDINGTON_CHI_CRIT, **run_kwargs,
+    chi_crit=STRICT_EDDINGTON_CHI_CRIT, runner=None, **run_kwargs,
 ):
     """
     Vectorised bisection for M_seed,crit against run_reservoir_paper --
@@ -680,14 +705,19 @@ def critical_seed_paper(
     wrong): pass an explicit finite chi_crit only to deliberately study a
     graded super-Eddington cap, not to represent "strict Eddington".
 
+    runner : callable, optional
+        Reservoir integrator with run_reservoir_paper's calling convention
+        (default run_reservoir_paper); e.g. reservoir_stock.run_reservoir_stock.
+
     Returns (M_seed_crit, never_reaches_target, already_above_at_lo), same
     semantics as critical_seed.critical_seed.
     """
     halo_mass = np.atleast_2d(halo_mass)
     N = halo_mass.shape[0]
+    run = run_reservoir_paper if runner is None else runner
 
     def excess(seed_mass):
-        result = run_reservoir_paper(halo_mass, redshift, seed_mass, chi_crit=chi_crit, **run_kwargs)
+        result = run(halo_mass, redshift, seed_mass, chi_crit=chi_crit, **run_kwargs)
         return result["bh_mass"][:, -1] - f_bh * result["stars_mass"][:, -1]
 
     lo = np.full(N, float(seed_mass_lo))

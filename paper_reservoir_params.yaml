@@ -32,5 +32,22 @@ compaction_boost: 1.0
 
 f_bh: 0.5
 
+# stellar_winds: option of the old run_reservoir_paper only (default off = behaviour at the last commit)
+stellar_winds: false
+eta_sn_scale: 1.0
+
+# MVM uses: n_rd, c_nfw, f_mom, eta_sn_scale. The rest are options of the frozen pre-MVM reference only.
+epsilon_sf_ext: 0.015
+wind_mode: extranuclear
+wind_driver: total
+R_nuc_rd: null
+n_rd: 10.0
+c_nfw: 4.0
+dm_nuclear: false
+sf_ext_timescale: freefall
+agn_wind_type: momentum
+f_mom: 1.0
+agn_wind_sink: galaxy
+
 gas_mass0: 1.0e+5
 stars_mass0: 1.0e+3

@@ -263,7 +263,7 @@ def compute_growth_rates(smooth_accretion, merger_mass, redshifts):
 
 
 def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
-                       m_res=None, backend="numpy", seed=None):
+                       m_res=None, backend="numpy", seed=None, algorithm="pch08"):
     """
     Generate a single mass bin's forest live via pymctrees, returned in
     Ashvini's own (halo_masses, halo_growth_rates, redshifts, merger_mass)
@@ -295,6 +295,13 @@ def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
         Mass resolution (Msun); default 1e-3 * mass_bin.
     backend : {'numpy', 'numba'}
     seed : int or None
+    algorithm : {'pch08', 'zh'}
+        Tree generator. 'pch08' (default, unchanged) is PCHMergerTree; 'zh' is
+        ZhangHuiMergerTree with the collapse barrier model taken from the
+        config's dm_model. PCH08 main progenitors at small m_res/mass_bin are
+        near-deterministic and assemble earlier than Zhang-Hui (foraois
+        docs/PCH08_HIGH_Z_DIAGNOSTIC.md); scripts/zh_vs_pch08_mres_scan.py
+        shows the resulting m_res trend in M_star is a PCH08 property.
 
     Returns
     -------
@@ -316,10 +323,17 @@ def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
     run_params = pymctrees_io.get_params(pymctrees_config_path)
     h = run_params["Cosmology"]["h"]
     m_res_msun = m_res if m_res is not None else 1e-3 * mass_bin
-    _warn_if_mres_unconverged(m_res_msun, mass_bin)
+    if algorithm not in ("pch08", "zh"):
+        raise ValueError(f"Unknown algorithm '{algorithm}' (expected 'pch08' or 'zh')")
 
     cosmo_data = cosmo_utils.CosmoData(run_params, redshift=[z0])
-    tree_generator = PCHMergerTree(cosmo_data, run_params)
+    if algorithm == "zh":
+        from foraois import ZhangHuiMergerTree
+        tree_generator = ZhangHuiMergerTree(
+            cosmo_data, run_params, model=run_params["Code"].get("dm_model", "cdm"))
+    else:
+        _warn_if_mres_unconverged(m_res_msun, mass_bin)
+        tree_generator = PCHMergerTree(cosmo_data, run_params)
 
     halo_masses, redshifts, smooth_accretion, merger_mass = build_forest_for_bin(
         tree_generator, mass_bin, h, n_halos, z0, z_max, m_res_msun, dz, backend, seed,

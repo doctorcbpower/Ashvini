@@ -1,0 +1,392 @@
+[
+ {
+  "M_halo": 100000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 1.2103937473153037,
+  "p16": 0.16520787498954145,
+  "p84": 613.6316501253737,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 316227766.01683795,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 1840.7148726507517,
+  "p16": 127.67608568672279,
+  "p84": 8276.214472552212,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 1000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 24492.776977283575,
+  "p16": 8408.432872100388,
+  "p84": 70267.2394318903,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 3162277660.1683793,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 937958.7047664826,
+  "p16": 395403.66157868877,
+  "p84": 2081352.7194749552,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 10000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 21095270.00339542,
+  "p16": 13807827.069374073,
+  "p84": 29448040.823908698,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 31622776601.683792,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 150562378.11410928,
+  "p16": 121450116.13323434,
+  "p84": 169688492.03834432,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 100000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 715624076.9367335,
+  "p16": 604041540.6327393,
+  "p84": 782727611.9044697,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 316227766016.83795,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 3044939509.912135,
+  "p16": 2529811170.7076893,
+  "p84": 3377191093.3368177,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 1000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 12252911917.817736,
+  "p16": 10164978920.18026,
+  "p84": 13788920111.98371,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 3162277660168.3794,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 37771303247.412056,
+  "p16": 31195520822.645,
+  "p84": 42363714399.22964,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 10000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 68608564957.41472,
+  "p16": 59931421525.01976,
+  "p84": 77354946231.7033,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 31622776601683.793,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 122012876929.85156,
+  "p16": 104675267794.03912,
+  "p84": 140088133061.46472,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 100000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 264811239622.91232,
+  "p16": 216671489352.28604,
+  "p84": 313896110998.8643,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
+ },
+ {
+  "M_halo": 100000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 0.11895552947380805,
+  "p16": 0.07522431341327881,
+  "p84": 0.16795996942997352,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 316227766.01683795,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 21.58857749467783,
+  "p16": 12.059713741394187,
+  "p84": 33.852463776700915,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 1000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 4078.5430709566335,
+  "p16": 1986.79075727447,
+  "p84": 7220.852273006874,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 3162277660.1683793,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 473266.929739274,
+  "p16": 242495.5008788189,
+  "p84": 870856.7437392161,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 10000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 18108342.488588948,
+  "p16": 11563313.80677281,
+  "p84": 24519511.480685025,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 31622776601.683792,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 143422943.9315459,
+  "p16": 117252430.09951775,
+  "p84": 162594401.31872937,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 100000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 691018343.6123662,
+  "p16": 600118248.9040695,
+  "p84": 756824667.173802,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 316227766016.83795,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 3002226875.824692,
+  "p16": 2533355970.475911,
+  "p84": 3318617499.881745,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 1000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 11935715731.754318,
+  "p16": 9891877349.236214,
+  "p84": 13593274493.950054,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 3162277660168.3794,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 38004183751.771164,
+  "p16": 32537725037.813698,
+  "p84": 42087349288.57269,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 10000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 68856122589.182,
+  "p16": 59911664237.93945,
+  "p84": 76579307654.0712,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 31622776601683.793,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 123604397723.62317,
+  "p16": 104270598983.15024,
+  "p84": 139328798617.35727,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 100000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 273108588406.73193,
+  "p16": 221783963929.88232,
+  "p84": 315028977791.5351,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_wdm.yml"
+ },
+ {
+  "M_halo": 100000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 0.05853536276358273,
+  "p16": 0.041068222547092297,
+  "p84": 0.06601826572271223,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 316227766.01683795,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 9.319994831197306,
+  "p16": 6.620931187929248,
+  "p84": 10.915067269859374,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 1000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 1503.4394466427266,
+  "p16": 1076.2034163216877,
+  "p84": 1824.704731581131,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 3162277660.1683793,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 207941.79533770832,
+  "p16": 132129.63505844385,
+  "p84": 258711.48438209054,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 10000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 10580096.833366852,
+  "p16": 7794822.852253216,
+  "p84": 12938623.4997897,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 31622776601.683792,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 118491140.86868829,
+  "p16": 99954802.89279138,
+  "p84": 131909604.21834376,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 100000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 648086947.7557026,
+  "p16": 561102010.4612286,
+  "p84": 698932432.9366503,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 316227766016.83795,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 2875855328.1381903,
+  "p16": 2448595116.930662,
+  "p84": 3138572110.405457,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 1000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 11785655377.070063,
+  "p16": 9698584876.863075,
+  "p84": 13133686967.195572,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 3162277660168.3794,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 36574636083.989845,
+  "p16": 31260080722.01493,
+  "p84": 40636135475.52101,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 10000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 66778318360.65702,
+  "p16": 58822062081.28776,
+  "p84": 74318880759.58568,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 31622776601683.793,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 122124006414.44495,
+  "p16": 104622508851.35225,
+  "p84": 137808791626.47546,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ },
+ {
+  "M_halo": 100000000000000.0,
+  "n_resolved": 1000,
+  "n": 1000,
+  "median": 267595003675.56836,
+  "p16": 218652684537.11267,
+  "p84": 311204037264.8927,
+  "frac_with_stars": 1.0,
+  "config": "/Users/00075868/MyCodes/foraois/config/planck2018_fdm.yml"
+ }
+]

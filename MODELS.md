@@ -418,6 +418,8 @@ epsilon(z) = d/dz [ ln(1 + exp((z/beta)^gamma)) ]  (evaluated analytically)
 
 `M_halo <= 0` or `Mdot_halo <= 0` (unformed/non-accreting progenitor) forces `S_uv = 0` rather than evaluating the formula (which would otherwise divide by zero).
 
+**Audit note (2026-09-20, [docs/UV_SUPPRESSION_AUDIT.md](docs/UV_SUPPRESSION_AUDIT.md)).** The correction term equals the rate at which the equilibrium gas fraction `s(M/M_c) f_b` falls as `M_c(z)` grows, and inflow cannot go negative, so the term stops accretion rather than removing gas. Measured on Zhang-Hui trees it lets essentially no accretion through after z = 5 for `M_halo < 1e10` and about half at 1e11, and it makes the z = 0 stellar mass depend on the tree time step. The `epsilon(z)` in the code equals `-d ln M_c / d z` for z <= 5 but not above (0.09 of the true value at z = 7, zero for z >= 8); the formula written for `epsilon` above does not match either. `paper_reservoir.uv_suppression_mass_only` (the `s(mu, omega)` factor alone) is the form the MVM uses.
+
 | Parameter | Config key | Default | Meaning |
 |---|---|---|---|
 | UVB_enabled | `reionization.UVB_enabled` | True | Master on/off switch |

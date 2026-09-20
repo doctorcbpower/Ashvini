@@ -1,5 +1,16 @@
 # Resolution/timestep convergence of the z=0 stellar-to-halo mass relation
 
+> **Correction (2026-09-20).** The interpretation below, that the growth of `M_star`
+> with finer `M_res` reflects Ashvini resolving more substructure, is not supported.
+> `scripts/zh_vs_pch08_mres_scan.py` runs the same baryonic model on PCH08 and
+> Zhang-Hui trees (CDM, 200 halos per case, `dz = 0.01`, `z_max = 30`). With Zhang-Hui trees
+> the median `M_star(z=0)` changes by 11 per cent (1e12 Msun) and 34 per cent (1e11 Msun)
+> between `M_res/M0` = 1e-2 and 1e-5, and by under 10 per cent between 1e-3 and 1e-5 at 1e10
+> Msun. With PCH08 trees it rises by 1.7x, 2.0x, 17x and 9x (1e12, 1e11, 1e10, 1e9 Msun) and
+> the halo-to-halo scatter collapses. That is the near-deterministic small-`M_res/M0`
+> behaviour recorded in foraois `docs/PCH08_HIGH_Z_DIAGNOSTIC.md`. The `dz` result and the
+> `z_max` finding below are unaffected. Results: `scripts/output/zh_vs_pch08_mres_scan.json`.
+
 ## Summary
 
 While computing a stellar-to-halo mass relation (SHMR) with Ashvini run on

@@ -108,9 +108,10 @@ through:
 | `scripts/resolution_timestep_sensitivity.py` | One-parameter-at-a-time `dz`/`M_res` sensitivity scan (superseded by the joint scan below, kept for the record of how the `dz`-vs-`M_res` confound was first found) |
 | `scripts/joint_resolution_convergence.py` | The joint `dz` x `M_res` grid that resolved that confound |
 | `scripts/formation_redshift_vs_resolution.py` | Halo formation-redshift vs. `M_res`, used to rule out a `z_max`-truncation artifact as the explanation for `M_star`'s continued growth with finer `M_res` |
+| `scripts/zh_vs_pch08_mres_scan.py` | Same baryonic model on PCH08 and Zhang-Hui trees over `M_res/M0` = 1e-2 to 1e-5; shows the `M_res` trend in `M_star` comes from PCH08 at small `M_res/M0`, not from Ashvini |
 | `scripts/reionization_gamma_omega_sensitivity.py` | Sensitivity of the low-mass SHMR to the Okamoto et al. (2008) reionization-suppression shape parameters (`gamma`, `omega`) -- a separate question from the `dz`/`M_res` convergence study above |
 
-None of these five scripts are used by the paper directly (only
+None of these six scripts are used by the paper directly (only
 `shmr_dm_model_comparison.py` is); they're the reproducibility trail for
 *why* that script's settings are what they are.
 

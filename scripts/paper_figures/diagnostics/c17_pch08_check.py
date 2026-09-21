@@ -1,10 +1,10 @@
 import sys
-sys.path.insert(0, "/Users/00075868/MyCodes/foraois/src")
+import os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))); from foraois_paths import FORAOIS_SRC, FORAOIS_CONFIG; sys.path.insert(0, FORAOIS_SRC)
 import numpy as np
 from foraois import cosmo_utils, ZhangHuiMergerTree, PCHMergerTree
 from foraois.utils import io
 from ashvini import pymctrees_adapter
-rp = io.get_params("/Users/00075868/MyCodes/foraois/config/menon_power_2024.yml"); h = rp["Cosmology"]["h"]
+rp = io.get_params(FORAOIS_CONFIG); h = rp["Cosmology"]["h"]
 def stats(gen, label, M0=3e10, z0=5.0, backend="numba", N=60, seed=3):
     hm, zz, *_ = pymctrees_adapter.build_forest_for_bin(gen, M0, h, N, z0=z0, z_max=25.0, m_res_msun=1e4, dz=0.05, backend=backend, rng_seed=seed)
     at = lambda z: hm[:, int(np.argmin(abs(zz - z)))]

@@ -26,6 +26,8 @@ differ by sampling noise (about 1 to 2 per cent in a 60-tree median). All runs u
 | `c18_eta_eps.py` | `c18_eta_eps` | 100 paired, 801-step dt | eta_acc x eps_sf grid, with and without feedback |
 | `c17_pch08_check*.py` | `c17_pch08_check` | 40 to 60 | why PCH08 cannot be used here (near-deterministic, too-early main-progenitor history at small M_res) |
 
+All scripts here and `gen_mvm_production.py` locate `foraois` through the environment variable `FORAOIS_ROOT` (a checkout containing `src/` and `config/`); see `docs/PRODUCTION_PROVENANCE.md` for the state used for the production ensemble and for what is not exactly reproducible.
+
 `c17_*` diagnostics assert that `reservoir_stock.py` has the hash recorded in the production JSON, so they branch from the frozen commit.
 `logs/c17_trees.log` reports the PCH08 comparison run **as it was run**; it is not a valid result (see the PCH08 evidence in the crib sheet, C17).
 

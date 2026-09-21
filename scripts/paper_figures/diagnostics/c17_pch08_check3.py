@@ -1,9 +1,9 @@
 import sys
-sys.path.insert(0, "/Users/00075868/MyCodes/foraois/src")
+import os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))); from foraois_paths import FORAOIS_SRC, FORAOIS_CONFIG; sys.path.insert(0, FORAOIS_SRC)
 import numpy as np
 from foraois import cosmo_utils, ZhangHuiMergerTree, PCHMergerTree
 from foraois.utils import io
-rp = io.get_params("/Users/00075868/MyCodes/foraois/config/menon_power_2024.yml"); h = rp["Cosmology"]["h"]
+rp = io.get_params(FORAOIS_CONFIG); h = rp["Cosmology"]["h"]
 cd0 = cosmo_utils.CosmoData(rp, redshift=[0.0])
 for name, gen in (("PCH08", PCHMergerTree(cd0, rp)), ("ZH", ZhangHuiMergerTree(cd0, rp, model="cdm"))):
     for M_res in (1e4, 1e8, 1e10):

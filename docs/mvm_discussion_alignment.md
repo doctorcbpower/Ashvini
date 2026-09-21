@@ -1,5 +1,7 @@
 # Discussion 5.1 to 5.3 against the MVM claim map
 
+> **Historical note (2026-09-21).** Written against the pre-revision manuscript. The Discussion has since been rewritten (paper repository commit `6e5dfa3` and later edits), so the section numbers and quoted sentences below refer to that earlier draft. It is kept as the record of which old-model statements conflicted with the MVM; it is not a description of the current manuscript.
+
 Scope caveat: this note maps the manuscript's Discussion subsections (5.1 to 5.3 as numbered in the current `.tex`) against the claim map. The author's "5.1 to 5.3" meant three conceptual points on the feeding-efficiency assumptions; that is `docs/mvm_feeding_efficiency_discussion.md`. This note remains valid as a list of old-model statements that conflict with the MVM.
 
 Working note, not manuscript text. The `.tex` is untouched; the wording below is offered for you to accept, change or discard. Item IDs (H, S, R, Q, M) are those of `docs/mvm_claim_map.md`; C-numbers are those of `docs/mvm_numerical_crib_sheet.md`. Status of the numerical campaign: stopped after C18 (committed, `ebf7a44`). No literature round was run for this note. Two things from the literature enter only as stated limits: (i) the efficiency provenance check (`docs/mvm_efficiency_literature_check.md`, where only abstracts of Hobbs et al. 2012 and Hopkins & Quataert 2011 were read), and (ii) the gravitational-torque feeding scaling in section 4, which is taken from your message and has not been checked by me against the source.

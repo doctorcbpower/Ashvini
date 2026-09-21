@@ -11,15 +11,14 @@ except where marked. Nothing in this file is manuscript text.
 
 | Step | Repository | Commit | Content |
 |---|---|---|---|
-| 1 | foraois | `ed28326` | collapse barrier normalised to the P(k) redshift, with tests: the dependency used to generate the production trees |
+| 1 | foraois | `ed28326` | collapse barrier normalised to the P(k) redshift, with tests. The production trees were generated from `1ba7073` plus this change while it was still uncommitted (inferred from file times); `ed28326` committed it afterwards and is the recommended reproducibility pin, not the run-time commit (`docs/PRODUCTION_PROVENANCE.md`) |
 | 2 | foraois | `9d5fdae` | PCH08 diagnostic note, reproduction script, ROADMAP entry (no source change) |
 | 3 | Ashvini | `695b114` | frozen MVM, pre-MVM reference, production ensemble, figures, original diagnostic scripts (its logs were omitted by mistake; see 4) |
 | 4 | Ashvini | `8ffb61e` | C17 checks, PCH08 diagnosis, all 27 diagnostic logs, crib-sheet update; corrects 3 (which did not contain the logs) |
 | 5 | Ashvini | `fdb2138`, `59418eb` | claim map, accessibility-reach diagnostic and log, crib-sheet C9b; agreed wording |
 | 6 | Ashvini | (the C18 commit) | C18 saturation/mechanism tests, phase-space diagnostic, efficiency grid, their logs, data and figures; efficiency literature check; claim-map and crib-sheet updates |
 
-* Between foraois `1ba7073` (the last commit before this work) and `9d5fdae`, the only source change is `src/foraois/cosmo_utils.py` (the barrier fix), so the
-  foraois code at `ed28326` is the state that generated the production trees.
+* Between foraois `1ba7073` (the last commit before this work) and `9d5fdae`, the only source change is `src/foraois/cosmo_utils.py` (the barrier fix). The production run used `1ba7073` plus that change while it was still uncommitted (inferred from file times); it was committed afterwards as `ed28326`, which is the recommended reproducibility pin, not the run-time commit. The exact run-time commit is not known (`docs/PRODUCTION_PROVENANCE.md`).
 * Frozen model: `ashvini/reservoir_stock.py`, sha256 `31c701dd8f298d4b7bfc2bfb4d74f90fbe77106c817670a1432563b86d255f63`, recorded in
   `scripts/paper_figures/output/mvm_production_results.json` (2026-09-20T15:44:29). Every C17 script asserts this hash before running.
 * The numba tree sampler is not seed-reproducible: the stored JSON and the logs are the record of the ensembles.
@@ -61,7 +60,7 @@ except where marked. Nothing in this file is manuscript text.
 
 | ID | Statement | Evidence | Numbers | Qualification |
 |---|---|---|---|---|
-| Q1 | Numerical uncertainty on M_seed,crit is a few per cent at 3e10 and 3e11 | C13 | sampling 0.001 to 0.008 dex (240 trees); 801 steps about 0.5%, 1% below the refined limit; dz halving +1.3%, +3.3%; M_res at most 2.4% | at 3e13 the time-step offset is about 4% and dz and M_res were not tested |
+| Q1 | Observed ensemble-to-ensemble variation of the fiducial median critical seed is about 5% at 3e10 (independent ensembles of 60 to 240 trees give medians from 9.0e7 to 9.9e7); it is not established at other masses | C13; `docs/PRODUCTION_PROVENANCE.md` | time step: 801 nodes about 0.5% (3e10) and 1% (3e11) below the refined limit; dz halving +1.3%, +3.3%; M_res at most 2.4% (earlier repeated draws gave 0.001 to 0.008 dex, smaller than the observed variation) | the Zhang and Hui trees at dz = 0.05 are outside the practical single-split timestep-compliance regime, so the dz and M_res tests are not convergence tests of the tree construction and the trees are not timestep-converged; the effect on the black-hole calculation is not quantified; at 3e13 the time-step offset is about 4% and dz and M_res were not tested |
 | Q2 | Nuclear share of stars, star formation before z = 10, G_BH - 1 and the feedback-limited fraction are resolution-dependent | C14 | e.g. 3e10 nuclear share 0.139, 0.069, 0.041, 0.028 at 201, 401, 801, 1601 steps | quote only as qualitative; not convergence claims |
 | Q3 | The model is feedback-limited before z of about 10 and supply-rich after z of about 7 | C14, C16 | 38.4%, 43.7%, 26.3% of feedback steps at 801 steps | qualitative statement is stable across the resolutions tested; the percentages are not |
 | Q4 | Tree-to-tree scatter | C2 | 16-84 width 0.142, 0.195, 0.057 dex at 3e10, 3e11, 3e13 (range 0.057 to 0.195) | define the measure; not comparable with the old paper's 0.12 to 0.31 dex |
@@ -70,7 +69,7 @@ except where marked. Nothing in this file is manuscript text.
 
 | ID | Statement | Evidence | Qualification |
 |---|---|---|---|
-| M1 | A PCH08 comparison is not valid at the required resolution | C17; foraois `docs/PCH08_HIGH_Z_DIAGNOSTIC.md` | whether this is an implementation issue or a regime limitation is not established; do not claim algorithm agreement; the old "PCH08 within 0.02 to 0.14 dex" cannot be reproduced |
+| M1 | A PCH08 comparison is not valid at the required resolution | C17; foraois `docs/PCH08_HIGH_Z_DIAGNOSTIC.md` | the foraois analysis attributes the near-deterministic PCH08 histories to timestep non-compliance (expected splits per step far above about 0.1 at fixed dz and small M_res/M0); this identifies the cause, not the size of any effect on the black-hole calculation; the same single-split criterion applies to the Zhang and Hui trees at the production settings; do not claim algorithm agreement; the old "PCH08 within 0.02 to 0.14 dex" cannot be reproduced |
 
 ## 6. Claims we explicitly do not make
 

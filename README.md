@@ -79,7 +79,9 @@ Alternatively, `run()` can generate trees live -- no intermediate file -- by set
 | `reionization.py` | UV background suppression of gas accretion |
 | `utils.py` | Merger-tree I/O, cosmic time/redshift interpolation |
 | `critical_seed.py` | General-purpose bisection for the black-hole seed mass at which strict Eddington-limited growth reaches a target overmassiveness (`M_BH(z_anchor) = f_bh*M_star(z_anchor)`), against `main.run_forest()`; vectorised across an ensemble of haloes/trees, one independent bisection per halo |
-| `paper_reservoir.py` | Standalone reservoir integrator for the 2026 "Differential Growth" paper's own bespoke gas-supply model -- **not** `main.run_forest()`'s general-purpose physics, see the module's own docstring for why the two aren't interchangeable. Implements tree-based halo growth, a UV+cold/hot-mode preventive-feedback window, a low-spin angular-momentum selection for what fraction of the galaxy's gas can reach the nuclear region, and the paper's own `critical_seed_paper()` boundary search. Provisional/paper-specific: see `docs/2026_paper_session_code_catalogue.md` for status and open items (fiducial $\eta_{\rm acc}/\epsilon_{\rm sf}$ margin, $M_{\rm res}$ convergence, $\sigma_{\ln j}$) before trusting any number from it as final |
+| `reservoir_stock.py` | The Minimal Viable Model (MVM) of the galaxy and nuclear reservoirs: the model implementation behind the 2026 paper "Nuclear accessibility and competition for a shared gas reservoir in early black-hole growth". **Frozen**; see the section below and `docs/PRODUCTION_PROVENANCE.md` |
+| `reservoir_stock_premvm.py` | Frozen exploratory model that preceded the MVM; a reference only, not used for any result of the paper |
+| `paper_reservoir.py` | Halo-growth-rate (GRUMPY-style spline), UV and cold/hot suppression, virial-quantity and tree-interpolation helpers imported by `reservoir_stock.py`. Its own reservoir integrator (`run_reservoir_paper`, the earlier "Differential Growth" model) is **superseded** by `reservoir_stock.py` and is kept for the record |
 
 ## Reproducing figures
 
@@ -114,6 +116,27 @@ through:
 None of these six scripts are used by the paper directly (only
 `shmr_dm_model_comparison.py` is); they're the reproducibility trail for
 *why* that script's settings are what they are.
+
+## The MVM and the frozen production calculation
+
+`ashvini/reservoir_stock.py` implements the paper's model (module docstring: halo supply, angular-momentum accessibility of galaxy gas to a nuclear reservoir, coupled black-hole and star-formation sinks with stellar and AGN feedback, and the critical-seed diagnostic). Its equations are summarised in [`MODELS.md`](MODELS.md).
+
+The production calculation (13 halo masses, 240 Zhang and Hui trees per mass, 801 time nodes, `dz = 0.05`, `M_res = 1e4 Msun`, `z = 25` to `5`) is **frozen**. Its output is `scripts/paper_figures/output/mvm_production_results.json`, produced with `reservoir_stock.py` (SHA-256 beginning `31c701dd`, first recorded in Ashvini commit `695b114`, which was made after the run) and a recorded, partly inferred state of `foraois`. [`docs/PRODUCTION_PROVENANCE.md`](docs/PRODUCTION_PROVENANCE.md) records what generated it (marking what is inferred and what is not established), what later changes do and do not affect, and what is not exactly reproducible (the numba tree sampler is not seed-reproducible, so a rerun gives a new ensemble; the JSON is the record).
+
+Two limitations to know about:
+
+* **Timestep compliance of the production trees.** The Zhang and Hui builder registers at most one split per step, and `dz = 0.05` at `M_res = 1e4 Msun` is far outside the practical single-split criterion (expected splits per step of about 0.1 or less; `foraois` `docs/PCH08_HIGH_Z_DIAGNOSTIC.md`). The trees are therefore not timestep-converged, and the effect on the black-hole calculation has not been quantified. The manuscript states this.
+* **Path dependency.** The scripts under `scripts/paper_figures/` (production generator and diagnostics) need the environment variable `FORAOIS_ROOT`, the directory of a `foraois` checkout containing `src/` and `config/`.
+
+What is what under `scripts/paper_figures/`:
+
+| Kind | Where |
+|---|---|
+| Production output and the figures derived from it | `output/mvm_production_results.json`, `plot_mvm_fig1_boundary.py`, `plot_mvm_fig2_inverse.py`, `plot_mvm_fig3_hostbaryons.py`, `mvm_crib_numbers.py` |
+| Diagnostics and stress tests behind the manuscript (own tree ensembles; the logs are the record) | `diagnostics/` (see its `README.md`), `diagnostics/logs/`; `plot_c18_*.py` |
+| Superseded exploratory and earlier-manuscript material | listed in `scripts/paper_figures/SUPERSEDED.md`; kept for the record, not used for any result of the current paper |
+
+Numbers, claims and their sources are organised in `docs/mvm_numerical_crib_sheet.md` and `docs/mvm_claim_map.md`. Run the tests with `python -m pytest tests`.
 
 ## Interactive exploration
 

@@ -13,10 +13,12 @@ import sys, json, time, hashlib
 from pathlib import Path
 from multiprocessing import Pool
 
-sys.path.insert(0, "/Users/00075868/MyCodes/foraois/src")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from foraois_paths import FORAOIS_SRC, FORAOIS_CONFIG  # set FORAOIS_ROOT; see docs/PRODUCTION_PROVENANCE.md
+sys.path.insert(0, FORAOIS_SRC)
 import numpy as np
 
-CONFIG = "/Users/00075868/MyCodes/foraois/config/menon_power_2024.yml"
+CONFIG = FORAOIS_CONFIG
 PROD = Path(__file__).resolve().parents[1] / "output" / "mvm_production_results.json"
 N_STEPS0 = 801
 

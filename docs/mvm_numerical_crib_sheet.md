@@ -240,6 +240,7 @@ sensitivity to R_nuc of 50 to 200 pc says anything about R_nuc of order R_d or l
 * Combined systematic on M_seed,crit is at most about 3 to 5 per cent at 3e10 and 3e11. At 3e13 the time-step offset alone is about 4 per cent and
   dz and M_res were not tested.
 * Tree sampling is by the Zhang & Hui algorithm only. The alternative (PCH08) was not re-run in the MVM.
+* **Update 2026-09-21.** The two "sampling" rows above understate the observed ensemble-to-ensemble variation of the fiducial median: independent ensembles of the same configuration give medians at 3e10 from 9.0e7 to 9.9e7 (about +/-5%; 60-tree, 100-tree and 240-tree logs). The manuscript quotes +/-5% for 3e10 only. The dz, M_res and time-step rows are within the non-compliant regime of the Zhang & Hui builder (`docs/PRODUCTION_PROVENANCE.md`) and are not convergence tests of the tree construction.
 * Do not say: "converged" without these qualifications; that 801 steps is "the converged result" (it is the production choice).
 
 ### C14. Resolution-dependent diagnostics (option (a): quote only with this caveat)
@@ -328,6 +329,7 @@ or that the hot-mode step is tested beyond its location.
   PCH08 resembles Zhang & Hui only at M_res = 1e10 (about 1% of M0): M(z=1)/M0 = 0.540 [0.343, 0.662] against 0.495 [0.302, 0.667]. That cannot follow
   the assembly to z of about 20, which the MVM needs.
 * The MVM run on those PCH08 trees (M_seed,crit 1.00e8, 1.68e9, 2.72e9 with zero scatter) is therefore not a result and must not be quoted.
+* **Update 2026-09-21.** The "Cause" bullet above records symptoms (the merger fraction). The foraois analysis (`docs/PCH08_HIGH_Z_DIAGNOSTIC.md`) attributes the near-deterministic PCH08 histories to timestep non-compliance: at fixed dz the expected number of splits per step becomes large at small M_res/M0, and a step can register at most one split. It does not establish the size of any effect on the MVM. The Zhang & Hui builder has the same single-split requirement, and the production settings (dz = 0.05, M_res = 1e4) are outside it.
 
 As an independent description of assembly the frozen MVM was run on the deterministic Fakhouri, Ma & Boylan-Kolchin (2010) mean accretion history
 (calibrated at z below about 2 and extrapolated here), anchored to M_halo(z=5) by shooting (`c17_smooth_assembly.py`):

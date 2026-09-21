@@ -19,8 +19,7 @@ import datetime
 from pathlib import Path
 from multiprocessing import Pool
 
-FORAOIS_SRC = "/Users/00075868/MyCodes/foraois/src"
-FORAOIS_CONFIG = "/Users/00075868/MyCodes/foraois/config/menon_power_2024.yml"
+from foraois_paths import FORAOIS_SRC, FORAOIS_CONFIG  # set FORAOIS_ROOT; see docs/PRODUCTION_PROVENANCE.md
 sys.path.insert(0, FORAOIS_SRC)
 
 import numpy as np

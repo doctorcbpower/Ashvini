@@ -1,5 +1,7 @@
 # Code catalogue: "Differential Growth" paper session (Aug 2026)
 
+> **Historical record (2026-09-21).** This catalogue documents the earlier "Differential Growth" model (`paper_reservoir.py`) and the scripts that built the pre-MVM manuscript draft. That model and draft have been superseded by the Minimal Viable Model (`reservoir_stock.py`) and the current paper; every number, figure and parameter below refers to the old model and must not be quoted for the current paper. See `PRODUCTION_PROVENANCE.md` and `scripts/paper_figures/SUPERSEDED.md`.
+
 This documents every piece of code written while developing
 `AshviniPapers/High_z_Black_Hole_Growth/high_z_bhs.tex`. It was all built
 in an isolated scratch sandbox, **not** on top of this repository — see

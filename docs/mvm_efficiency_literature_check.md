@@ -77,3 +77,9 @@ below are "as extracted" and should be checked against the papers. Abstracts onl
 * Full texts of Hobbs et al. (2012) and Hopkins & Quataert (2011) were not read; an independent value or range for the fraction of gas at 100 to 300 pc
   that reaches the accretion flow was not located.
 * No claim is made that 0.005 is wrong. The check finds that it is a free parameter.
+
+## 5. Update (2026-09-21, provenance pass)
+
+* Full texts were read (extracted with `pdftotext`) for Krumholz & Tan (2007, arXiv:astro-ph/0606277), McKee & Ostriker (2007, arXiv:0707.3514), Hopkins & Quataert (2011, arXiv:1007.2647) and Angles-Alcazar et al. (2017, arXiv:1603.08007). The Hobbs et al. (2012) full text was not.
+* Krumholz & Tan: "only ~ 1% of the gas forms stars every free-fall time" in giant molecular clouds, with no evidence of a transition over three orders of magnitude in density. McKee & Ostriker: `eps_ff` "generally low (< ~ 0.01) over a wide range of density tracers", `eps_ff,GMC ~ 0.01`, a theoretical typical value of about 0.02, HCN-traced values of 0.002 to 0.006, and about 0.1 for individual cores. These support "of order a per cent" as used in the manuscript; neither constrains nuclear regions at 100 to 300 pc at z > 7.
+* Bibliographic metadata was checked against Crossref: Angles-Alcazar et al. is MNRAS 464, 2840-2853 (2017), DOI 10.1093/mnras/stw2565 (the page number of section 2 above, and the arXiv record's page, were wrong); Krumholz & Tan is ApJ 654, 304-315, DOI 10.1086/509101; McKee & Ostriker is ARA&A 45, 565-687, DOI 10.1146/annurev.astro.45.051806.110602. The existing manuscript bib entry for Hopkins & Quataert (2011) had the wrong arXiv number (1010.1004, a different paper); the correct number is 1007.2647.

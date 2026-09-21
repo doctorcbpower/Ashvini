@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, "/Users/00075868/MyCodes/foraois/src")
+import os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))); from foraois_paths import FORAOIS_SRC, FORAOIS_CONFIG; sys.path.insert(0, FORAOIS_SRC)
 import numpy as np
 from foraois import cosmo_utils, ZhangHuiMergerTree
 from foraois.utils import io
@@ -7,7 +7,7 @@ from ashvini import pymctrees_adapter
 from ashvini.paper_reservoir import interpolate_tree_onto_grid, grumpy_halo_growth_rate
 from ashvini import reservoir_stock as mvm
 from ashvini.utils import time_at_z, z_at_time
-rp = io.get_params("/Users/00075868/MyCodes/foraois/config/menon_power_2024.yml"); h = rp["Cosmology"]["h"]
+rp = io.get_params(FORAOIS_CONFIG); h = rp["Cosmology"]["h"]
 cd = cosmo_utils.CosmoData(rp, redshift=[5.0]); tg = ZhangHuiMergerTree(cd, rp, model="cdm")
 tz = z_at_time(np.linspace(time_at_z(np.array([25.0]))[0], time_at_z(np.array([5.0]))[0], 401)); zc = 0.5*(tz[1:]+tz[:-1])
 for i, M0 in enumerate((3e10, 3e11)):

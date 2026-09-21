@@ -9,16 +9,18 @@ except where marked. Nothing in this file is manuscript text.
 
 ## 0. Provenance chain
 
+The foraois hashes in this section are those of the foraois history after its message-only rewrite; the earlier hashes are listed in `docs/PRODUCTION_PROVENANCE.md`, section 2.
+
 | Step | Repository | Commit | Content |
 |---|---|---|---|
-| 1 | foraois | `ed28326` | collapse barrier normalised to the P(k) redshift, with tests. The production trees were generated from `1ba7073` plus this change while it was still uncommitted (inferred from file times); `ed28326` committed it afterwards and is the recommended reproducibility pin, not the run-time commit (`docs/PRODUCTION_PROVENANCE.md`) |
-| 2 | foraois | `9d5fdae` | PCH08 diagnostic note, reproduction script, ROADMAP entry (no source change) |
+| 1 | foraois | `ec1a66f` | collapse barrier normalised to the P(k) redshift, with tests. The production trees were generated from `4370a4a` plus this change while it was still uncommitted (inferred from file times); `ec1a66f` committed it afterwards and is the recommended reproducibility pin, not the run-time commit (`docs/PRODUCTION_PROVENANCE.md`) |
+| 2 | foraois | `767398d` | PCH08 diagnostic note, reproduction script, ROADMAP entry (no source change) |
 | 3 | Ashvini | `695b114` | frozen MVM, pre-MVM reference, production ensemble, figures, original diagnostic scripts (its logs were omitted by mistake; see 4) |
 | 4 | Ashvini | `8ffb61e` | C17 checks, PCH08 diagnosis, all 27 diagnostic logs, crib-sheet update; corrects 3 (which did not contain the logs) |
 | 5 | Ashvini | `fdb2138`, `59418eb` | claim map, accessibility-reach diagnostic and log, crib-sheet C9b; agreed wording |
 | 6 | Ashvini | (the C18 commit) | C18 saturation/mechanism tests, phase-space diagnostic, efficiency grid, their logs, data and figures; efficiency literature check; claim-map and crib-sheet updates |
 
-* Between foraois `1ba7073` (the last commit before this work) and `9d5fdae`, the only source change is `src/foraois/cosmo_utils.py` (the barrier fix). The production run used `1ba7073` plus that change while it was still uncommitted (inferred from file times); it was committed afterwards as `ed28326`, which is the recommended reproducibility pin, not the run-time commit. The exact run-time commit is not known (`docs/PRODUCTION_PROVENANCE.md`).
+* Between foraois `4370a4a` (the last commit before this work) and `767398d`, the only source change is `src/foraois/cosmo_utils.py` (the barrier fix). The production run used `4370a4a` plus that change while it was still uncommitted (inferred from file times); it was committed afterwards as `ec1a66f`, which is the recommended reproducibility pin, not the run-time commit. The exact run-time commit is not known (`docs/PRODUCTION_PROVENANCE.md`).
 * Frozen model: `ashvini/reservoir_stock.py`, sha256 `31c701dd8f298d4b7bfc2bfb4d74f90fbe77106c817670a1432563b86d255f63`, recorded in
   `scripts/paper_figures/output/mvm_production_results.json` (2026-09-20T15:44:29). `c17_diagnostics.py`, `c17_accessibility_reach.py`, `c17_smooth_assembly.py` and the three `c18_*` scripts assert this hash before running; the `c17_pch08_check*.py` scripts and the `mvm_*.py` diagnostics do not (`docs/PRODUCTION_PROVENANCE.md`, section 3).
 * The numba tree sampler is not seed-reproducible: the stored JSON and the logs are the record of the ensembles.

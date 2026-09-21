@@ -1,6 +1,6 @@
 # Provenance of the frozen production calculation
 
-Status: record written on 2026-09-21 from the repository chronology (commit dates, file modification times, diffs and hashes). No production calculation was rerun to write it (one small scratch check, made for the audit and not stored, is mentioned in section 2 and labelled as such). Where a statement rests on file modification times and not on a logged value, it is marked *(inferred)*.
+Status: record written on 2026-09-21 from the repository chronology (commit dates, file modification times, diffs and hashes). No production calculation was rerun to write it (one small scratch check, made for the audit and not stored, is mentioned in section 2 and labelled as such). Where a statement rests on file modification times and not on a logged value, it is marked *(inferred)*. The foraois commit hashes cited here are those of the foraois history after its message-only rewrite (section 2); the earlier hashes are listed there.
 
 The calculation described here is the production ensemble behind the results of the manuscript "Nuclear accessibility and competition for a shared gas reservoir in early black-hole growth". Model and production results are frozen.
 
@@ -27,30 +27,44 @@ Configuration recorded by the script and the JSON: 13 halo masses, 3e10 to 3e13 
 
 `scripts/paper_figures/gen_mvm_production.py` has a modification time 79 s after the JSON. The committed version is the only surviving record of the script; whether the last saved bytes differ from those that ran cannot be established. Its parameters are recorded in the JSON `meta`.
 
-**foraois** (`doctorcbpower/foraois`, trees, sampler and cosmology). The production run used the foraois working tree on top of base commit `1ba7073` (`1ba70733cce4e5a3aa44da15a2f82f9d7cbe5c2e`, 2026-09-15 11:08:30) with the collapse-barrier normalisation change already applied but not yet committed *(inferred from the file times below)*:
+**foraois** (`doctorcbpower/foraois`, trees, sampler and cosmology). The production run used the foraois working tree on top of base commit `4370a4a` (`4370a4a4c59533f9a8f1f19ed8b371df82beb5a8`, 2026-09-15 11:08:30) with the collapse-barrier normalisation change already applied but not yet committed *(inferred from the file times below)*:
 
 | Evidence | Value |
 |---|---|
 | `src/foraois/cosmo_utils.py` and `tests/test_cosmo_utils.py` last modified | 2026-09-20 11:17:03 and 11:16:50, before the JSON was written (15:44:29, the end of the run). The run start is not recorded, so these file times alone place the change before the end of the run, not before its start |
-| Commit that recorded that change | `ed28326488d88ebecc274c7accb75edcbd8ffe00`, "Normalise the collapse barrier to the redshift at which P(k) is evaluated", 2026-09-20 16:23:36, parent `1ba7073`; touches only `cosmo_utils.py` and its test |
-| `cosmo_utils.py` changed after `ed28326`? | No |
+| Commit that recorded that change | `ec1a66f6a8b0e9b2b99315c365645407eb73b3bc`, "Normalise the collapse barrier to the redshift at which P(k) is evaluated", 2026-09-20 16:23:36, parent `4370a4a`; touches only `cosmo_utils.py` and its test |
+| `cosmo_utils.py` changed after `ec1a66f`? | No |
 | Other modules the tree generator executes (`zhang_hui_trees.py`, `pch_trees.py`, `transfer_functions.py`, `mass_function_utils.py`, `utils/io.py`, `utils/window_function.py`, `first_crossing*.py`) | last modified before 2026-09-20 except the docstring-only edits below |
 | Config `config/menon_power_2024.yml` | unchanged since the initial release (`d9d43bb`); SHA-256 `3b3736a6b4b6d00a4b9760fb8a1b3ed5085028862fe900040bbb32bd5e671d69` |
 
-**State of the tree code at the run.** No commit existed for it. The run was made from `1ba7073` plus an uncommitted change to `cosmo_utils.py` (and its test), which was committed afterwards as `ed28326`, about 40 minutes after the JSON was written. `ed28326` is therefore not the commit at run time. It is the recommended reproducibility pin: its content is equivalent to the run-time state for the modules the production script imports *(inferred, from the file times and diffs above)*.
+**State of the tree code at the run.** No commit existed for it. The run was made from `4370a4a` plus an uncommitted change to `cosmo_utils.py` (and its test), which was committed afterwards as `ec1a66f`, about 40 minutes after the JSON was written. `ec1a66f` is therefore not the commit at run time. It is the recommended reproducibility pin: its content is equivalent to the run-time state for the modules the production script imports *(inferred, from the file times and diffs above)*.
 
-Unstored supporting evidence, not provenance. In a scratch computation made for the audit on 2026-09-21 (40 trees at M0 = 3e10 Msun, same script settings, not the production run, results not saved), foraois at `ed28326` gave a median critical seed of 9.7e7 Msun (16 to 84 per cent range 7.8e7 to 1.07e8), foraois at `1ba7073` gave 5.4e7 Msun (4.2e7 to 6.4e7), and the production JSON has 9.45e7 Msun (7.6e7 to 1.06e8) at that mass. This is consistent with the production trees having been made with the barrier change, and is one mass and a small sample.
+**Rewrite of the foraois history (message-only).** After the first version of this record, the private foraois `main` history was rewritten (2026-09-21) solely to remove three Claude-related commit-message suffixes: a co-author trailer on one commit and an acknowledgement sentence on two others. The rewrite was verified to preserve all 28 corresponding file trees exactly, all author and committer identities, all timestamps and the parent structure; no file content changed. Only the hashes of the commits from the first rewritten commit onward changed. The hashes cited in this record are those of the rewritten history. The earlier hashes, which the Ashvini commits made before this note cite, correspond as follows:
+
+| Earlier hash | Hash in the rewritten history | Role |
+|---|---|---|
+| `1ba70733cce4e5a3aa44da15a2f82f9d7cbe5c2e` | `4370a4a4c59533f9a8f1f19ed8b371df82beb5a8` | base of the run-time state |
+| `ed28326488d88ebecc274c7accb75edcbd8ffe00` | `ec1a66f6a8b0e9b2b99315c365645407eb73b3bc` | barrier-fix commit; **the reproducibility pin** |
+| `9d5fdae4a7afb0b59b2e74345b6ed83f8a208125` | `767398d7e1833b19b50ac8bef439d21fbd9d5f63` | first later commit |
+| `74f15ad57abccf739ea9421958dbfbac2943ac0c` | `c80858d81fa2902fdbc99b8354790bd030ad9a35` | later commit |
+| `7d6fa29f6f9e5d8ced41435df61218bda77cd2e1` | `d069182a728eeea41cf5d056606672c806648bff` | later commit |
+| `124d4888956cd385f88f3fb860125b84d22be8df` | `8f9508731fac10dfe18e6997e44ffbc0a314372e` | later commit |
+| `02157c94bad6ea95fbee6a76f53522f09d371e61` | `734c2f16cdeb8ef83f199c24be5241cfa9a8020e` | tip of `main`; the tag `v0.1.1` still pointed to the earlier hash at the time of writing |
+
+The reproducibility pin is now `ec1a66f6a8b0e9b2b99315c365645407eb73b3bc` (formerly `ed28326`). It remains the recommended pin for the inferred run-time code state, not a claim that it was the literal production commit: no commit existed at run time, and the state was `4370a4a` plus an uncommitted change later committed as `ec1a66f`. Checks described in this record that were made before the rewrite (the AST comparison, the import closure, the scratch check and the compliance evaluation) were made on the earlier hashes; the trees are identical, so they apply unchanged to the rewritten ones. The limitations recorded here (script and adapter bytes not established, run start and environment not recorded, the stochastic Zhang and Hui sampler not seed-reproducible, and the JSON storing representative histories rather than the full ensemble) are unchanged. At the time of writing the rewritten history had not been pushed.
+
+Unstored supporting evidence, not provenance. In a scratch computation made for the audit on 2026-09-21 (40 trees at M0 = 3e10 Msun, same script settings, not the production run, results not saved), foraois at `ec1a66f` gave a median critical seed of 9.7e7 Msun (16 to 84 per cent range 7.8e7 to 1.07e8), foraois at `4370a4a` gave 5.4e7 Msun (4.2e7 to 6.4e7), and the production JSON has 9.45e7 Msun (7.6e7 to 1.06e8) at that mass. This is consistent with the production trees having been made with the barrier change, and is one mass and a small sample.
 
 The production script builds `CosmoData(rp, redshift=[5.0])` and `ZhangHuiMergerTree(cd, rp, model="cdm")` and calls `build_forest_for_bin(..., z0=5.0, z_max=25.0, m_res_msun=1e4, dz=0.05, backend="numba", rng_seed=1000+i)`.
 
 **foraois changes after the run and what they affect.**
 
-| Commits (all on `origin/main`, now `02157c9`) | Content | Affects the production trees? |
+| Commits (on the rewritten foraois `main`, now `734c2f1`) | Content | Affects the production trees? |
 |---|---|---|
-| `9d5fdae`, `74f15ad`, `124d488`, `02157c9` | documentation, reproduction scripts, diagnostics | No |
-| `7d6fa29` | figure styling (`utils/plot.py`, new `utils/paper_style.py`) | No; not imported by the tree generator (`plot.py` imports `diagnostics` lazily inside a plotting function) |
-| `124d488`, `02157c9` | wording in the docstrings of `__init__.py`, `tree_algorithm.py` and `first_crossing.py` (changes "exact" to "binary-per-step ... first-crossing"); one changed argparse help string in `main.py` (command-line help text, a code line but not a computation); new `expected_eps_splits_per_step` and reworded docstrings in `diagnostics.py` | No. The three docstring-only files are identical to `ed28326` after docstrings are removed (AST comparison). `main.py` and `diagnostics.py` are not among the 15 foraois modules the production imports load, which are the same at `ed28326` and at the current HEAD |
-| `pyproject.toml`: `7d6fa29` (new optional `paper` extra, SciencePlots) and `124d488` (version 0.1.0 to 0.1.1) | package metadata | No; no dependency of the package itself changed |
+| `767398d`, `c80858d`, `8f95087`, `734c2f1` | documentation, reproduction scripts, diagnostics | No |
+| `d069182` | figure styling (`utils/plot.py`, new `utils/paper_style.py`) | No; not imported by the tree generator (`plot.py` imports `diagnostics` lazily inside a plotting function) |
+| `8f95087`, `734c2f1` | wording in the docstrings of `__init__.py`, `tree_algorithm.py` and `first_crossing.py` (changes "exact" to "binary-per-step ... first-crossing"); one changed argparse help string in `main.py` (command-line help text, a code line but not a computation); new `expected_eps_splits_per_step` and reworded docstrings in `diagnostics.py` | No. The three docstring-only files are identical to `ec1a66f` after docstrings are removed (AST comparison). `main.py` and `diagnostics.py` are not among the 15 foraois modules the production imports load, which are the same at `ec1a66f` and at the current HEAD |
+| `pyproject.toml`: `d069182` (new optional `paper` extra, SciencePlots) and `8f95087` (version 0.1.0 to 0.1.1) | package metadata | No; no dependency of the package itself changed |
 
 ## 3. What is and is not exactly reproducible
 
@@ -62,7 +76,7 @@ The production script builds `CosmoData(rp, redshift=[5.0])` and `ZhangHuiMerger
 
 ## 4. Known limitation of the production trees
 
-The production timestep is outside the practical single-split compliance regime of the Zhang and Hui builder (foraois `docs/PCH08_HIGH_Z_DIAGNOSTIC.md`: expected splits per step of about 0.1 or less). Evaluated with foraois `diagnostics.expected_eps_splits_per_step(cosmo_data, M0*h, z, z+0.05, 1e4*h, model="cdm")`, using the cosmology of `menon_power_2024.yml` and `CosmoData(rp, redshift=[5.0])`, with M0 the anchored halo mass (conservative at high z), the maximum over z from 5 to 25 was about 82, 690 and 6.0e4 at M0 = 3e10, 3e11 and 3e13 Msun. These values were evaluated once, on 2026-09-21 with foraois `02157c9`, and are indicative: they are not stored by a committed script or log. The manuscript states the limitation and does not quantify any effect on the black-hole calculation; this record does not either.
+The production timestep is outside the practical single-split compliance regime of the Zhang and Hui builder (foraois `docs/PCH08_HIGH_Z_DIAGNOSTIC.md`: expected splits per step of about 0.1 or less). Evaluated with foraois `diagnostics.expected_eps_splits_per_step(cosmo_data, M0*h, z, z+0.05, 1e4*h, model="cdm")`, using the cosmology of `menon_power_2024.yml` and `CosmoData(rp, redshift=[5.0])`, with M0 the anchored halo mass (conservative at high z), the maximum over z from 5 to 25 was about 82, 690 and 6.0e4 at M0 = 3e10, 3e11 and 3e13 Msun. These values were evaluated once, on 2026-09-21 and before the foraois history rewrite, with the commit then named `02157c9`; they were not re-evaluated after the rewrite. That commit is now `734c2f1`, whose file tree is identical to the pre-rewrite `02157c9` tree, so the evaluation applies to the same code state. It says nothing about the code used for the production run, which was not made at either commit. The values are indicative: they are not stored by a committed script or log. The manuscript states the limitation and does not quantify any effect on the black-hole calculation; this record does not either.
 
 ## 5. Machine-specific paths
 

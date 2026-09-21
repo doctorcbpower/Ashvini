@@ -44,7 +44,7 @@ for s in (0.5, 0.6, 0.7, 0.8, 1.0):
         r, f, G = peak(np.full(N, 1e3), sigma_lnj=s, R_nuc_pc=R)
         cells.append(f"{r:8.2g}/{G:8.3g}")
     print(f"   {s:4.1f}            " + "".join(f"{c:>18s}" for c in cells), flush=True)
-print("F(seed) sign changes over a 25-point seed grid (20 trees) in the accessible corners:", flush=True)
+print("F(seed) sign changes over a 25-point seed grid (20 trees) in the high-delivery corners:", flush=True)
 seeds = np.logspace(0, np.log10(2 * 0.5 * 0.156 * Mh[0, -1]), 25)
 for tag, kw in (("fiducial", {}), ("s=1.0,R=100", dict(sigma_lnj=1.0)), ("s=0.5,R=300", dict(R_nuc_pc=300.0)), ("s=1.5,R=300", dict(sigma_lnj=1.5, R_nuc_pc=300.0)),
                 ("s=1.5,R=300,eta=0.05", dict(sigma_lnj=1.5, R_nuc_pc=300.0, eta_acc=0.05)), ("s=0.5,R=100,eta=0.5", dict(eta_acc=0.5))):

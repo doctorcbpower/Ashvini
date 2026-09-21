@@ -1,5 +1,5 @@
 """
-How close do fixed seeds get to the target f_BH = 0.5 across the tested accessibility range? Direct per-tree ratios
+How close do fixed seeds get to the target f_BH = 0.5 across the tested delivery range? Direct per-tree ratios
 M_BH(z=5)/M*_tot(z=5) (median [16,84]) and the fraction of trees reaching the target, plus the critical seed, for
 (sigma_j, R_nuc) cells of the earlier regime grid. Branches from the frozen MVM (hash asserted). 60 trees, 801-step dt.
 """

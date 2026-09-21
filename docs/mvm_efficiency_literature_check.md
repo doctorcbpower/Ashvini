@@ -1,6 +1,6 @@
 # Where do eps_sf = 0.015 and eta_acc = 0.005 come from? A literature check
 
-Purpose: after the C18 tests (crib sheet C18), the black hole-to-stellar mass ratio in the accessible regime is approximately
+Purpose: after the C18 tests (crib sheet C18), the black hole-to-stellar mass ratio in the high-delivery regime is approximately
 eta_acc / eps_sf times a feedback factor. Whether that ratio is defensible therefore depends on whether the two efficiencies are
 independently motivated. This note records what was checked, what was verified against sources, and what was not. It is a check, not an
 experiment, and it changes no result.
@@ -21,7 +21,7 @@ below are "as extracted" and should be checked against the papers. Abstracts onl
   angular-momentum transport bottleneck".
 * The "viability margin" is the earlier model's requirement that eta_acc/eps_sf stay below f_BH (memory note "Ashvini viability theorem"). So
   the ratio of the two efficiencies was constrained relative to the target ratio f_BH = 0.5. C18 shows why: in the MVM the
-  black-hole-to-stellar ratio of an accessible, supply-limited system relaxes toward roughly eta_acc/eps_sf, so whether the answer is a
+  black-hole-to-stellar ratio of a high-delivery, supply-limited system relaxes toward roughly eta_acc/eps_sf, so whether the answer is a
   target-sized seed or a small seed depends on whether that ratio (times the feedback factor) lies below or above f_BH.
 
 ## 2. What was verified
@@ -66,10 +66,10 @@ below are "as extracted" and should be checked against the papers. Abstracts onl
    not derived for the MVM's nuclear scale. Say "adopted from Menon, Balu & Power (2026); the same value is applied per local free-fall time in the MVM".
 2. eta_acc: an effective, unresolved feeding parameter. It has no independent calibration in the verified sources. It is a new free parameter
    whose earlier constraint was the requirement that eta_acc/eps_sf lie below f_BH.
-3. The two efficiencies are not independently motivated as a pair. The absolute black hole-to-stellar partition in the accessible regime
+3. The two efficiencies are not independently motivated as a pair. The absolute black hole-to-stellar partition in the high-delivery regime
    is therefore conditional on eta_acc/eps_sf, which is a modelling choice.
-4. What the model can still say robustly is how the critical-seed boundary responds to the baryon cycle and to accessibility (claim map H1 to H3,
-   R1 to R5). The critical seed being close to the target requires either poor accessibility (fiducial) or eta_acc/eps_sf times the feedback factor
+4. What the model can still say robustly is how the critical-seed boundary responds to the baryon cycle and to nuclear delivery (claim map H1 to H3,
+   R1 to R5). The critical seed being close to the target requires either poor delivery (fiducial) or eta_acc/eps_sf times the feedback factor
    below f_BH (C18): this dependence should appear in the paper as an explicit condition.
 
 ## 4. Not done

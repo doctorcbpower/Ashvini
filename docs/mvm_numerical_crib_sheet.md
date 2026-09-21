@@ -17,10 +17,10 @@ paper can be drafted against it. It is not text for the paper. Nothing here has 
 * Numbers marked (D) come from `scripts/paper_figures/diagnostics/logs/` (see the README there); they use their own,
   smaller tree ensembles, and the tree sampler is not seed-reproducible.
 * "Median [16,84]" = median and 16th and 84th percentiles over trees. "16-84 width" = log10(p84/p16).
-* "Accessibility test" = the labelled experiment R_nuc = 250 pc, sigma_j = 0.5. It is a sensitivity experiment on the same
+* "Delivery test" = the labelled experiment R_nuc = 250 pc, sigma_j = 0.5. It is a sensitivity experiment on the same
   model, not a second physical model and not a candidate fiducial.
 * Agreed framing (user, 2026-09-20): M_seed,crit is the initial BH mass required to reach a specified M_BH/M_star,tot
-  at z = 5, given a particular galaxy baryon cycle and nuclear-accessibility model. It is not a measure of the Eddington
+  at z = 5, given a particular galaxy baryon cycle and nuclear-delivery model. It is not a measure of the Eddington
   growth time available to a seed.
 
 ## 1. Claims, quantities, results, uncertainties, and what not to say
@@ -34,7 +34,7 @@ paper can be drafted against it. It is not text for the paper. Nothing here has 
 | at 3e13 | 4.85e9 [4.54e9, 5.17e9] Msun | " (dz and M_res untested here) | " |
 | over 13 masses | rises monotonically 9.45e7 -> 4.85e9 Msun | | that the boundary is a power law |
 | M_seed,crit / M_halo(z=5) | 3.2e-3 (3e10), 4.6e-3 (3e11), 1.6e-4 (3e13) | | |
-| bracket failures; F(seed) crossing zero | 0 failures at all masses, max abs F = 2e-11; F crosses zero once in every tree tested (40 trees per mass at 3e10, 3e11, 3e13; 20 trees in every accessibility corner tested) (D) | monotonicity checked on 25-point seed grids, not proved | that the root is unique in general |
+| bracket failures; F(seed) crossing zero | 0 failures at all masses, max abs F = 2e-11; F crosses zero once in every tree tested (40 trees per mass at 3e10, 3e11, 3e13; 20 trees in every delivery corner tested) (D) | monotonicity checked on 25-point seed grids, not proved | that the root is unique in general |
 
 ### C2. Tree-to-tree scatter
 
@@ -58,7 +58,7 @@ paper can be drafted against it. It is not text for the paper. Nothing here has 
 | M_seed,crit / (f_BH M_star,tot) = 1/G_BH | 0.973 [0.971, 0.975] (3e10), 0.956 [0.953, 0.960] (3e11), 0.929 [0.922, 0.935] (3e13); falls monotonically 0.973 -> 0.929 | G_BH - 1 is resolution-dependent (C14); it shrinks as dt is refined | that the BH "grows by 3 to 8 per cent" as a converged physical quantity |
 | G_BH = M_BH(z=5)/M_seed at the critical seed | 1.028 (3e10), 1.046 (3e11), 1.077 (3e13) at 801 steps | 3e10: 1.10, 1.05, 1.03, 1.02 at 201, 401, 801, 1601 steps (D) | that G_BH is a physical result; say "at most a few per cent at 801 steps" |
 | f_BH M_star,tot (median) | 9.7e7, 1.46e9, 5.2e9 Msun | | |
-| decomposition | M_seed,crit = f_BH M_star,tot / G_BH; M_star,tot from the baryon cycle (assembly, angular momentum, SF, feedback); G_BH from nuclear accessibility (sigma_j, R_nuc, eta_acc) | | "two things and only two set the answer" |
+| decomposition | M_seed,crit = f_BH M_star,tot / G_BH; M_star,tot from the baryon cycle (assembly, angular momentum, SF, feedback); G_BH from nuclear delivery (sigma_j, R_nuc, eta_acc) | | "two things and only two set the answer" |
 
 ### C5. Regime at the fiducial: supply-limited
 
@@ -86,14 +86,14 @@ Caveat: at the fiducial the ratio is approximately M_seed/M_star,tot. Do not say
 cannot grow (see C7 and C8), that 1e7 is a named seed channel, or that these ratios are converged to better than the
 few per cent of C13.
 
-### C7. Accessibility test (R_nuc = 250 pc, sigma_j = 0.5): what changes and what does not
+### C7. Delivery test (R_nuc = 250 pc, sigma_j = 0.5): what changes and what does not
 
 | Quantity | Result (P) | Caveat | Do not say |
 |---|---|---|---|
 | seed 1e3: median G | 13 (3e10), 272 (3e11), 1.6e3 (5.3e12); median 1 at 1.7e13 and 3e13 | | that R_nuc = 250 pc is a second physical model |
 | seed 1e3: median ratio M_BH/M_star,tot | 5.6e-5 (3e10), 8.2e-5 (3e11), peak 1.6e-4 (5.3e12) | | that rapid growth reaches the target |
 | highest 84th-percentile ratio reached by a 1e3 seed | 5.9e-4, i.e. 2.93 dex below f_BH = 0.5 | | |
-| seed 1e3: fraction of trees with G > 2 | 92% (3e10), 94% (3e11), 76.7% (1.7e12), 52% (9.5e12), 41.7% (1.7e13), 40.8% (3e13); fiducial 0 to 0.8% | | that the accessibility prescription necessarily produces bimodality |
+| seed 1e3: fraction of trees with G > 2 | 92% (3e10), 94% (3e11), 76.7% (1.7e12), 52% (9.5e12), 41.7% (1.7e13), 40.8% (3e13); fiducial 0 to 0.8% | | that the delivery prescription necessarily produces bimodality |
 | seed 1e3 at 3e13: median vs upper percentile | median ratio 7.7e-8, 84th percentile 5.6e-4; 84th percentile G about 7,500 | | that the high-mass median drop in Figure 2 is a decline in individual BH growth: it is the median passing through a population that is becoming bimodal (the band carries the information) |
 | seeds 2e5 and 1e7 | barely change (1e7: 4.4e-2 vs 4.2e-2 at 3e10) | | |
 | tested link with accreted baryons | the growing fraction falls as the accreted baryon fraction falls (5.4% at 9.5e12, 1.7% at 3e13) | link not tested directly | that the cause is established |
@@ -134,7 +134,7 @@ Caveats: light seed only; 20 trees; locations approximate and mass-dependent. Do
 regime" as a precise number; that the fiducial was chosen far from, or near, the transition; that the transition
 affects the critical seed (it does not: see C9).
 
-### C9. The critical seed stays supply-limited across the accessibility grid; eta_acc
+### C9. The critical seed stays supply-limited across the (sigma_j, R_nuc) grid; eta_acc
 
 (D: 20 trees, 801 steps.) At the critical seed, over sigma_j in {0.5, 1.0, 1.5} and R_nuc in {100, 300, 1000} pc, the peak
 Mdot_acc/Mdot_Edd is at most 0.48 and capped steps are 0.0% in every cell (3e10 and 3e11); M_seed,crit falls to 1.3e7
@@ -152,7 +152,7 @@ Do not say: that the critical seed is ever Eddington-limited at the fiducial; do
 physical corner (half the nuclear reservoir consumed per free-fall time, beyond the paper's own eta_acc^(-1/beta)
 ceiling); do not multiply a median G by a median M_seed,crit (heavy tails).
 
-#### C9b. How far do fixed seeds get across the accessibility range? (D: `c17_accessibility_reach.log`, 60 trees, 801-step dt)
+#### C9b. How far do fixed seeds get across the delivery range? (D: `c17_accessibility_reach.log`, 60 trees, 801-step dt)
 
 Direct per-tree M_BH(z=5)/M_star,tot(z=5), median [16,84]; "reach" = fraction of trees at or above f_BH = 0.5; Mcrit = median critical seed (f_BH = 0.5) and its
 ratio to the fiducial cell (same trees in every cell).
@@ -162,7 +162,7 @@ ratio to the fiducial cell (same trees in every cell).
 | sigma_j, R_nuc [pc] | Mcrit [Msun] (ratio to fiducial) | seed 1e3 | seed 2e5 | seed 1e7 |
 |---|---|---|---|---|
 | 0.5, 100 (fiducial) | 9.0e7 (1.00) | 4.4e-6 [3.7e-6, 5.3e-6] | 8.7e-4 [7.5e-4, 1.1e-3] | 4.5e-2 [3.9e-2, 5.5e-2] |
-| 0.5, 250 (accessibility test) | 7.9e7 (0.88) | 6.4e-5 [1.7e-5, 2.8e-4] | 9.5e-4 [8.1e-4, 1.3e-3] | 4.7e-2 [4.1e-2, 5.7e-2] |
+| 0.5, 250 (delivery test) | 7.9e7 (0.88) | 6.4e-5 [1.7e-5, 2.8e-4] | 9.5e-4 [8.1e-4, 1.3e-3] | 4.7e-2 [4.1e-2, 5.7e-2] |
 | 1.0, 100 | 3.6e7 (0.40) | 6.3e-3 [1.5e-3, 1.1e-2] | 2.8e-3 [1.5e-3, 5.2e-3] | 8.9e-2 [7.8e-2, 1.1e-1] |
 | 1.5, 100 | 1.3e7 (0.14) | 7.2e-2 [5.2e-2, 9.4e-2] | 9.2e-2 [7.2e-2, 1.0e-1] | 0.42 [0.40, 0.45], reach 5.0% |
 | 1.0, 300 | 2.8e7 (0.31) | 3.7e-2 [3.1e-2, 4.6e-2] | 3.9e-2 [2.9e-2, 4.9e-2] | 0.18 [0.14, 0.22] |
@@ -173,18 +173,18 @@ ratio to the fiducial cell (same trees in every cell).
 | sigma_j, R_nuc [pc] | Mcrit [Msun] (ratio to fiducial) | seed 1e3 | seed 2e5 | seed 1e7 |
 |---|---|---|---|---|
 | 0.5, 100 (fiducial) | 1.4e9 (1.00) | 2.9e-7 [2.3e-7, 3.7e-7] | 5.8e-5 [4.8e-5, 7.6e-5] | 2.9e-3 [2.4e-3, 3.8e-3] |
-| 0.5, 250 (accessibility test) | 1.1e9 (0.82) | 6.3e-5 [3.8e-6, 2.7e-4] | 7.6e-5 [5.8e-5, 9.7e-5] | 3.1e-3 [2.5e-3, 4.0e-3] |
+| 0.5, 250 (delivery test) | 1.1e9 (0.82) | 6.3e-5 [3.8e-6, 2.7e-4] | 7.6e-5 [5.8e-5, 9.7e-5] | 3.1e-3 [2.5e-3, 4.0e-3] |
 | 1.0, 100 | 5.3e8 (0.39) | 6.8e-3 [2.8e-3, 1.1e-2] | 1.7e-3 [5.0e-4, 6.2e-3] | 5.5e-3 [4.9e-3, 6.9e-3] |
 | 1.5, 100 | 1.5e8 (0.11) | 9.2e-2 [6.9e-2, 1.2e-1] | 0.12 [8.5e-2, 0.14] | 0.17 [0.15, 0.18] |
 | 1.0, 300 | 4.0e8 (0.29) | 5.4e-2 [4.6e-2, 5.8e-2] | 4.8e-2 [3.8e-2, 5.8e-2] | 4.2e-2 [3.4e-2, 5.7e-2] |
 | 1.5, 300 | 1.7e8 (0.13) | 9.3e-2 [7.2e-2, 1.2e-1] | 0.11 [8.0e-2, 0.13] | 0.16 [0.13, 0.17] |
 
-* In the accessible cells the black hole mass approaches about 0.1 to 0.2 of M_star,tot, with weak dependence on the seed (3e11, sigma_j = 1.5: 0.09, 0.12, 0.17 for
+* In the high-delivery cells the black hole mass approaches about 0.1 to 0.2 of M_star,tot, with weak dependence on the seed (3e11, sigma_j = 1.5: 0.09, 0.12, 0.17 for
   seeds 1e3, 2e5, 1e7). At the fiducial and in the R_nuc = 250 pc test it does not (the ratio tracks the seed). No cell has more than 5 per cent of trees at f_BH = 0.5.
   This is a result of the explored models, not an established saturation scale: it may reflect the feedback prescription, the angular-momentum distribution, the nuclear radius or the star-formation law.
 * The critical seed falls to 0.11 to 0.16 of its fiducial value at sigma_j = 1.5, and to 0.29 to 0.40 at sigma_j = 1.0, while remaining supply-limited (C9) and at least 1.3e7 Msun at 3e10.
-* Do not say: that accessibility leaves the critical boundary unchanged; that increased accessibility "does not approach" f_BH = 0.5 (it is a factor of about 4 to 7 short for light seeds at sigma_j = 1.5); that the
-  R_nuc = 250 pc test is representative of stronger accessibility. The R_nuc = 250 pc test leaves light seeds at least 2.9 dex below f_BH = 0.5 (C7).
+* Do not say: that nuclear delivery leaves the critical boundary unchanged; that increased nuclear delivery "does not approach" f_BH = 0.5 (it is a factor of about 4 to 7 short for light seeds at sigma_j = 1.5); that the
+  R_nuc = 250 pc test is representative of stronger delivery. The R_nuc = 250 pc test leaves light seeds at least 2.9 dex below f_BH = 0.5 (C7).
 
 ### C10. Seed against host baryons
 
@@ -219,7 +219,7 @@ In the first six rows (`sensitivities_60trees_*`) the M_seed,crit ratio equals t
 radiative-efficiency rows (`claims_regime_and_sens_60trees_*`) recorded only M_seed,crit; M_star,tot and G_BH were not printed for them, and eta_acc x10 raises the
 critical-seed G_BH to about 1.2 to 1.5 in the regime run (C9). Radiative efficiency (hence the Salpeter time) barely matters
 because the Eddington limit does not bind at the critical seed. Range over the pruned set:
-0.67 to 1.74. Do not say: that these ranges cover the full uncertainty of the accessibility prescription; that the
+0.67 to 1.74. Do not say: that these ranges cover the full uncertainty of the delivery prescription; that the
 sensitivity to R_nuc of 50 to 200 pc says anything about R_nuc of order R_d or larger (the exploratory model did).
 
 ### C13. Numerical uncertainty
@@ -241,6 +241,7 @@ sensitivity to R_nuc of 50 to 200 pc says anything about R_nuc of order R_d or l
   dz and M_res were not tested.
 * Tree sampling is by the Zhang & Hui algorithm only. The alternative (PCH08) was not re-run in the MVM.
 * **Update 2026-09-21.** The two "sampling" rows above understate the observed ensemble-to-ensemble variation of the fiducial median: independent ensembles of the same configuration give medians at 3e10 from 9.0e7 to 9.9e7 (about +/-5%; 60-tree, 100-tree and 240-tree logs). The manuscript quotes +/-5% for 3e10 only. The dz, M_res and time-step rows are within the non-compliant regime of the Zhang & Hui builder (`docs/PRODUCTION_PROVENANCE.md`) and are not convergence tests of the tree construction.
+* **Update 2026-09-21 (C19).** The effect of making the tree builder compliant was measured afterwards (C19): the median falls by about 6% at 3e10 (compliant), about 7% at 3e11 (E = 0.28) and about 4% at 3e13 (E = 60, not compliant). The dz rows above are not that test.
 * Do not say: "converged" without these qualifications; that 801 steps is "the converged result" (it is the production choice).
 
 ### C14. Resolution-dependent diagnostics (option (a): quote only with this caveat)
@@ -353,7 +354,7 @@ The statement of the old paper, "PCH08 within 0.02 to 0.14 dex", cannot be repro
 | 3e13 | 1.057 [1.012, 1.151] | 0.802 [0.731, 0.848] | 3.7e-4, 3.5e-4, 2.8e-4 | 1.078, 1.078, 1.076 |
 
 n_rd acts only through M_star,tot (G_BH does not change): it sets R_gal and hence the galaxy-scale free-fall time in the star-formation clock. Its effect (about 6 to 23 per cent
-for a halving, 20 to 29 per cent for a doubling) is comparable to the other star-formation sensitivities of C12. Do not say: that n_rd is an accessibility parameter.
+for a halving, 20 to 29 per cent for a doubling) is comparable to the other star-formation sensitivities of C12. Do not say: that n_rd is a delivery parameter.
 
 **Still untested in the MVM:** the UV-suppression parameters and z_reion, lambda, f_b, the NFW concentration (only c = 3 and 8 in the exploratory model, at most 4 per cent,
 so it matters only at the galaxy-scale threshold), the sharpness of the cold/hot step, and the 3e13 mass for sigma_j, eps_sf, R_nuc, f_mom and eta_SN.
@@ -362,13 +363,13 @@ Any statement about them in the paper is untested by the frozen model.
 ### C18. Seed memory, feedback decomposition, phase space and the efficiency ratio (branching from 695b114; frozen model unchanged)
 
 Scripts and logs: `diagnostics/c18_saturation_tests.py`, `c18_test4_phase.py`, `c18_eta_eps.py`; `logs/c18_*.log`; data `output/c18_*.json`; figures
-`output/sat_fig1` to `sat_fig8`. All at sigma_j = 1.5, R_nuc = 300 pc unless stated ("high accessibility"), 100 paired trees per mass, 801-step dt,
+`output/sat_fig1` to `sat_fig8`. All at sigma_j = 1.5, R_nuc = 300 pc unless stated ("high delivery"), 100 paired trees per mass, 801-step dt,
 hash asserted. R = M_BH/M_star,tot, masked where M_star,tot < 1e5 Msun (undefined before stars exist). Two or three masses only. Interpretation:
 this is a mechanism found in the model, not a physical scale (see the claim map, S3, S5, R8).
 
 **Test 1, seed memory** (final R at z = 5, median; per-tree max/min across seeds):
 
-| Mass | seed 1e2 | 1e3 | 1e5 | 1e7 | max/min, four seeds | max/min, three lightest | fiducial accessibility, max/min |
+| Mass | seed 1e2 | 1e3 | 1e5 | 1e7 | max/min, four seeds | max/min, three lightest | fiducial nuclear delivery, max/min |
 |---|---|---|---|---|---|---|---|
 | 3e10 | 0.071 | 0.074 | 0.084 | 0.374 | 5.3 | 1.2 | 1.05e5 |
 | 3e11 | 0.074 | 0.094 | 0.115 | 0.163 | 2.05 | 1.41 | 1.03e5 |
@@ -392,9 +393,9 @@ Individual trees follow their medians (`sat_fig1`).
 Light seeds: R falls roughly as f_mom^-0.5. With the AGN off the ratio stays at 0.2 to 0.3 (does not go to unity). The 1e7 seed at 3e10 goes the opposite way
 (AGN suppresses stars faster than the black hole).
 
-**Test 3, all gas accessible** (every galaxy-to-nucleus transfer succeeds; the transfer function is replaced at run time, the frozen file is unchanged). Final R, median:
+**Test 3, all gas delivered** (every galaxy-to-nucleus transfer succeeds; the transfer function is replaced at run time, the frozen file is unchanged). Final R, median:
 
-| Mass, seed | fiducial | high accessibility | all accessible, R_nuc = 100 | all accessible, 300 |
+| Mass, seed | fiducial | high delivery | all delivered, R_nuc = 100 | all delivered, 300 |
 |---|---|---|---|---|
 | 3e10, 1e3 | 4.2e-6 | 0.074 | 0.135 | 0.079 |
 | 3e10, 1e7 | 0.044 | 0.374 | 0.394 | 0.756 |
@@ -402,8 +403,8 @@ Light seeds: R falls roughly as f_mom^-0.5. With the AGN off the ratio stays at 
 | 3e11, 1e7 | 2.8e-3 | 0.163 | 0.217 | 0.172 |
 | 3e13, 1e3 | 7.1e-8 | 0.0056 | 0.0041 | 0.0025 |
 
-Fraction of galaxy gas delivered to the nucleus: 0.15 to 0.36 (high accessibility), 1.00 (all accessible). With R_nuc = 300 pc the light-seed (1e2 to 1e5) all-accessible ratios lie within about 0.8 to 1.3 of the high-accessibility ones (3e10: 0.069, 0.079, 0.107 against 0.071, 0.074, 0.084); the 1e7 seed at 3e10 is a factor of 2 higher (0.756 against 0.374).
-At R_nuc = 100 pc the light-seed ratio is higher than at high accessibility by 1.5 to 1.8. At 3e13 all-accessible is lower than high accessibility by factors of 1.1 to 2.9 across seeds (seed 1e3: 0.0041 and 0.0025 against 0.0056). Reading: raising the delivered gas fraction from 0.15 to 0.36 to 1.0 moves the ratio by factors of order unity, not by orders of magnitude; the orders of magnitude come from the fiducial accessibility.
+Fraction of galaxy gas delivered to the nucleus: 0.15 to 0.36 (high delivery), 1.00 (all delivered). With R_nuc = 300 pc the light-seed (1e2 to 1e5) all-delivered ratios lie within about 0.8 to 1.3 of the high-delivery ones (3e10: 0.069, 0.079, 0.107 against 0.071, 0.074, 0.084); the 1e7 seed at 3e10 is a factor of 2 higher (0.756 against 0.374).
+At R_nuc = 100 pc the light-seed ratio is higher than at high delivery by 1.5 to 1.8. At 3e13 all-delivered is lower than high delivery by factors of 1.1 to 2.9 across seeds (seed 1e3: 0.0041 and 0.0025 against 0.0056). Reading: raising the delivered gas fraction from 0.15 to 0.36 to 1.0 moves the ratio by factors of order unity, not by orders of magnitude; the orders of magnitude come from the fiducial nuclear delivery.
 
 **Test 4, stellar wind x AGN** (final R, median; the 2x2):
 
@@ -421,10 +422,10 @@ Removing the stellar wind moves the AGN-off floor by +24% (3e10) and -17% (3e11)
 
 | Case | 3e10 (z>10 / 7-10 / z<=7) | 3e11 (z>10 / 7-10 / z<=7) |
 |---|---|---|
-| high accessibility, AGN on | 0.048 / 0.068 / 0.108 | 0.038 / 0.127 / 0.154 |
+| high delivery, AGN on | 0.048 / 0.068 / 0.108 | 0.038 / 0.127 / 0.154 |
 | AGN off | 0.163 / 0.227 / 0.264 | 0.028 / 0.244 / 0.267 |
 | stellar wind off | 0.060 / 0.078 / 0.130 | none / 0.142 / 0.164 |
-| fiducial accessibility (control) | none | none |
+| fiducial nuclear delivery (control) | none | none |
 
 The median d ln R/dt is positive below the crossing and negative above it: at 7 < z <= 10 about +10 to +12 per Gyr at the lowest R and -4 to -10 per Gyr at R of order 1 (3e10), and much closer to zero near the crossing at z <= 7 (|d ln R/dt| about 0.3 to 1.5 per Gyr within a factor of 2 of it). The crossing drifts upward with time. The z > 10 band is in the feedback-limited, step-dependent regime and is not read (at 3e11 it has a second, noise-level crossing at R = 0.0035 to 0.005).
 Do not say "attractor": this restoring behaviour follows from the competition for one reservoir (d ln R/dt = Mdot_BH/M_BH - Mdot_star/M_star).
@@ -447,11 +448,54 @@ Provenance of the two efficiencies: `docs/mvm_efficiency_literature_check.md` (e
 
 Do not say: that 0.1 to 0.2 is a physical ceiling, attractor or characteristic scale; that the ratio equals eta_acc/eps_sf exactly; that the mechanism holds at 3e13; that the relaxation is an asymptote; that the z > 10 phase-space statistics mean anything.
 
+### C19. Tree-builder timestep compliance (branching from 695b114; frozen model unchanged)
+
+Script, log, data: `diagnostics/c19_timestep_compliance.py`, `logs/c19_timestep_compliance.log`, `output/c19_timestep_compliance_results.json` (hash asserted;
+foraois 734c2f1, whose file tree is identical to the pre-rewrite 02157c9; environment in the JSON `meta`). Question: how much does the median critical seed change
+if the Zhang and Hui trees are built at a step that satisfies the practical single-split criterion (expected splits per step E of about 0.1 or less)?
+
+Design. The production pipeline (M_res = 1e4 Msun, z = 25 to 5, seed at the first node, 801-node reservoir grid, fiducial parameters, f_BH = 0.5), except
+that trees are built at dz = 0.05/k and recorded only at the production dz = 0.05 checkpoints (401 nodes, asserted). The interpolation onto the reservoir grid and the
+GRUMPY rate estimator therefore see the production node spacing; only the compliance of the tree builder changes. E = the maximum over z = 5 to 25 of
+`foraois.diagnostics.expected_eps_splits_per_step` at the anchored mass (conservative at high z); it scales as 1/dz. Six independent tree sets per setting (100 trees at
+3e10, 60 at 3e11 and 3e13); statistic = mean over sets of the per-set median, as a ratio to the k = 1 mean; standard error over sets. No bracket failures in 78 sets.
+
+| Mass | k | dz | E | mean median (Msun) | ratio to k = 1 (s.e.) | compliant (E <= 0.1) |
+|---|---|---|---|---|---|---|
+| 3e10 | 1 | 5e-2 | 82 | 9.62e7 | 1.000 (0.008) | no |
+| 3e10 | 10 | 5e-3 | 8.2 | 9.22e7 | 0.958 (0.004) | no |
+| 3e10 | 100 | 5e-4 | 0.82 | 8.95e7 | 0.931 (0.008) | no |
+| 3e10 | 1000 | 5e-5 | 0.082 | 9.06e7 | 0.942 (0.003) | yes |
+| 3e11 | 1 | 5e-2 | 694 | 1.420e9 | 1.000 (0.010) | no |
+| 3e11 | 10 | 5e-3 | 69 | 1.334e9 | 0.939 (0.016) | no |
+| 3e11 | 100 | 5e-4 | 6.9 | 1.330e9 | 0.937 (0.013) | no |
+| 3e11 | 1000 | 5e-5 | 0.69 | 1.324e9 | 0.932 (0.013) | no |
+| 3e11 | 2500 | 2e-5 | 0.28 | 1.321e9 | 0.930 (0.005) | no (E about 3 times the criterion) |
+| 3e13 | 1 | 5e-2 | 6.0e4 | 4.87e9 | 1.000 (0.007) | no |
+| 3e13 | 10 | 5e-3 | 6.0e3 | 4.77e9 | 0.979 (0.003) | no |
+| 3e13 | 100 | 5e-4 | 6.0e2 | 4.68e9 | 0.962 (0.007) | no |
+| 3e13 | 1000 | 5e-5 | 60 | 4.68e9 | 0.961 (0.003) | no |
+
+* The k = 1 medians agree with the production medians (9.45e7, 1.395e9, 4.853e9) to within 2%.
+* Result. Compliant trees give a smaller median: about -6% at 3e10 (fully compliant, ratio 0.942 +/- 0.003), about -7% at 3e11 (E = 0.28, 0.930 +/- 0.005) and about -4% at
+  3e13 (E = 60; not compliant, so not a compliant-limit result). The change is largely present by dz = 5e-3 and flat within about 2% below dz = 5e-4. The production values are
+  therefore probably slightly high. The mechanism was not tested.
+* The C13 dz rows (0.985, 1.000, 1.013 for dz = 0.1, 0.05, 0.025) changed the node spacing seen by the rate estimator as well as the compliance; here that spacing is held fixed.
+  The opposite sign suggests the two effects are confounded in the C13 dz rows (inference, not tested separately).
+* Estimated budget at 3e10 and 3e11 (arithmetic from C13 and C19, not a separate measurement): systematic about +0.5% or +1% (time grid, production below the refined limit) and
+  -6% or -7% (tree compliance), net about -5% to -6%; random about +/-5% (ensemble variation, Q1) and up to +/-3% (dz, M_res) combined in quadrature to about +/-6%. Total about 10%.
+  At 3e13 the time-grid offset is about +4% and compliance was not reached; do not quote a budget.
+* Limits: one M_res; six sets per setting; only 3e10 reaches E <= 0.1; the reservoir time grid, the rate estimator and all parameters are unchanged, so this is the
+  effect of tree compliance alone and not a bound on all numerical uncertainty. Compliance is not correctness: the Zhang and Hui builder is an approximation to the EPS tree
+  (foraois `docs/PCH08_HIGH_Z_DIAGNOSTIC.md`: in one configuration its single-step smaller-fragment density is lower by up to 45% in the bins nearest M_res).
+* Do not say: that the trees or the production values are timestep-converged; that the compliance effect is measured at masses other than those tested, or that 3e13 was made
+  compliant; that the frozen production values should be corrected (they are frozen; the shift estimates their bias).
+
 ## 2. Consolidated "do not say" list
 
-1. The Eddington limit is irrelevant. (It is irrelevant to the critical boundary at the fiducial; it may be decisive for light seeds near the accessibility threshold.)
-2. The model predicts that light seeds cannot grow. (At the fiducial they do not; in the accessibility test they grow by factors of 10 to 10^4.)
-3. The accessibility prescription necessarily produces bimodality. (It appears in the accessibility test at high halo mass only.)
+1. The Eddington limit is irrelevant. (It is irrelevant to the critical boundary at the fiducial; it may be decisive for light seeds near the delivery threshold.)
+2. The model predicts that light seeds cannot grow. (At the fiducial they do not; in the delivery test they grow by factors of 10 to 10^4.)
+3. The delivery prescription necessarily produces bimodality. (It appears in the delivery test at high halo mass only.)
 4. The R_nuc = 250 pc experiment is a second physical model, or a candidate fiducial.
 5. The Figure 2 high-mass median drop is a decline in individual black hole growth.
 6. Secondary star-formation or timing quantities (nuclear share, star formation at z > 10, G_BH - 1, feedback-limited fraction) are converged.
@@ -465,10 +509,11 @@ Do not say: that 0.1 to 0.2 is a physical ceiling, attractor or characteristic s
 14. The high-mass boundary (above about 1e12) is independent of M_hot; it scales almost linearly with it.
 15. PCH08 (or any second stochastic tree algorithm) was tested. Only a smooth mean history was, and PCH08 is not usable at this resolution.
 16. z_seed matters (or does not) for the reason the old paper gave; in the MVM nothing happens before the host exists.
-17. n_rd is an accessibility parameter; it enters through the star-formation clock.
+17. n_rd is a delivery parameter; it enters through the star-formation clock.
 18. M_BH/M_star of 0.1 to 0.2 is a universal saturation scale, ceiling or attractor (it is the nuclear supply partition, about eta_acc/eps_sf, reduced by feedback).
-19. The critical seed is insensitive to accessibility (sigma_j of 1 to 1.5 reduces it to 0.4 to 0.11 of its fiducial value).
+19. The critical seed is insensitive to nuclear delivery (sigma_j of 1 to 1.5 reduces it to 0.4 to 0.11 of its fiducial value).
 20. eta_acc and eps_sf are independently calibrated (eps_sf is inherited; eta_acc has no independent calibration in the sources checked).
+21. The tree timestep effect is measured at every mass, or the production values are timestep-converged. (C19: fully compliant at 3e10 only; about -6% there.)
 
 ## 3. Old-model numbers that must not be reused
 

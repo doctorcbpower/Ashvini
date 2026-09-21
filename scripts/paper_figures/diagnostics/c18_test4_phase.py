@@ -1,11 +1,11 @@
 """
 C18 test 4 (stellar wind on/off x AGN f_mom 0/1) and the phase-space diagnostic d ln R / dt against R, R = M_BH/M*_tot.
-Frozen MVM (hash asserted, module unmodified); high accessibility sigma_j = 1.5, R_nuc = 300 pc; 3e10 and 3e11 Msun only;
+Frozen MVM (hash asserted, module unmodified); high delivery sigma_j = 1.5, R_nuc = 300 pc; 3e10 and 3e11 Msun only;
 100 paired trees per mass, 801-step dt.
 
   Test 4 : seeds 1e3 and 1e7; wind on/off (eta_sn_scale = 1 / 0) x f_mom = 1 / 0.
   Phase  : d ln R/dt = d ln M_BH/dt - d ln M*_tot/dt over a +-20-step window (~26 Myr), pooled over seeds 1e2, 1e3, 1e5, 1e7,
-           binned in log10 R (0.25 dex) in three redshift bands; plus a fiducial-accessibility control (seeds 1e5, 1e7).
+           binned in log10 R (0.25 dex) in three redshift bands; plus a fiducial-delivery control (seeds 1e5, 1e7).
            R and its derivative are only defined where M*_tot > 1e5 Msun.
 Writes output/c18_test4_phase_results.json.
 """

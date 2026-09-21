@@ -34,7 +34,7 @@ axes[0].set_ylabel(r"$M_{\rm BH}/M_{\star,{\rm tot}}$"); axes[0].legend(fontsize
 fig.tight_layout(); paper_style.save(fig, OUT / "sat_fig6_test4"); plt.close(fig)
 
 # ---- phase space
-names = [("high_f1", r"high accessibility, AGN on, wind on"), ("high_f0", r"AGN off (wind on)"), ("high_nowind", r"stellar wind off (AGN on)"), ("fid_control", r"fiducial accessibility (control)")]
+names = [("high_f1", r"high delivery, AGN on, wind on"), ("high_f0", r"AGN off (wind on)"), ("high_nowind", r"stellar wind off (AGN on)"), ("fid_control", r"fiducial delivery (control)")]
 BC = paper_style.seq(3)
 cols = {"z>10": BC[0], "7<z<=10": BC[1], "z<=7": BC[2]}
 BL = {"z>10": r"$z>10$", "7<z<=10": r"$7<z\leq10$", "z<=7": r"$z\leq7$"}

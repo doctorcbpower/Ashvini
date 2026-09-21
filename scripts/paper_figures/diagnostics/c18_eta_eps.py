@@ -1,6 +1,6 @@
 """
 C18 test 5/6: does the no-feedback floor of R = M_BH/M*_tot scale as eta_acc / eps_sf?
-Frozen MVM (hash asserted; unmodified). High accessibility (sigma_j = 1.5, R_nuc = 300 pc); 3e10 and 3e11 Msun; 100 paired trees;
+Frozen MVM (hash asserted; unmodified). High delivery (sigma_j = 1.5, R_nuc = 300 pc); 3e10 and 3e11 Msun; 100 paired trees;
 801-step dt. eta_acc in {0.001, 0.005, 0.02} x eps_sf in {0.0075, 0.015, 0.03}; two feedback cells: all feedback off
 (f_mom = 0, eta_sn_scale = 0) and AGN + stellar wind on (fiducial coupling). Seeds 1e3 and 1e7 for the final ratio; seeds
 1e2, 1e3, 1e5, 1e7 pooled for the phase-space zero crossing (z <= 7 band).

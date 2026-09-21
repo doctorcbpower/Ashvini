@@ -3,11 +3,11 @@ C18: is the 0.1 to 0.2 M_BH/M*_tot scale a real, seed-independent outcome, and w
 Tests 1 to 3 of the agreed ranking, on paired identical trees (100 per halo mass, 801-step dt), branching from the frozen
 MVM (hash asserted; reservoir_stock.py is NOT modified).
 
-  1. seed memory : seeds 1e2, 1e3, 1e5, 1e7 Msun at a high-accessibility configuration (sigma_j = 1.5, R_nuc = 300 pc),
+  1. seed memory : seeds 1e2, 1e3, 1e5, 1e7 Msun at a high-delivery configuration (sigma_j = 1.5, R_nuc = 300 pc),
                    plus the fiducial (sigma_j = 0.5, R_nuc = 100 pc) as reference.
-  2. AGN strength: f_mom = 0, 0.3, 1, 3, 10 at the high-accessibility configuration (seeds 1e3 and 1e7).
-  3. all gas accessible: every galaxy -> nucleus transfer succeeds (the nuclear_transfer function is replaced at run time by one
-                   that moves all galaxy gas), at R_nuc = 100 and 300 pc, against the fiducial and high-accessibility models.
+  2. AGN strength: f_mom = 0, 0.3, 1, 3, 10 at the high-delivery configuration (seeds 1e3 and 1e7).
+  3. all gas delivered: every galaxy -> nucleus transfer succeeds (the nuclear_transfer function is replaced at run time by one
+                   that moves all galaxy gas), at R_nuc = 100 and 300 pc, against the fiducial and high-delivery models.
 
 Writes output/c18_saturation_results.json (per-tree final ratios and downsampled trajectories, plus 8 individual trees).
 """
@@ -26,7 +26,7 @@ FID = dict(sigma_lnj=0.5, R_nuc_pc=100.0)
 
 
 def all_transfer(m, ln_jmed, F_up, F_cur, cut, ln_jt_nuc, sigma_lnj, n_active):
-    """control: every galaxy gas parcel is accessible to the nucleus"""
+    """control: every galaxy gas parcel is delivered to the nucleus"""
     T = m[:, :n_active].sum(axis=1).copy()
     m[:, :n_active] = 0.0
     return T
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     for r in R:
         M0 = r["M0"]; z = np.array(r["z"])
         print(f"\n################ M0 = {M0:.0e} ################")
-        print("TEST 1  seed memory: final ratio M_BH/M*(z=5), median [16,84]; high accessibility (sigma_j=1.5, R_nuc=300) and fiducial")
+        print("TEST 1  seed memory: final ratio M_BH/M*(z=5), median [16,84]; high delivery (sigma_j=1.5, R_nuc=300) and fiducial")
         for cfg in ("high", "fid"):
             for s in (1e2, 1e3, 1e5, 1e7):
                 a = r["t1"][f"{cfg}_{s:g}"]; f = q(a["final"])
@@ -104,13 +104,13 @@ if __name__ == "__main__":
                 j = int(np.argmin(abs(z - zt)))
                 med = np.array([r["t1"][f"{cfg}_{s:g}"]["pct"][1][j] for s in (1e2, 1e3, 1e5, 1e7)], dtype=float)
                 print(f"        z={zt:4.1f}: median ratio by seed (1e2, 1e3, 1e5, 1e7) = " + ", ".join(f"{m:.2e}" for m in med) + f"   max/min = {np.nanmax(med)/np.nanmin(med):.3g}")
-        print("TEST 2  AGN strength (high accessibility): final ratio median [16,84] for f_mom = 0, 0.3, 1, 3, 10")
+        print("TEST 2  AGN strength (high delivery): final ratio median [16,84] for f_mom = 0, 0.3, 1, 3, 10")
         for s in (1e3, 1e7):
             row = []
             for f in (0.0, 0.3, 1.0, 3.0, 10.0):
                 a = r["t2"][f"f{f:g}_{s:g}"]; qq = q(a["final"]); row.append(f"f={f:g}: {qq[1]:.2e} [{qq[0]:.1e},{qq[2]:.1e}]")
             print(f"   seed {s:.0e}: " + " | ".join(row))
-        print("TEST 3  all gas accessible: final ratio median [16,84] and fraction of galaxy gas delivered to the nucleus")
+        print("TEST 3  all gas delivered: final ratio median [16,84] and fraction of galaxy gas delivered to the nucleus")
         for s in (1e2, 1e3, 1e5, 1e7):
             row = []
             for tag, key in (("fiducial", f"fid_{s:g}"), ("high", f"high_{s:g}"), ("all R100", f"all_R100_{s:g}"), ("all R300", f"all_R300_{s:g}")):

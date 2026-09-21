@@ -1,6 +1,6 @@
 """
 MVM Figure 2: the inverse question. M_BH(z=5)/M*_tot(z=5) for fixed seeds, fiducial (solid) and a labelled
-accessibility experiment (dashed; R_nuc = 250 pc, NOT a candidate fiducial), with the target f_BH lines.
+delivery experiment (dashed; R_nuc = 250 pc, NOT a candidate fiducial), with the target f_BH lines.
 """
 from pathlib import Path
 import json
@@ -43,7 +43,7 @@ h1, l1 = ax.get_legend_handles_labels()
 style = [Line2D([0], [0], color="0.3", lw=1.5, ls="-"), Line2D([0], [0], color="0.3", lw=1.2, ls="--")]
 leg1 = ax.legend(h1, l1, title=r"seed [$M_\odot$]", loc="lower left", fontsize=7, title_fontsize=7)
 ax.add_artist(leg1)
-ax.legend(style, [r"fiducial ($R_{\rm nuc}=100$ pc)", r"accessibility test ($R_{\rm nuc}=250$ pc)"], loc="upper right", fontsize=7,
+ax.legend(style, [r"fiducial ($R_{\rm nuc}=100$ pc)", r"delivery test ($R_{\rm nuc}=250$ pc)"], loc="upper right", fontsize=7,
           bbox_to_anchor=(1.0, 0.86))
 out = OUTDIR / "mvm_fig2_inverse.png"
 paper_style.save(fig, OUTDIR / "mvm_fig2_inverse")

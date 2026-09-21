@@ -33,14 +33,14 @@ for case in ("fiducial", "accessible_R250"):
             q = pc(R[idx]["fixed_seed"][case][str(s)]["ratio"]); g = np.nanmedian(R[idx]["fixed_seed"][case][str(s)]["G"])
             row.append(f"{R[idx]['M0']:.0e}: {q[1]:.2e} [{q[0]:.1e},{q[2]:.1e}] G={g:.4g}")
         print(f"   seed {s:.0e}: " + " | ".join(row))
-print("  -- accessibility test, seed 1e3, all masses: M0 | median ratio [16,84] | median G | 84th pct G | % trees with G>2 | fiducial % with G>2")
+print("  -- delivery test, seed 1e3, all masses: M0 | median ratio [16,84] | median G | 84th pct G | % trees with G>2 | fiducial % with G>2")
 for r in R:
     a = r["fixed_seed"]["accessible_R250"]["1000.0"]; f = r["fixed_seed"]["fiducial"]["1000.0"]
     q = pc(a["ratio"]); G = np.array(a["G"])
     print(f"   {r['M0']:.2e} | {q[1]:.2e} [{q[0]:.1e},{q[2]:.1e}] | {np.median(G):.4g} | {np.percentile(G,84):.4g} | {np.mean(G>2)*100:.1f}% | {np.mean(np.array(f['G'])>2)*100:.1f}%")
 best = max(np.nanpercentile(r["fixed_seed"]["accessible_R250"]["1000.0"]["ratio"], 84) for r in R)
-print(f"   highest 84th-percentile ratio reached by a 1e3 seed in the accessibility test: {best:.2e}  ({np.log10(0.5/best):.2f} dex below f_BH=0.5)")
-print(f"   largest median ratio (1e3, accessibility test): {max(np.nanmedian(r['fixed_seed']['accessible_R250']['1000.0']['ratio']) for r in R):.2e}")
+print(f"   highest 84th-percentile ratio reached by a 1e3 seed in the delivery test: {best:.2e}  ({np.log10(0.5/best):.2f} dex below f_BH=0.5)")
+print(f"   largest median ratio (1e3, delivery test): {max(np.nanmedian(r['fixed_seed']['accessible_R250']['1000.0']['ratio']) for r in R):.2e}")
 
 print("\n### C. seed / host baryons: M0 | seed/(f_b Mh) at first resolved step, median [16,84] | median z_first | z where median M_BH/(f_b Mh) crosses 1 | median M_BH/(f_b Mh) at z=15,10,5 | median over trees of M_BH(z=5)/(f_b Mh)")
 for r in R:

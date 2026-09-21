@@ -15,15 +15,16 @@ differ by sampling noise (about 1 to 2 per cent in a 60-tree median). All runs u
 | `mvm_sens.py` | `sensitivities_60trees_*` | 60 paired, 801 | sigma_j, eps_sf, R_nuc, f_mom, eta_SN, wind off |
 | `mvm_claims.py` | `claims_regime_and_sens_60trees_*` | 60 paired, 801 | Eddington regime for fixed seeds; eta_acc, radiative efficiency, f_BH |
 | `mvm_regime.py` | `regime_grid_20trees_*` | 20, 801 | (sigma_j, R_nuc) grid and eta_acc series: peak Mdot_acc/Mdot_Edd, capped fraction, G |
-| `mvm_regime2.py` | `regime_lightseed_map_20trees_*` | 20, 801 | fine light-seed map; F(seed) sign changes in accessible corners |
+| `mvm_regime2.py` | `regime_lightseed_map_20trees_*` | 20, 801 | fine light-seed map; F(seed) sign changes in high-delivery corners |
 | `mvm_compare.py` | `premvm_vs_mvm_20trees` | 20 paired, 401 | frozen pre-MVM against MVM on identical trees |
 | `mvm_cap.py` | `feedback_limited_by_z_20trees` | 20, 401 | feedback-limited fraction by redshift |
 | `c17_diagnostics.py zseed\|mhot\|nrd\|trees` | `c17_zseed`, `c17_mhot`, `c17_nrd`, `c17_trees` | 100 paired (240 for trees), 801-step dt | z_seed, M_hot, n_rd, and the (invalid) PCH08 comparison |
 | `c17_smooth_assembly.py` | `c17_smooth_assembly` | 1 deterministic history | frozen MVM on the Fakhouri et al. (2010) mean accretion history |
 | `c17_accessibility_reach.py` | `c17_accessibility_reach` | 60, 801-step dt | fixed-seed reach of f_BH and critical-seed ratio across (sigma_j, R_nuc) cells |
-| `c18_saturation_tests.py` | `c18_saturation_tests` | 100 paired, 801-step dt | seed memory, AGN strength (f_mom), all-gas-accessible control at sigma_j = 1.5, R_nuc = 300 pc |
+| `c18_saturation_tests.py` | `c18_saturation_tests` | 100 paired, 801-step dt | seed memory, AGN strength (f_mom), all-gas-delivered control at sigma_j = 1.5, R_nuc = 300 pc |
 | `c18_test4_phase.py` | `c18_test4_phase` | 100 paired, 801-step dt | stellar wind x AGN 2x2; phase-space d ln R/dt against R |
 | `c18_eta_eps.py` | `c18_eta_eps` | 100 paired, 801-step dt | eta_acc x eps_sf grid, with and without feedback |
+| `c19_timestep_compliance.py` | `c19_timestep_compliance` | 6 independent sets of 100 (3e10) or 60 (3e11, 3e13) trees per setting, 801-step dt | tree-builder timestep compliance: trees at dz = 0.05/k recorded at the production dz = 0.05 checkpoints; effect on M_seed,crit |
 | `c17_pch08_check*.py` | `c17_pch08_check` | 40 to 60 | why PCH08 cannot be used here (near-deterministic, too-early main-progenitor history at small M_res) |
 
 All scripts here and `gen_mvm_production.py` locate `foraois` through the environment variable `FORAOIS_ROOT` (a checkout containing `src/` and `config/`); see `docs/PRODUCTION_PROVENANCE.md` for the state used for the production ensemble and for what is not exactly reproducible.
@@ -31,8 +32,10 @@ All scripts here and `gen_mvm_production.py` locate `foraois` through the enviro
 `c17_*` diagnostics assert that `reservoir_stock.py` has the hash recorded in the production JSON, so they branch from the frozen commit.
 `logs/c17_trees.log` reports the PCH08 comparison run **as it was run**; it is not a valid result (see the PCH08 evidence in the crib sheet, C17).
 
-`c18_*` scripts assert the frozen module hash as well. The all-accessible control replaces `nuclear_transfer` at run time and restores it; the frozen file is not edited.
-Data and figures: `output/c18_*.json`, `output/sat_fig1` to `sat_fig8` (`plot_c18_saturation.py`, `plot_c18_test4_phase.py`, `plot_c18_eta_eps.py`).
+`c18_*` scripts and `c19_timestep_compliance.py` assert the frozen module hash as well. The all-delivered control replaces `nuclear_transfer` at run time and restores it; the frozen file is not edited.
+Data and figures: `output/c19_timestep_compliance_results.json`, `output/c18_*.json`, `output/sat_fig1` to `sat_fig8` (`plot_c18_saturation.py`, `plot_c18_test4_phase.py`, `plot_c18_eta_eps.py`).
+
+Vocabulary: the manuscript calls the fraction of galaxy gas that reaches the nucleus "nuclear delivery" (earlier drafts and some records say "accessibility"). Prose, printed labels and plot legends here use "delivery". Code identifiers and stored records keep the earlier word so that provenance references stay valid: the script and log names `c17_accessibility_reach.*` and `sat_fig5_all_accessible.*`, the frozen production JSON keys `accessible_R250` and `accessibility_experiment`, `gen_mvm_production.py`, `ashvini/reservoir_stock.py` (hash asserted), and the existing logs (which were written with the earlier labels).
 
 Caveats on individual logs:
 

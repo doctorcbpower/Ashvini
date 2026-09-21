@@ -56,7 +56,7 @@ for ax, r in zip(axes, D):
     ax.set_xscale("log"); ax.set_yscale("log"); ax.set_ylim(1e-9, 3)
     ax.set_xlabel(r"$M_{\rm seed}\ [M_\odot]$"); ax.set_title(r"$M_{\rm halo}=$" + LAB[r["M0"]], fontsize=8)
 axes[0].set_ylabel(r"$M_{\rm BH}/M_{\star,{\rm tot}}\,(z=5)$")
-axes[0].legend([Line2D([0], [0], color=paper_style.BLUE, lw=1.6), Line2D([0], [0], color="0.4", lw=1.6, ls="--")], [r"high accessibility", r"fiducial"], fontsize=7, loc="upper left")
+axes[0].legend([Line2D([0], [0], color=paper_style.BLUE, lw=1.6), Line2D([0], [0], color="0.4", lw=1.6, ls="--")], [r"high delivery", r"fiducial"], fontsize=7, loc="upper left")
 fig.tight_layout(); paper_style.save(fig, OUT / "sat_fig2_final_vs_seed"); plt.close(fig)
 
 # Plot 3: final ratio vs f_mom
@@ -84,11 +84,11 @@ for ax, r in zip(axes, D):
 axes[0].set_ylabel(r"$M_{\rm BH}/M_{\star,{\rm tot}}$"); axes[0].legend(fontsize=7, loc="lower left")
 fig.tight_layout(); paper_style.save(fig, OUT / "sat_fig4_fmom_trajectories"); plt.close(fig)
 
-# Plot 5: all gas accessible against fiducial and high accessibility
+# Plot 5: all gas delivered against fiducial and high delivery
 fig, axes = plt.subplots(1, 3, figsize=(paper_style.FULL, 2.8), sharey=True)
 for ax, r in zip(axes, D):
     z = arr(r["z"])
-    for tag, key, c in (("fiducial", "fid", "0.4"), ("high (1.5, 300 pc)", "high", "C0"), ("all accessible, 100 pc", "all_R100", "C2"), ("all accessible, 300 pc", "all_R300", "C4")):
+    for tag, key, c in (("fiducial", "fid", "0.4"), ("high (1.5, 300 pc)", "high", "C0"), ("all delivered, 100 pc", "all_R100", "C2"), ("all delivered, 300 pc", "all_R300", "C4")):
         for s, ls in ((1e3, "-"), (1e7, "--")):
             a = (r["t1"] if key in ("fid", "high") else r["t3"])[f"{key}_{s:g}"]
             traj(ax, z, a, c, ls=ls, ind=(s == 1e3), band=(s == 1e3), lw=1.5, label=tag if s == 1e3 else None)

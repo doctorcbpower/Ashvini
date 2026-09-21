@@ -1,0 +1,28 @@
+C19: tree-builder timestep compliance vs M_seed,crit (frozen MVM, production pipeline; trees built at dz = 0.05/k, recorded at the production dz = 0.05 checkpoints)
+date 2026-09-21T19:15:16; foraois 734c2f16cdeb8ef83f199c24be5241cfa9a8020e (uncommitted changes: False); python 3.11.10, numpy 2.4.6, scipy 1.17.1, numba 0.66.0
+78 tree sets in 534 s; bracket failures in total: 0
+
+M0 = 3e+10 Msun: 6 independent tree sets of 100 trees per setting; median M_seed,crit per set, ratio to the k = 1 mean (9.621e+07 Msun)
+     k        dz     E(max z)   mean median  sd/mean   ratio to k=1   (standard error)   compliant (E <= 0.1)
+      1    5.0e-02       81.6   9.621e+07    0.019       1.000       (0.008)          no
+     10    5.0e-03       8.15   9.215e+07    0.011       0.958       (0.004)          no
+    100    5.0e-04      0.815   8.954e+07    0.020       0.931       (0.008)          no
+   1000    5.0e-05     0.0815   9.061e+07    0.008       0.942       (0.003)          yes
+
+M0 = 3e+11 Msun: 6 independent tree sets of 60 trees per setting; median M_seed,crit per set, ratio to the k = 1 mean (1.420e+09 Msun)
+     k        dz     E(max z)   mean median  sd/mean   ratio to k=1   (standard error)   compliant (E <= 0.1)
+      1    5.0e-02        694   1.420e+09    0.025       1.000       (0.010)          no
+     10    5.0e-03       69.3   1.334e+09    0.043       0.939       (0.016)          no
+    100    5.0e-04       6.93   1.330e+09    0.034       0.937       (0.013)          no
+   1000    5.0e-05      0.693   1.324e+09    0.034       0.932       (0.013)          no
+   2500    2.0e-05      0.277   1.321e+09    0.014       0.930       (0.005)          no
+
+M0 = 3e+13 Msun: 6 independent tree sets of 60 trees per setting; median M_seed,crit per set, ratio to the k = 1 mean (4.866e+09 Msun)
+     k        dz     E(max z)   mean median  sd/mean   ratio to k=1   (standard error)   compliant (E <= 0.1)
+      1    5.0e-02   5.97e+04   4.866e+09    0.016       1.000       (0.007)          no
+     10    5.0e-03   5.96e+03   4.765e+09    0.007       0.979       (0.003)          no
+    100    5.0e-04        596   4.681e+09    0.019       0.962       (0.007)          no
+   1000    5.0e-05       59.6   4.677e+09    0.008       0.961       (0.003)          no
+
+notes: E is evaluated at the anchored mass M0 (conservative at high z). Only 3e10 reaches E <= 0.1; at 3e11 the smallest dz gives E about 0.3 and at 3e13 E stays far above 0.1, so the 3e13 ratios are not a compliant-limit result. Ratios below 1 mean the compliant trees give a smaller median.
+wrote /Users/00075868/Codes/Ashvini/scripts/paper_figures/output/c19_timestep_compliance_results.json

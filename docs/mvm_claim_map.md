@@ -20,7 +20,7 @@ except where marked. Nothing in this file is manuscript text.
 
 * Between foraois `1ba7073` (the last commit before this work) and `9d5fdae`, the only source change is `src/foraois/cosmo_utils.py` (the barrier fix). The production run used `1ba7073` plus that change while it was still uncommitted (inferred from file times); it was committed afterwards as `ed28326`, which is the recommended reproducibility pin, not the run-time commit. The exact run-time commit is not known (`docs/PRODUCTION_PROVENANCE.md`).
 * Frozen model: `ashvini/reservoir_stock.py`, sha256 `31c701dd8f298d4b7bfc2bfb4d74f90fbe77106c817670a1432563b86d255f63`, recorded in
-  `scripts/paper_figures/output/mvm_production_results.json` (2026-09-20T15:44:29). Every C17 script asserts this hash before running.
+  `scripts/paper_figures/output/mvm_production_results.json` (2026-09-20T15:44:29). `c17_diagnostics.py`, `c17_accessibility_reach.py`, `c17_smooth_assembly.py` and the three `c18_*` scripts assert this hash before running; the `c17_pch08_check*.py` scripts and the `mvm_*.py` diagnostics do not (`docs/PRODUCTION_PROVENANCE.md`, section 3).
 * The numba tree sampler is not seed-reproducible: the stored JSON and the logs are the record of the ensembles.
 
 ## 1. Headline results

@@ -88,22 +88,42 @@ from .utils import time_at_z
 # ceiling -- treat any result at or above it as unreliable at the low-mass
 # end, but do not treat a smaller m_res_fraction as automatically safe
 # without checking convergence for your own specific mass range.
-_MRES_FRACTION_CONVERGENCE_WARN = 1e-3
+_SPLITS_PER_STEP_WARN = 0.1
 
 
-def _warn_if_mres_unconverged(m_res_msun, mass_bin_msun):
-    m_res_fraction = m_res_msun / mass_bin_msun
-    if m_res_fraction >= _MRES_FRACTION_CONVERGENCE_WARN:
+def _warn_if_timestep_noncompliant(tree_generator, cosmo_data, algorithm, m0_hunits, m_res_hunits, z0, z_max, dz, model="cdm"):
+    """
+    Warn if dz is too coarse for a single split per step at this m_res/M0.
+
+    Both tree builders register at most one split per step, so the expected number of resolved splits
+    per step must be small (about 0.1). For PCH08 this is the mean-field N_upper along the trajectory
+    (foraois.diagnostics.expected_splits_per_step); for Zhang-Hui it is the EPS expected number of splits
+    (expected_eps_splits_per_step), evaluated at M0, which is conservative at high z. A violation gives
+    near-deterministic, too-early assembly at small m_res/M0 (foraois docs/PCH08_HIGH_Z_DIAGNOSTIC.md).
+    """
+    if m_res_hunits * 2.0 >= m0_hunits:
+        return
+    try:
+        from foraois import diagnostics
+        if algorithm == "pch08":
+            _, nupper, _ = diagnostics.expected_splits_per_step(tree_generator, m0_hunits, z0, z_max, m_res_hunits, dz=dz)
+            worst = float(np.nanmax(nupper))
+            name = "N_upper"
+        else:
+            zs = np.arange(z0, z_max, dz)
+            stride = max(1, len(zs) // 50)
+            worst = max(diagnostics.expected_eps_splits_per_step(cosmo_data, m0_hunits, zz, zz + dz, m_res_hunits, model=model)
+                        for zz in zs[::stride])
+            name = "EPS expected splits per step"
+    except Exception:  # a diagnostic must never stop a run
+        return
+    if worst > _SPLITS_PER_STEP_WARN:
         warnings.warn(
-            f"build_forest_live: m_res/mass_bin={m_res_fraction:.1e} is at or above "
-            f"{_MRES_FRACTION_CONVERGENCE_WARN:.0e}, empirically shown to be badly "
-            "unconverged for z=0 stellar-mass results at low halo mass (M_star changed "
-            "by ~7-8x per decade of M_res refinement in that regime, with no sign of "
-            "convergence yet even at m_res_fraction=1e-5) -- see "
-            "docs/RESOLUTION_CONVERGENCE.md. Consider a smaller m_res (relative to "
-            "mass_bin) for any result you intend to trust at the low-mass end, and note "
-            "that dz does not fix this: dz alone has no meaningful effect once M_res is "
-            "adequately resolved.",
+            f"build_forest_live: dz={dz:g} with m_res/M0={m_res_hunits / m0_hunits:.1e} gives a maximum {name} of "
+            f"{worst:.2g} (> {_SPLITS_PER_STEP_WARN}). The tree builders register at most one split per step, so "
+            "results (near-deterministic, too-early main-progenitor assembly) are not timestep-compliant. "
+            "Reduce dz until the statistic of interest is stable; see foraois docs/PCH08_HIGH_Z_DIAGNOSTIC.md and "
+            "docs/RESOLUTION_CONVERGENCE.md.",
             stacklevel=3,
         )
 
@@ -299,9 +319,9 @@ def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
         Tree generator. 'pch08' (default, unchanged) is PCHMergerTree; 'zh' is
         ZhangHuiMergerTree with the collapse barrier model taken from the
         config's dm_model. PCH08 main progenitors at small m_res/mass_bin are
-        near-deterministic and assemble earlier than Zhang-Hui (foraois
-        docs/PCH08_HIGH_Z_DIAGNOSTIC.md); scripts/zh_vs_pch08_mres_scan.py
-        shows the resulting m_res trend in M_star is a PCH08 property.
+        near-deterministic and assemble earlier than Zhang-Hui when dz violates the single-split-per-step requirement
+        (N_upper >~ 0.1; foraois docs/PCH08_HIGH_Z_DIAGNOSTIC.md). A warning is issued when the maximum
+        N_upper (PCH08) or EPS expected splits per step (Zhang-Hui) exceeds 0.1.
 
     Returns
     -------
@@ -332,8 +352,10 @@ def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
         tree_generator = ZhangHuiMergerTree(
             cosmo_data, run_params, model=run_params["Code"].get("dm_model", "cdm"))
     else:
-        _warn_if_mres_unconverged(m_res_msun, mass_bin)
         tree_generator = PCHMergerTree(cosmo_data, run_params)
+    _warn_if_timestep_noncompliant(
+        tree_generator, cosmo_data, "pch08" if algorithm == "pch08" else "zh", mass_bin * h, m_res_msun * h, z0, z_max, dz,
+        model=run_params["Code"].get("dm_model", "cdm"))
 
     halo_masses, redshifts, smooth_accretion, merger_mass = build_forest_for_bin(
         tree_generator, mass_bin, h, n_halos, z0, z_max, m_res_msun, dz, backend, seed,

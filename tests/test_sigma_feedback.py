@@ -286,7 +286,12 @@ def test_sigma_feedback_wind_alone_does_not_cap_bh_growth_near_m_sigma(monkeypat
     halo_masses, halo_growth_rates, redshifts, _merger_mass = pymctrees_adapter.build_forest_live(
         pymctrees_config_path=str(config_path), mass_bin=1e12,
         n_halos=1, z0=0.5, z_max=25.0, dz=0.02,
-        m_res=100.0, backend="numpy", seed=7,
+        # m_res=100.0 Msun (m_res/mass_bin=1e-10) relied on foraois v0.1.1's undocumented sigma(M)
+        # table clamp/extrapolation below any validated range; foraois v0.1.2's CosmoData.check_M_res
+        # now refuses that (correctly -- nothing there was ever numerically validated). 1e4 Msun keeps
+        # this test's actual intent (a resolution far finer than anything the BH-growth-cap physics
+        # under test cares about) while staying inside the table.
+        m_res=1e4, backend="numpy", seed=7,
     )
     result = main.run_forest(halo_masses, halo_growth_rates, redshifts)
 
@@ -421,7 +426,8 @@ def test_growth_cap_enabled_actually_holds_bh_mass_near_ceiling(monkeypatch, tmp
     halo_masses, halo_growth_rates, redshifts, _merger_mass = pymctrees_adapter.build_forest_live(
         pymctrees_config_path=str(config_path), mass_bin=1e12,
         n_halos=1, z0=0.5, z_max=25.0, dz=0.02,
-        m_res=100.0, backend="numpy", seed=7,
+        # see the identical m_res note in test_sigma_feedback_wind_alone_does_not_cap_bh_growth_near_m_sigma above
+        m_res=1e4, backend="numpy", seed=7,
     )
     result = main.run_forest(halo_masses, halo_growth_rates, redshifts)
 

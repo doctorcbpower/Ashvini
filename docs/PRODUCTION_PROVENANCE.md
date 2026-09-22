@@ -9,7 +9,7 @@ The calculation described here is the production ensemble behind the results of 
 | Item | Identifier |
 |---|---|
 | Production output | `scripts/paper_figures/output/mvm_production_results.json` |
-| Its SHA-256 | `5e8ec4c44175da253f73a2f47a80226b0207005e01cdd7f96047136bca4eff05` (git blob `737e9b8c7e62cba899280b5e9d43b8a1faa6cda0`) |
+| Its SHA-256 | **Superseded 2026-09-22** by the `foraois v0.1.2` numerical-validity correction, section 9. The file at this path is now the corrected run, hash `66690591a9642907be2703972d9670dd3b18357ace8f2c37e466316a3c7ef795` (13 masses, 3,379,354 bytes, `meta.date=2026-09-22T18:34:03`). The original file described in this section (hash `5e8ec4c44175da253f73a2f47a80226b0207005e01cdd7f96047136bca4eff05`, git blob `737e9b8c7e62cba899280b5e9d43b8a1faa6cda0`) is preserved byte-for-byte as `mvm_production_results_pre_v0.1.2_kmax_fix.json`, sibling in the same directory; nothing below is deleted, only superseded for the affected quantities |
 | Written | 2026-09-20 15:44:29 (`meta.date` and file time agree). This is when the JSON was written, that is the end of the run. The start time and duration were not recorded |
 | Model source | `ashvini/reservoir_stock.py`, SHA-256 `31c701dd8f298d4b7bfc2bfb4d74f90fbe77106c817670a1432563b86d255f63` (recorded in the JSON `meta.module_sha256`; equal to the committed blob and to the working file) |
 | Ashvini commit | `695b11467aaa68e4c7eb465e13a53e54a3135af3` (2026-09-20 15:56:21 +0800), "Add the Minimal Viable Model of the galaxy and nuclear reservoirs, its production ensemble, diagnostics and crib sheet"; on `fork/main` (`doctorcbpower/Ashvini`). This is the first commit that records the model, the production script and the output. It was made about 12 minutes after the output was written, so the run was not made from a clean checkout of it |
@@ -95,3 +95,60 @@ Ashvini: `https://github.com/doctorcbpower/Ashvini` (branch `main`; remote `fork
 ## 8. Figure files in the manuscript repository
 
 The manuscript repository's `.gitignore` excludes `*.pdf` and `*.md` (built PDFs and notes) and tracks the manuscript figures as PNG files in `figures/`. This is the existing convention, so the manuscript includes the PNG versions, at 300 dpi, and a clean checkout builds from tracked files alone (verified by building with all figure PDFs removed). Vector PDF versions of each figure are written next to the PNGs by `scripts/paper_figures/paper_style.py` (and by `figures/make_schematic_baryon_flow.py` in the manuscript repository); they are not tracked. If vector figures are wanted for submission, add `!figures/*.pdf` to that `.gitignore` and switch the `\includegraphics` extensions; nothing else depends on it. Regenerating a figure needs only the stored JSON files (the production JSON or the `c18_*_results.json` files, section 3); no simulation is rerun.
+
+## 9. foraois numerical-validity correction (2026-09-22) -- supersedes section 4 for the affected quantities
+
+`foraois v0.1.2` fixes two numerical-validity issues in the tree code the production run (section 2) used, both independent of the timestep-compliance limitation of section 4:
+
+1. **Compiled-kernel `sigma(M)` table clamp.** The Zhang--Hui numba kernel (`build_forest_numba`, used here via `backend="numba"`) read `sigma(M)` from a table that began at `1e5 Msun/h` and silently clamped below it, independent of the requested `M_res`. The production `M_res=1e4 Msun` is `6.8e3 Msun/h` at this cosmology's `h=0.678`, so the compiled kernel's *effective* resolution floor was `1e5 Msun/h`, not the nominal `M_res`.
+2. **`pk_kmax` truncation.** `menon_power_2024.yml` shipped with `pk_kmax=100`, adequate for `sigma(M)`/`alpha(M)` only above `~3e7 Msun/h` (1 per cent criterion); the production trees reach far below that.
+
+Both are fixed in `foraois v0.1.2` (`_prepare_sigma_grid`'s table now starts at `100 Msun/h`; every tree-building method validates `M_res` against the table and `pk_kmax` before building, raising or warning rather than silently proceeding; `menon_power_2024.yml` now ships with `pk_kmax=3000`, the smallest value found tree-level-adequate at `M_res=1e4 Msun` for this exact `z0=5`-anchored, `z_max=25` configuration -- see `foraois`'s own `docs/MODELS.md`, "Numerical validity of sigma(M) and alpha(M) at low mass", and the manuscript's `\S`\,trees).
+
+**What was regenerated (2026-09-22, complete).** An initial pass (recorded in an earlier version of this section) reran only the three masses discussed quantitatively in the manuscript, as a spot check. That has since been superseded: using the corrected `foraois` (this repository's `.venv`, `menon_power_2024.yml` at `pk_kmax=3000`) and the unchanged production pipeline (`gen_mvm_production.py`'s own `worker()`, same `N_TREES=240`, `N_STEPS=801`, `dz=0.05`, `z_seed=25`, `z_anchor=5`, same seed policy `rng_seed=1000+i`, same priors/model), we reran the **complete production ensemble, all thirteen masses**, and it now replaces `mvm_production_results.json` at the path in section 1 (`module_sha256` in the new file's `meta` is unchanged, `31c701dd8f298d4b7bfc2bfb4d74f90fbe77106c817670a1432563b86d255f63` -- confirms only the tree-generation code changed, not the reservoir model). Median critical seed, before and after, all thirteen masses:
+
+| $M_0\,[M_\odot]$ | Published $\Mseedcrit$ median [16,84] | Corrected | Change |
+|---|---|---|---|
+| $3.00\times10^{10}$ | $9.452\times10^7\,[7.61,10.56]\times10^7$ | $9.898\times10^7\,[8.41,10.9]\times10^7$ | $+4.7\%$ |
+| $5.34\times10^{10}$ | $1.895\times10^8\,[1.47,2.12]\times10^8$ | $1.954\times10^8\,[1.53,2.19]\times10^8$ | $+3.1\%$ |
+| $9.49\times10^{10}$ | $3.778\times10^8\,[3.01,4.30]\times10^8$ | $3.956\times10^8\,[3.16,4.48]\times10^8$ | $+4.7\%$ |
+| $1.69\times10^{11}$ | $7.662\times10^8\,[6.02,8.68]\times10^8$ | $7.823\times10^8\,[6.18,8.79]\times10^8$ | $+2.1\%$ |
+| $3.00\times10^{11}$ | $1.395\times10^9\,[1.03,1.61]\times10^9$ | $1.398\times10^9\,[1.10,1.66]\times10^9$ | $+0.3\%$ |
+| $5.34\times10^{11}$ | $2.314\times10^9\,[1.82,2.68]\times10^9$ | $2.386\times10^9\,[1.90,2.75]\times10^9$ | $+3.1\%$ |
+| $9.49\times10^{11}$ | $3.025\times10^9\,[2.56,3.47]\times10^9$ | $3.101\times10^9\,[2.64,3.50]\times10^9$ | $+2.5\%$ |
+| $1.69\times10^{12}$ | $3.625\times10^9\,[3.22,4.05]\times10^9$ | $3.694\times10^9\,[3.13,4.04]\times10^9$ | $+1.9\%$ |
+| $3.00\times10^{12}$ | $3.978\times10^9\,[3.62,4.35]\times10^9$ | $4.043\times10^9\,[3.62,4.37]\times10^9$ | $+1.6\%$ |
+| $5.34\times10^{12}$ | $4.302\times10^9\,[3.96,4.64]\times10^9$ | $4.351\times10^9\,[3.97,4.68]\times10^9$ | $+1.2\%$ |
+| $9.49\times10^{12}$ | $4.531\times10^9\,[4.15,4.82]\times10^9$ | $4.584\times10^9\,[4.24,4.86]\times10^9$ | $+1.2\%$ |
+| $1.69\times10^{13}$ | $4.726\times10^9\,[4.39,5.02]\times10^9$ | $4.740\times10^9\,[4.41,5.03]\times10^9$ | $+0.3\%$ |
+| $3.00\times10^{13}$ | $4.853\times10^9\,[4.54,5.17]\times10^9$ | $4.888\times10^9\,[4.60,5.17]\times10^9$ | $+0.7\%$ |
+
+The pattern seen in the original three-mass spot check ($+0.7$ to $+4.6\%$) generalises across the full set: shifts range $+0.3$ to $+4.7\%$ with no trend by mass and no outliers, all comfortably inside the $\pm5\%$ ensemble-to-ensemble variation already quoted in the manuscript (section 3).
+
+First-resolved-node quantities (median first-resolved redshift, median $\Mseedcrit/(f_{\rm b}M_{\rm halo})$ at that node), all thirteen masses -- these shift far more than the critical seed itself, since they are evaluated right at the old, spurious resolution floor:
+
+| $M_0\,[M_\odot]$ | $z_{\rm first}$ corrected | $\Mseedcrit/(f_{\rm b}M_{\rm halo})$ corrected, median [16,84] |
+|---|---|---|
+| $3.00\times10^{10}$ | $24.8$ | $1.08\times10^3\,[2.6,40.5]\times10^2$ |
+| $5.34\times10^{10}$ | $24.8$ | $1.39\times10^3\,[4.2,70.9]\times10^2$ |
+| $9.49\times10^{10}$ | $24.8$ | $2.17\times10^3\,[6.2,82.5]\times10^2$ |
+| $1.69\times10^{11}$ | $24.8$ | $2.24\times10^3\,[6.8,94.2]\times10^2$ |
+| $3.00\times10^{11}$ | $24.8$ | $3.34\times10^3\,[10.0,137]\times10^2$ |
+| $5.34\times10^{11}$ | $24.8$ | $4.34\times10^3\,[11.4,189]\times10^2$ |
+| $9.49\times10^{11}$ | $24.8$ | $4.27\times10^3\,[10.5,165]\times10^2$ |
+| $1.69\times10^{12}$ | $24.8$ | $3.20\times10^3\,[10.5,147]\times10^2$ |
+| $3.00\times10^{12}$ | $24.8$ | $2.46\times10^3\,[7.4,101]\times10^2$ |
+| $5.34\times10^{12}$ | $24.8$ | $2.58\times10^3\,[9.1,108]\times10^2$ |
+| $9.49\times10^{12}$ | $24.8$ | $1.92\times10^3\,[6.8,80.8]\times10^2$ |
+| $1.69\times10^{13}$ | $24.8$ | $1.37\times10^3\,[4.0,62.7]\times10^2$ |
+| $3.00\times10^{13}$ | $24.8$ | $1.40\times10^3\,[3.4,46.2]\times10^2$ |
+
+The median first-resolved redshift is $24.8$ at every mass tested (published values at the three spot-checked masses were $21.4$, $24.0$ and $24.8$): under the corrected $\sigma(M)$, the anchored halo is essentially always resolved by the first time node, rather than becoming resolved only after some delay whose length depended on the old resolution floor rather than on the mass itself. This is a genuine qualitative change in what limited the earliest resolved node, not merely a quantitative correction.
+
+The `hostbaryons` figure (`scripts/paper_figures/plot_mvm_fig3_hostbaryons.py`, manuscript Figure~`fig:hostbaryons`) was regenerated from the corrected JSON; it and `figures/fig_mvm_hostbaryons.{png,pdf}` in the manuscript repository now reflect the corrected trees. The ensemble-median redshift at which $\Mbh/(f_{\rm b}M_{\rm halo})$ falls below unity, and its value at $z=5$, for the three masses shown in the figure, are materially unchanged from published ($z=11.4,\,9.7,\,12.2$ and $0.022,\,0.031,\,0.0011$ respectively, vs. published $11.0,\,9.7,\,12.2$ and $0.021,\,0.031,\,0.0011$): these are late-time quantities far from $M_{\rm res}$, so the correction's effect on them is small, unlike its effect on the first-resolved node.
+
+We also reran the $M_{\rm res}$ sensitivity test at $3\times10^{10}\,M_\odot$ (60 trees, $M_{\rm res}=10^3,10^4,10^5\,M_\odot$): median $\Mseedcrit$ is $9.545,\,9.640,\,9.722\times10^7\,M_\odot$, a spread of $1.9\%$ over the two decades tested (published: "at most 2.4 per cent per decade", measured under the clamp described above). This single-mass check was judged sufficient for this correction's scope; it was not repeated at other masses.
+
+**Still not regenerated**: the fixed-seed ratios and delivery maps (Tables in the manuscript's accessibility/delivery sections); the $(\sigma_j,\Rnuc)$ grid. These do not depend on the tree at masses close to $M_{\rm res}$ in the way the critical-seed boundary and the first-resolved node do, and were judged out of scope for this correction; they remain part of the original frozen record (`mvm_production_results_pre_v0.1.2_kmax_fix.json`, sections 1-2) and untouched by the substitution above.
+
+**Reproducibility of this addendum.** Made with the `foraois` working tree of this record's date (v0.1.2, uncommitted; `git -C <foraois> diff` against the `v0.1.1` tag gives the exact patch), `menon_power_2024.yml` as shipped in that tree, and this repository's `ashvini/reservoir_stock.py` and `gen_mvm_production.py` unchanged from section 1. The Zhang--Hui numba sampler remains not seed-reproducible (section 3); rerunning will give a statistically, not bitwise, similar ensemble -- which is why the corrected medians above do not reproduce the earlier three-mass spot check to the last digit.

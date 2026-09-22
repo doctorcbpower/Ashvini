@@ -188,6 +188,9 @@ ratio to the fiducial cell (same trees in every cell).
 
 ### C10. Seed against host baryons
 
+**Stale as of 2026-09-22**: the table below predates the `foraois v0.1.2` numerical-validity correction (compiled-kernel `sigma(M)` clamp + `pk_kmax` truncation). The production JSON has since been regenerated with the fix; corrected values for all 13 masses are in `docs/PRODUCTION_PROVENANCE.md` section 9. Re-run `mvm_crib_numbers.py` against the corrected JSON before drafting from this table again.
+
+
 | Quantity | Result (P) | Caveat | Do not say |
 |---|---|---|---|
 | M_seed,crit / (f_b M_halo) at the first resolved step, median [16,84] | 5.1e3 [3.3e3, 1.7e4] (3e10), 4.9e4 [4.8e3, 1.3e5] (3e11), 3.8e3 [8.5e2, 2.6e4] (3e13); range 3.4e3 to 6.9e4 over the 13 masses | first resolved step = halo mass above M_res = 1e4 Msun | that the seed is assembled from the baryons in the resolved host |

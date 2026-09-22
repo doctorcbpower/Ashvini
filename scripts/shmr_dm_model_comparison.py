@@ -44,6 +44,16 @@ MASS_BINS = np.logspace(8, 14, 13)
 N_HALOS = 1000
 Z0, Z_MAX, DZ = 0.0, 30.0, 0.005
 M_RES_FRACTION = 1e-4
+# pk_kmax override (v0.1.2 foraois numerical-validity fix, 2026-09). The shared
+# planck2018_camb/_wdm/_fdm.yml configs ship with pk_kmax=100, adequate down to
+# M ~ 1.6e7 Msun (5% criterion) but not to this script's own M_res = 1e-4*M_halo,
+# which reaches 1e4 Msun at its smallest (1e8 Msun) bin. 3000 is the smallest
+# pk_kmax the foraois audit's own tree-level tests found adequate at M_res=1e4
+# Msun (foraois docs/MODELS.md's "Numerical validity" section); applied here via
+# pk_kmax_override rather than editing the shared config files, since no other
+# use of them needs it. Also fixes the v0.1.1 sigma-table clamp bug this script's
+# M_res range fell inside of (foraois's own fix, independent of this override).
+PK_KMAX_OVERRIDE = 3000.0
 TUNED_E_FF = 0.05
 TUNED_M_HOT, TUNED_HOT_FLOOR, HOT_PHI = 2e12, 0.1, 4.0
 ALGORITHM = "zh"  # Zhang-Hui trees; see docs/RESOLUTION_CONVERGENCE.md (correction) and scripts/zh_vs_pch08_mres_scan.py
@@ -65,6 +75,7 @@ def run_ensemble(config_path):
                 pymctrees_config_path=config_path, mass_bin=mass_bin,
                 n_halos=N_HALOS, z0=Z0, z_max=Z_MAX, dz=DZ,
                 m_res=m_res, backend=BACKEND, seed=SEED, algorithm=ALGORITHM,
+                pk_kmax_override=PK_KMAX_OVERRIDE,
             )
         except Exception as exc:
             print(f"[{config_path}] M_halo={mass_bin:.2e}: FAILED ({exc!r})", flush=True)

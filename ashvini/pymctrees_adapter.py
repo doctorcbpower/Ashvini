@@ -283,7 +283,7 @@ def compute_growth_rates(smooth_accretion, merger_mass, redshifts):
 
 
 def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
-                       m_res=None, backend="numpy", seed=None, algorithm="pch08"):
+                       m_res=None, backend="numpy", seed=None, algorithm="pch08", pk_kmax_override=None):
     """
     Generate a single mass bin's forest live via pymctrees, returned in
     Ashvini's own (halo_masses, halo_growth_rates, redshifts, merger_mass)
@@ -322,6 +322,15 @@ def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
         near-deterministic and assemble earlier than Zhang-Hui when dz violates the single-split-per-step requirement
         (N_upper >~ 0.1; foraois docs/PCH08_HIGH_Z_DIAGNOSTIC.md). A warning is issued when the maximum
         N_upper (PCH08) or EPS expected splits per step (Zhang-Hui) exceeds 0.1.
+    pk_kmax_override : float or None
+        If given, replaces the config file's own `Code.pk_kmax` in memory before building CosmoData
+        (the file on disk is untouched). foraois's sigma(M)/alpha(M) are P(k) integrals truncated at
+        pk_kmax and become inaccurate below a mass set by it (foraois docs/MODELS.md's "Numerical
+        validity of sigma(M) and alpha(M) at low mass"; foraois.cosmo_utils.CosmoData.check_M_res warns
+        when m_res is too small for the config's own pk_kmax). Use this rather than editing a shared
+        config file when only one call site needs a larger pk_kmax than that config's other, documented
+        uses require -- e.g. an SHMR scan reaching m_res ~ 1e4 Msun with a config otherwise used, and
+        validated, only at m_res >~ 1e9 Msun.
 
     Returns
     -------
@@ -341,6 +350,8 @@ def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
     cosmo_utils, PCHMergerTree, pymctrees_io = _import_pymctrees()
 
     run_params = pymctrees_io.get_params(pymctrees_config_path)
+    if pk_kmax_override is not None:
+        run_params["Code"]["pk_kmax"] = float(pk_kmax_override)
     h = run_params["Cosmology"]["h"]
     m_res_msun = m_res if m_res is not None else 1e-3 * mass_bin
     if algorithm not in ("pch08", "zh"):

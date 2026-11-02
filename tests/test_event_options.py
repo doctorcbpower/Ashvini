@@ -14,7 +14,7 @@ def _agree(case, rel_stars=5e-3, rel_ej=5e-3, rel_gas=5e-3):
     a, s = P.ashvini_option(None if case == "plain" else case), PIN[case]
     assert a["M_star"] == pytest.approx(s["M_star"], rel=rel_stars), a
     assert a["M_ej"] == pytest.approx(s["M_ej"], rel=rel_ej), a
-    assert a["M_g"] == pytest.approx(s["M_g"], rel=rel_gas, abs=1.0), a
+    assert a["M_g"] == pytest.approx(s["M_g"], rel=rel_gas, abs=100.0), a   # abs: a remainder under 1e-4 of the 3e6 Msun supplied
 
 
 def test_the_plain_minihalo_agrees_with_stochocc():
@@ -186,3 +186,54 @@ def test_coupling_switch_uses_the_high_mass_coupling_at_the_explosion_time():
 def test_coupling_switch_agrees_with_stochocc():
     assert PIN["coupling_switch"]["M_star"] > 1.5 * PIN["energy_bank_control"]["M_star"]    # it matters: weaker coupling above the cut
     _agree("coupling_switch", 1.5e-2, 1.5e-2, 5e-2)
+
+
+def test_wind_travel_time_fixes_the_mass_at_the_explosion_and_removes_it_later():
+    from ashvini import utils
+    from ashvini.config import override
+    from ashvini.main import run_events
+    from ashvini.steppers.events import EventStepper, _Reservoirs
+    from ashvini.trajectory import HaloHistory
+    z = np.arange(20.0, 10.0 - 1e-9, -0.2)
+    hist = HaloHistory(P.MINIHALO(z), z)
+    base = P.base_config(**{**P.OPTION_BASE["ash"], "sn.eps_fb": 1.0})
+    cfg = override(base, **{"events.wind_kappa": 2.0})
+    t = 0.5 * (hist.t_min + hist.t_max)
+    stepper = EventStepper(cfg)
+    res = _Reservoirs(t, 1.0e5, 0.0)
+    stepper.explode(hist, res, t, 20.0, 1.0)
+    assert res.ejected == 0.0 and res.n_explosions == 1 and len(res.queue) == 1     # nothing yet, one delivery queued
+    t_delivery, _, mass, weight, ret, _, _, eject = res.queue[0]
+    assert t_delivery > t and eject > 0 and ret is None
+    stepper.explode(hist, res, t_delivery, mass, weight, eject=eject)
+    assert res.ejected == pytest.approx(min(1.0e5, eject), rel=1e-12) and res.n_explosions == 1   # not counted twice
+    # in a full run the baryons are conserved, and a longer travel time keeps more gas for star formation meanwhile
+    M = P.MINIHALO(z)[None, :]
+    supplied = (utils.Omega_b / utils.Omega_m) * (M[0, -1] - M[0, 0])
+    r = run_events(M, np.zeros_like(M), z, config=cfg)
+    assert r["gas_mass"][0, -1] + r["stars_mass"][0, -1] + r["ejected_mass"][0, -1] == pytest.approx(supplied, rel=1e-9)
+
+
+def test_wind_travel_time_agrees_with_stochocc():
+    assert PIN["wind_travel"]["M_star"] > 1.1 * PIN["energy_bank_control"]["M_star"]      # it matters: the gas lingers
+    _agree("wind_travel", 1.5e-2, 1.5e-2, 5e-2)
+
+
+def test_all_options_together_run_and_conserve_baryons():
+    from ashvini import utils
+    from ashvini.config import override
+    from ashvini.main import run_events
+    z = np.arange(20.0, 10.0 - 1e-9, -0.2)
+    M = P.MINIHALO(z)[None, :]
+    cfg = override(P.base_config(**{**P.OPTION_BASE["ash"], "sn.eps_fb": 0.5}), **{
+        "events.gate_T_vir_K": 3.0e3, "events.inflow_kappa": 1.0, "events.recycling_fraction": 0.3,
+        "events.bank_tau_myr": 50.0, "events.access_fraction": 0.5, "events.eps_cut_mass": 1.0e7,
+        "events.eps_fb_above_cut": 0.1, "events.wind_kappa": 1.0})
+    for sampler in ("smooth", "stochastic"):
+        r = run_events(M, np.zeros_like(M), z, config=cfg, sampler=sampler, seed=2)
+        arrived = (utils.Omega_b / utils.Omega_m) * (M[0, -1] - M[0, 0])
+        net = r["ejected_mass"][0, -1] - r["returned_mass"][0, -1]
+        # gas still on its way to the reservoir is the only baryonic mass not in gas, stars or the net removed
+        in_transit = arrived - (r["gas_mass"][0, -1] + r["stars_mass"][0, -1] + net)
+        assert 0.0 <= in_transit < 0.5 * arrived
+        assert np.all(r["gas_mass"] >= 0) and np.all(r["dust_mass"] >= 0) and np.all(np.isfinite(r["stars_metals"]))

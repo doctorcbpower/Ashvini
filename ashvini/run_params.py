@@ -238,6 +238,9 @@ class EventParams:
     # eps_fb_above_cut instead of supernova.eps_fb (SNe confined in massive minihaloes). None = off. Needs closure "energy".
     eps_cut_mass: float = None
     eps_fb_above_cut: float = 0.0
+    # wind travel time: the gas an explosion will remove is fixed at the explosion, but leaves the reservoir
+    # wind_kappa * r_vir / v_esc later (gas stays available for star formation meanwhile); 0 = at once
+    wind_kappa: float = 0.0
 
 
 @dataclass

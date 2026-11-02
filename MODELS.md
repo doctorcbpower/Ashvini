@@ -139,6 +139,22 @@ energy    eta_w = nu_SN * 2 * eps_fb * E_SN / v_esc^2        (E_SN = 1e51 erg)
 
 Follows individual explosions for one halo at a time. Between events the gas, stars, metals are advanced exactly (`dM/dt = S - kM` in closed form, `k` the star formation rate coefficient at the start of the substep, supply `S = f_b max(dM_h, 0)` reduced by the equilibrium UV suppression of Okamoto et al 2008); the stars formed in a substep are passed to a sampler (`samplers.py`) which returns the explosions they cause; each explosion is processed at its own time with `v_esc` and `M_h` at that time, adds its metal and dust yield (`Z_yield`, `dust_yield` per Msun of stars, divided by `nu_SN` per supernova), destroys dust (`weight * m_swept * M_d/M_g * f_gas`, at most the dust present), and removes `min(M_gas, weight * closure)` of gas, with metals and dust in proportion. Samplers: `"smooth"` (the expected explosions with fractional weights on K = 100 representative masses, released in 1 Myr batches: no randomness) and `"stochastic"` (Poisson counts of whole supernovae, random masses). Not included: black holes, the star formation gate, inflow lag, recycling, energy bank (milestone M5). The supply and the UV suppression use the equilibrium form, unlike the grid stepper's rate-dependent one.
 
+#### Optional features of the event stepper (Config section `events`, all off by default)
+
+Each is checked against Stochastic_Occupation's smooth control (`tests/test_event_options.py`; pins in `tests/golden/stochocc_options.json`). `tau` below is `kappa * r_vir / v_esc` at the time named.
+
+| Key | What it does |
+|---|---|
+| `gate_T_vir_K`, `gate_mass`, `gate_switch_z`, `gate_T_vir_post_K` | Gas forms stars only when the halo has `T_vir` (mu = 1.22) above `gate_T_vir_K`, or mass above `gate_mass` (replaces the temperature test); below `gate_switch_z` it must also exceed `gate_T_vir_post_K`. Tested at the start of each substep. |
+| `inflow_kappa` | The supply reaches the reservoir through a first-order store with `tau` at the start of the substep, solved exactly. |
+| `recycling_fraction`, `recycling_kappa`, `recycling_fraction_Z` | That fraction of the gas an explosion removes returns after `tau` at the explosion; `recycling_fraction_Z` (default: the same) is the fraction of the removed metals and dust that return. |
+| `bank_tau_myr` | The energy `(wanted - removed)/2 * v_esc^2` of an explosion that finds less gas than its closure could unbind is kept, decays over `bank_tau_myr` (`inf` = never), and unbinds arriving gas before it reaches the reservoir. Needs the energy closure. |
+| `access_fraction` | One explosion removes at most this fraction of the gas present. A cap on each explosion, so the answer depends on how the supernovae are split (the smooth sampler's `K`). |
+| `eps_cut_mass`, `eps_fb_above_cut` | Above this halo mass at the explosion time the energy closure uses `eps_fb_above_cut`. Needs the energy closure. |
+| `wind_kappa` | The mass an explosion will remove is fixed at the explosion, and removed (limited by the gas then present) `tau` later; metals and dust are lost with it at delivery. |
+
+Differences from Stochastic_Occupation: it asserts against several of these combined with chemistry (and with the momentum closure); the event stepper always carries metals and dust and allows every combination, so those combinations are not checked against it.
+
 ## Black hole growth ([`black_holes_growth.py`](ashvini/black_holes_growth.py))
 
 Eddington rate (mass-proportional):

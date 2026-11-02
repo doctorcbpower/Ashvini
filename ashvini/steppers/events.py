@@ -17,7 +17,7 @@ What it does:
               dust (weight * m_swept * M_d/M_g * f_gas, at most the dust present), and carries off metals and
               dust in proportion to the gas it removes
 Not in this stepper: black holes and AGN winds (bh_mass is zero). Optional, all off by default (Config section `events`):
-the star formation gate, inflow lag, recycling, energy bank, access fraction, coupling switch.
+the star formation gate, inflow lag, recycling, energy bank, access fraction, coupling switch, wind travel time.
 
 Times are in Gyr, masses in Msun.
 """
@@ -74,9 +74,9 @@ class _Reservoirs:
         self.bank = 0.0               # erg, explosion energy kept for unbinding later gas (events.bank_tau_myr)
         self.in_transit = 0.0         # gas on its way to the reservoir (events.inflow_kappa)
 
-    def push(self, t, mass, weight, ret=None, ret_Z=0.0, ret_d=0.0):
-        """Queue an explosion (mass, weight), or, with `ret`, the return of that much gas (and ret_Z metals, ret_d dust)."""
-        heapq.heappush(self.queue, (t, next(self._count), mass, weight, ret, ret_Z, ret_d))
+    def push(self, t, mass, weight, ret=None, ret_Z=0.0, ret_d=0.0, eject=None):
+        """Queue an explosion (mass, weight); or, with `ret`, the return of that much gas (and ret_Z metals, ret_d dust); or, with `eject`, the delivery of a wind that removes that much gas."""
+        heapq.heappush(self.queue, (t, next(self._count), mass, weight, ret, ret_Z, ret_d, eject))
 
     def next_time(self):
         return self.queue[0][0] if self.queue else None
@@ -178,8 +178,8 @@ class EventStepper:
                 res.push(max(float(t_sn), t_b), float(m), float(w))
         res.t = t_b
 
-    def explode(self, history, res, t_sn, mass, weight, ret=None, ret_Z=0.0, ret_d=0.0):
-        """One explosion at its own time, or, if `ret` is given, the return of recycled gas (see module docstring)."""
+    def explode(self, history, res, t_sn, mass, weight, ret=None, ret_Z=0.0, ret_d=0.0, eject=None):
+        """One explosion at its own time; or, if `ret` is given, the return of recycled gas; or, if `eject` is given, the delivery of a delayed wind (see module docstring)."""
         cfg = self.cfg
         if ret is not None:                      # recycling: gas that was removed falls back
             res.gas += ret
@@ -193,20 +193,29 @@ class EventStepper:
         z = history.z_at_t(t_sn)
         M_h = history.mass_at_t(t_sn)
         v_esc = history.v_esc_at_t(t_sn)
-        dZ = weight * self.yield_Z_per_sn
-        dD = weight * self.yield_dust_per_sn
-        res.gas_metals += dZ
-        res.dust += dD
-        if res.gas > 0.0 and res.dust > 0.0:
-            f_gas = 1.0 - np.exp(-((res.gas / cfg.dust.m_crit) ** cfg.dust.dust_alpha))
-            destroyed = min(res.dust, weight * cfg.dust.m_swept * (res.dust / res.gas) * f_gas)
-            res.dust -= destroyed
-            res.dust_destroyed += destroyed
-        Z_star = res.stars_metals / res.stars if res.stars > 0 else 0.0
-        coupling = {}
-        if cfg.events.eps_cut_mass is not None and M_h >= cfg.events.eps_cut_mass:
-            coupling = {"eps_fb": cfg.events.eps_fb_above_cut}                # evaluated at the explosion time
-        wanted = weight * float(self.closure.per_supernova(z, M_h, Z_star, **coupling))
+        if eject is None:                        # the explosion itself: its yields and its dust destruction
+            dZ = weight * self.yield_Z_per_sn
+            dD = weight * self.yield_dust_per_sn
+            res.gas_metals += dZ
+            res.dust += dD
+            if res.gas > 0.0 and res.dust > 0.0:
+                f_gas = 1.0 - np.exp(-((res.gas / cfg.dust.m_crit) ** cfg.dust.dust_alpha))
+                destroyed = min(res.dust, weight * cfg.dust.m_swept * (res.dust / res.gas) * f_gas)
+                res.dust -= destroyed
+                res.dust_destroyed += destroyed
+            Z_star = res.stars_metals / res.stars if res.stars > 0 else 0.0
+            coupling = {}
+            if cfg.events.eps_cut_mass is not None and M_h >= cfg.events.eps_cut_mass:
+                coupling = {"eps_fb": cfg.events.eps_fb_above_cut}            # evaluated at the explosion time
+            wanted = weight * float(self.closure.per_supernova(z, M_h, Z_star, **coupling))
+            res.n_explosions += 1
+            if cfg.events.wind_kappa > 0.0:      # the wind arrives later; the mass it removes is fixed now
+                tau = cfg.events.wind_kappa * halo_scales.r_vir_cm(M_h, z) / v_esc / Gyr_s
+                res.push(t_sn + tau, mass, weight, eject=wanted)
+                res.t = t_sn
+                return
+        else:
+            wanted = eject
         removed = min(max(res.gas, 0.0) * cfg.events.access_fraction, wanted)     # an explosion reaches only part of the gas
         lost_Z = lost_d = 0.0
         if removed > 0.0 and res.gas > 0.0:
@@ -221,11 +230,10 @@ class EventStepper:
         if (ev.recycling_fraction > 0.0 or fraction_Z > 0.0) and removed > 0.0:
             tau = ev.recycling_kappa * halo_scales.r_vir_cm(M_h, z) / v_esc / Gyr_s
             res.push(t_sn + tau, 0.0, 0.0, ev.recycling_fraction * removed, fraction_Z * lost_Z, fraction_Z * lost_d)
-        if ev.bank_tau_myr is not None and wanted > removed:      # energy that found no gas to unbind
+        if ev.bank_tau_myr is not None and eject is None and wanted > removed:      # energy that found no gas to unbind
             res.bank += 0.5 * (wanted - removed) * Msun_g * v_esc ** 2
         res.gas -= removed
         res.ejected += removed
-        res.n_explosions += 1
         res.t = t_sn
 
     def evolve(self, history, res, rng_sampler, t_end):
@@ -237,8 +245,8 @@ class EventStepper:
             t_evt = res.next_time()
             if t_evt is not None and t_evt < t_next:
                 self.advance(history, res, rng_sampler, res.t, t_evt)
-                _, _, mass, weight, ret, ret_Z, ret_d = heapq.heappop(res.queue)
-                self.explode(history, res, t_evt, mass, weight, ret, ret_Z, ret_d)
+                _, _, mass, weight, ret, ret_Z, ret_d, eject = heapq.heappop(res.queue)
+                self.explode(history, res, t_evt, mass, weight, ret, ret_Z, ret_d, eject)
             else:
                 self.advance(history, res, rng_sampler, res.t, t_next)
 

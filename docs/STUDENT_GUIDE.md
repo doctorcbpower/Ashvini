@@ -11,6 +11,14 @@ Two ways of advancing this in time share the same physics:
 * the **grid integrator** (`GridIntegrator`) advances every halo of a forest together, step by step on the tree's redshift grid, with supernova feedback as a smooth rate;
 * the **event integrator** (`EventIntegrator`) follows one halo at a time, through individual supernovae at the moment each explodes.
 
+## Scope
+
+Ashvini is for testing a physical idea quickly, along dark matter merger trees, and for finding out which assumption the answer depends on. It is a step between a back-of-the-envelope estimate and a hydrodynamical simulation (Arepo Solas): its parameters (star formation efficiency, wind mass loading, supernova delay, seeding) mean the same as the simulation's sub-grid parameters, so a result here turns directly into "run this, and check this observable".
+
+It is **not** a calibrated model that is tuned to fit observations, a full semi-analytic galaxy model with discs, molecular hydrogen and morphology (GRUMPY does that), or a population-synthesis and global-signal tool.
+
+A new process is added only if (a) it can be stated in one physical sentence, (b) the sensitivity of the outputs to it has been measured and is not negligible, and (c) you can name the simulation output that would test it. Each process is an option, off by default, so the minimal model is always available as the baseline.
+
 ## 2. Five minutes
 
 ```python

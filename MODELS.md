@@ -156,6 +156,26 @@ Each is compared with Stochastic_Occupation's smooth model (`tests/test_event_op
 
 Stochastic_Occupation does not allow several of these together with chemistry (or with the momentum-driven wind). The event integrator always follows metals and dust and allows every combination, so those combinations are not compared with it.
 
+## Disc size and a star formation threshold on surface density (`components/disc.py`, Config section `disc`, off by default)
+
+With the option off the gas is one bulk reservoir. With `disc.enabled: True` the gas is taken to form an exponential disc, `Sigma(r) = Sigma_0 exp(-r / R_d)`, holding all of the gas mass `M_gas`, so `Sigma_0 = M_gas / (2 pi R_d^2)`. The scale length follows Mo, Mao & White (1998) without their corrections for the halo concentration and for the disc's pull on the halo:
+
+```
+R_d = (j_d / m_d) * lambda * R_vir / sqrt(2)
+```
+
+where `lambda` is the halo spin parameter (`spin_parameter`, 0.035, constant in time), `j_d / m_d` is the disc's share of the halo's angular momentum divided by its share of the mass (`angular_momentum_ratio`, 1) and `R_vir` is the virial radius (mean density 200 times critical). For `j_d / m_d = 1` this is the disc size used by the reservoir model, and the two virial radii agree to 0.3 percent.
+
+Gas forms stars only where the surface density is above `critical_surface_density_Msun_pc2` (`Sigma_crit`, default 5 Msun/pc^2; 0 = no threshold). For an exponential disc that is every radius inside `R_crit = R_d ln(Sigma_0 / Sigma_crit)`, which holds the fraction
+
+```
+f = 1 - (1 + x) exp(-x),    x = ln(Sigma_0 / Sigma_crit) = R_crit / R_d      (f = 0 if Sigma_0 <= Sigma_crit)
+```
+
+of the gas. The star formation rate is the usual rate applied to that gas only: `SFR = f * eps_ff / t_ff * M_gas` (grid integrator: `f` from the gas and halo mass at the start of the step; event integrator: at the start of the substep). `f` rises smoothly from 0 as the disc becomes dense, so star formation does not switch on and off from step to step. `components.disc.diagnostics` gives `R_d`, `Sigma_0` and `f` for a finished run.
+
+What this leaves out: the concentration and disc-gravity corrections (the fuller formula in the DiscModels package gives a disc 0.55-0.70 times as large for the cases tried, which `angular_momentum_ratio` can mimic), a spin that changes with time or differs between haloes, the disc's stability (Toomre) condition, molecular hydrogen, and the disc's effect on the dark matter halo. The disc is a test of whether the threshold matters, not a disc galaxy model: `scripts/disc_threshold_subset.py` compares it with and without the option, over a range of its parameters, on a few haloes.
+
 ## Black hole growth ([`black_holes_growth.py`](ashvini/black_holes_growth.py))
 
 Eddington rate (mass-proportional):

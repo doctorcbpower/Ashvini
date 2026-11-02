@@ -27,5 +27,7 @@ def gas_and_stars_step(gas_prev, accretion, B_sf, ML, wind_sfr, feedback_type, b
         gas_forcing = accretion - ML * wind_sfr - bh_accretion - agn_wind
         gas_decay = B_sf
     gas_raw = linear_ode_step(gas_prev, gas_forcing, gas_decay, dt)
-    stars_formed = np.maximum(B_sf / gas_decay * (gas_prev + gas_forcing * dt - gas_raw), 0.0)
+    # no star formation (B_sf = 0 for a halo whose gas is below the critical surface density) forms no stars
+    ratio = B_sf / np.where(gas_decay > 0, gas_decay, 1.0)
+    stars_formed = np.maximum(np.where(gas_decay > 0, ratio, 0.0) * (gas_prev + gas_forcing * dt - gas_raw), 0.0)
     return gas_raw, stars_formed, gas_forcing, gas_decay

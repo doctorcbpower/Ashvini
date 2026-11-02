@@ -9,6 +9,7 @@ from ..components.wind_model import make_wind_model
 from ..components.delay import make_delay
 from ..components.gas import gas_and_stars_step
 from ..components.inflow import CosmicInflow
+from ..components.disc import DiscStarFormation
 from ..components.star_formation import FreeFallStarFormation
 
 
@@ -34,7 +35,7 @@ class GridIntegrator:
         self.cfg = resolve(config)
         self.growth_model = growth_model if growth_model is not None else self.cfg.bh.growth_model
         self.slimdisk_overrides = slimdisk_overrides
-        self.star_formation = FreeFallStarFormation(self.cfg)
+        self.star_formation = (DiscStarFormation if self.cfg.disc.enabled else FreeFallStarFormation)(self.cfg)
         self.inflow = CosmicInflow(config)
         self.wind_model = make_wind_model(self.cfg)
         self.chemistry = MetalsAndDust(self.cfg)
@@ -74,7 +75,8 @@ class GridIntegrator:
             feedback_type = delay.feedback_type(j)
 
             A_acc = gas_accretion_rate[:, j - 1]
-            B_sf = self.star_formation.rate_coefficient(z_mid)  # scalar, shared across haloes
+            # scalar, shared across haloes, unless the star formation law depends on the halo (disc: one value per halo)
+            B_sf = self.star_formation.halo_rate_coefficient(z_mid, hm_prev, gm_prev)
             ML = self.wind_model.mass_loading(z_mid, hm_prev, stellar_metallicity[:, j - 1])  # shape (N,)
 
             # --- black hole first: the gas equation needs this step's accretion and wind ---
@@ -104,7 +106,7 @@ class GridIntegrator:
             # computed from the value after negative masses are set to zero, not the closed-form update's raw output, which legitimately
             # overshoots slightly negative when the decay is fast relative to dt. ---
             gas_mass[:, j] = np.maximum(gas_mass[:, j], 0.0)
-            sfr[:, j] = self.star_formation.rate_coefficient(redshift[j]) * gas_mass[:, j]
+            sfr[:, j] = self.star_formation.halo_rate_coefficient(redshift[j], halo_mass[:, j], gas_mass[:, j]) * gas_mass[:, j]
 
             gas_metals[:, j] = np.maximum(gas_metals[:, j], 0.0)
             stars_mass[:, j] = np.maximum(stars_mass[:, j], 0.0)

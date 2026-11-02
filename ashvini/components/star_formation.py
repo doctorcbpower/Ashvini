@@ -17,3 +17,10 @@ class FreeFallStarFormation:
     def rate_coefficient(self, redshift):
         """B_sf in 1/Gyr."""
         return self.efficiency / time_freefall(redshift)
+
+    def halo_rate_coefficient(self, redshift, halo_mass, gas_mass):
+        """
+        B_sf for each halo, given its mass and gas mass at the start of the step. The free-fall law does not depend on them;
+        a law that does (components/disc.py) overrides this. The integrators call this one.
+        """
+        return self.rate_coefficient(redshift)

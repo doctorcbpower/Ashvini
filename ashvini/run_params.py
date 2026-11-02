@@ -244,6 +244,21 @@ class EventParams:
 
 
 @dataclass
+class DiscParams:
+    """
+    disc -- gives the gas a disc size, and lets only the part of the gas whose surface density is high enough form stars
+    (components/disc.py). Off by default: the gas is then one bulk reservoir. The disc is exponential, with scale length
+    R_d = angular_momentum_ratio * spin_parameter * R_vir / sqrt(2) (Mo, Mao & White 1998 without the corrections for
+    the halo concentration and the disc's pull on the halo). Gas inside the radius where its surface density falls to
+    critical_surface_density_Msun_pc2 forms stars at the usual rate; gas outside forms none.
+    """
+    enabled: bool = False
+    spin_parameter: float = 0.035               # halo spin lambda (median about 0.035), constant in time
+    angular_momentum_ratio: float = 1.0         # j_d / m_d: the disc's share of the halo's angular momentum over its share of the mass
+    critical_surface_density_Msun_pc2: float = 5.0   # gas below this surface density forms no stars; 0 = no threshold
+
+
+@dataclass
 class Params:
     io: IOParams
     sf: StarFormationParams
@@ -253,6 +268,7 @@ class Params:
     dust: DustParams
     bh: BlackHoleParams
     events: EventParams = field(default_factory=EventParams)
+    disc: DiscParams = field(default_factory=DiscParams)
 
 
 def _reject_legacy_keys(raw):
@@ -299,6 +315,7 @@ def load_params(config_file=None) -> Params:
         metals=MetalsParams(**raw["metallicity"]),
         dust=DustParams(**raw["dust"]),
         events=EventParams(**raw.get("events", {})),
+        disc=DiscParams(**raw.get("disc", {})),
         bh=BlackHoleParams(
             efficiency=raw["black_holes"]["efficiency"],
             eta_agn=raw["black_holes"]["eta_agn"],
@@ -338,6 +355,7 @@ def print_config(params: Params):
     section("Dust", asdict(params.dust))
     section("Black Holes", asdict(params.bh))
     section("Event integrator", asdict(params.events))
+    section("Disc", asdict(params.disc))
 
     from .constants import Z_SUN
     from .imf import nu_SN

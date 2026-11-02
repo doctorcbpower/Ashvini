@@ -32,7 +32,8 @@ class MetalsAndDust:
         forcing = self.igm_metallicity * accretion + self.metal_yield * wind_sfr
         decay = B_sf + np.where(has_gas, ML * wind_sfr / gas_prev_safe, 0.0)
         gas_metals_raw = linear_ode_step(gas_metals_prev, forcing, decay, dt)
-        locked = np.maximum(B_sf / decay * (gas_metals_prev + forcing * dt - gas_metals_raw), 0.0)
+        ratio = B_sf / np.where(decay > 0, decay, 1.0)
+        locked = np.maximum(np.where(decay > 0, ratio, 0.0) * (gas_metals_prev + forcing * dt - gas_metals_raw), 0.0)
         return gas_metals_raw, stars_metals_prev + locked
 
     def dust_step(self, dust_prev, ML, wind_sfr, gas_prev, has_gas, gas_prev_safe, dt):

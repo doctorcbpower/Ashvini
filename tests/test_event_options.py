@@ -51,3 +51,24 @@ def test_gate_keeps_a_small_halo_from_forming_stars_until_it_is_hot_enough():
 
 def test_gate_agrees_with_stochocc():
     _agree("gate", 1.5e-2, 1.5e-2, 1.5e-2)    # the time the gate opens moves with the 0.1% difference in T_vir
+
+
+def test_inflow_lag_delays_the_supply_and_conserves_it():
+    from ashvini import utils
+    from ashvini.config import override
+    from ashvini.main import run_events
+    z = np.arange(20.0, 10.0 - 1e-9, -0.2)
+    M = P.MINIHALO(z)[None, :]
+    base = P.base_config(**{**P.OPTION_BASE["ash"], "sn.eps_fb": 0.0})
+    plain = run_events(M, np.zeros_like(M), z, config=base)
+    lagged = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.inflow_kappa": 3.0}))
+    # less has arrived at every time; the rest is in transit
+    assert np.all(lagged["gas_mass"][0] + lagged["stars_mass"][0] <= plain["gas_mass"][0] + plain["stars_mass"][0] + 1e-6)
+    assert lagged["gas_mass"][0, -1] + lagged["stars_mass"][0, -1] < plain["gas_mass"][0, -1] + plain["stars_mass"][0, -1]
+    # tau -> 0 recovers the plain run
+    fast = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.inflow_kappa": 1e-6}))
+    assert fast["stars_mass"][0, -1] == pytest.approx(plain["stars_mass"][0, -1], rel=1e-3)
+
+
+def test_inflow_lag_agrees_with_stochocc():
+    _agree("inflow_lag", 1.5e-2, 1.5e-2, 1.5e-2)

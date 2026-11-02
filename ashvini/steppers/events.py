@@ -17,7 +17,7 @@ What it does:
               dust (weight * m_swept * M_d/M_g * f_gas, at most the dust present), and carries off metals and
               dust in proportion to the gas it removes
 Not in this stepper: black holes and AGN winds (bh_mass is zero). Optional, all off by default (Config section `events`):
-the star formation gate.
+the star formation gate, inflow lag.
 
 Times are in Gyr, masses in Msun.
 """
@@ -71,6 +71,7 @@ class _Reservoirs:
         self.metals_ejected = self.dust_ejected = self.dust_destroyed = 0.0
         self.queue, self._count = [], itertools.count()
         self.n_explosions = 0
+        self.in_transit = 0.0         # gas on its way to the reservoir (events.inflow_kappa)
 
     def push(self, t, mass, weight):
         heapq.heappush(self.queue, (t, next(self._count), mass, weight))
@@ -119,6 +120,18 @@ class EventStepper:
             open_ = open_ and bool(halo_scales.T_vir_K(M, z) >= ev.gate_T_vir_post_K)
         return open_
 
+    def lag_and_bank(self, history, res, t_a, dt, supply):
+        """What reaches the reservoir in [t_a, t_a + dt] of the supply `supply` that arrives at the halo."""
+        ev = self.cfg.events
+        M_a = history.mass_at_t(t_a)
+        if ev.inflow_kappa > 0.0 and M_a > 0.0:
+            # a first-order store with delay tau = kappa * r_vir / v_esc, solved exactly over the substep
+            z_a = history.z_at_t(t_a)
+            tau = ev.inflow_kappa * halo_scales.r_vir_cm(M_a, z_a) / history.v_esc_at_t(t_a) / Gyr_s
+            stored = res.in_transit * np.exp(-dt / tau) + supply * (tau / dt) * (-np.expm1(-dt / tau))
+            supply, res.in_transit = res.in_transit + supply - stored, stored
+        return supply
+
     def supply(self, history, t_a, t_b):
         """Gas mass entering the reservoir during [t_a, t_b]."""
         M_a, M_b = history.mass_at_t(t_a), history.mass_at_t(t_b)
@@ -135,6 +148,7 @@ class EventStepper:
             res.t = t_b
             return
         supply = self.supply(history, t_a, t_b)
+        supply = self.lag_and_bank(history, res, t_a, dt, supply)
         if not self.gate(history, t_a) or res.gas + supply <= 0.0:
             res.gas += supply
             res.gas_metals += self.Z_IGM * supply

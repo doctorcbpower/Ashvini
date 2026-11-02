@@ -138,6 +138,7 @@ OPTION_BASE = {"ash": {"sn.kernel": "imf", "sn.m_sn_max": 100.0, "sn.lifetime_Z"
                "sto": {"eps_fb": 0.1}}
 # case name -> the Ashvini Config changes and the Stochastic_Occupation Params that mean the same thing
 OPTION_CASES = {
+    "inflow_lag": {"ash": {"events.inflow_kappa": 3.0}, "sto": {"inflow_kappa": 3.0}},
     "gate": {"ash": {"events.gate_T_vir_K": 5.0e3}, "sto": {"T_vir_thresh": 5.0e3}},
 }
 OPTION_GOLDEN = Path(__file__).parent / "golden" / "stochocc_options.json"

@@ -221,6 +221,8 @@ class EventParams:
     gate_mass: float = None           # or: halo mass in Msun (a molecular-hydrogen mass gate; replaces the temperature gate)
     gate_switch_z: float = None       # below this redshift the halo must also reach gate_T_vir_post_K (None = off)
     gate_T_vir_post_K: float = 1.0e4
+    # inflow lag: gas takes inflow_kappa * r_vir / v_esc to reach the galaxy (a first-order store); 0 = at once
+    inflow_kappa: float = 0.0
 
 
 @dataclass

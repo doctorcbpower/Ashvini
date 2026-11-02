@@ -180,20 +180,22 @@ def test_sfr_computed_from_clamped_gas_mass_not_raw_ode_output():
     # _linear_ode_step's exp(-x) a few steps later -- the source of the
     # rare NaN-halo cases seen in large parameter sweeps.
     #
-    # Forces every _linear_ode_step call to return a large negative value
+    # Forces every linear_ode_step call to return a large negative value
     # regardless of its real inputs (deterministic, no need to reverse-
     # engineer parameters that organically trigger the overshoot) and
     # checks sfr is 0 (from the clamped gas_mass), never negative.
     # Verified this test fails on the pre-fix code (sfr went to ~-1.4e11)
     # via `git stash` before adding the fix.
     from ashvini import main as amain
+    from ashvini.components import chemistry, gas
 
-    orig = amain._linear_ode_step
+    orig = gas.linear_ode_step
 
     def force_negative(y0, forcing, decay, dt):
         return orig(y0, forcing, decay, dt) - 1e12
 
-    amain._linear_ode_step = force_negative
+    # the components that integrate the reservoirs each hold their own reference to the step
+    gas.linear_ode_step = chemistry.linear_ode_step = force_negative
     try:
         N, n = 3, 10
         redshift = np.linspace(10, 5, n)
@@ -201,7 +203,7 @@ def test_sfr_computed_from_clamped_gas_mass_not_raw_ode_output():
         halo_mass_rate = np.full((N, n), 1e9)
         result = amain.run_forest(halo_mass, halo_mass_rate, redshift)
     finally:
-        amain._linear_ode_step = orig
+        gas.linear_ode_step = chemistry.linear_ode_step = orig
 
     assert np.all(result["gas_mass"] == 0.0)
     assert np.all(result["sfr"] == 0.0)

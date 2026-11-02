@@ -16,8 +16,8 @@ What it does:
   chemistry   metals follow the same exact substep; each explosion adds its yield of metals and dust, destroys
               dust (weight * m_swept * M_d/M_g * f_gas, at most the dust present), and carries off metals and
               dust in proportion to the gas it removes
-Not in this stepper: black holes and AGN winds (bh_mass is zero), the star formation gate, inflow lag,
-recycling, energy bank, access fraction (milestone M5).
+Not in this stepper: black holes and AGN winds (bh_mass is zero). Optional, all off by default (Config section `events`):
+the star formation gate.
 
 Times are in Gyr, masses in Msun.
 """
@@ -26,6 +26,7 @@ import itertools
 
 import numpy as np
 
+from .. import halo as halo_scales
 from .. import utils
 from ..config import resolve
 from ..constants import Gyr_s
@@ -65,7 +66,7 @@ class _Reservoirs:
 
     def __init__(self, t, gas, stars):
         self.t = t
-        self.gas, self.stars, self.ejected = gas, stars, 0.0
+        self.gas, self.stars, self.ejected, self.returned = gas, stars, 0.0, 0.0
         self.gas_metals = self.stars_metals = self.dust = 0.0
         self.metals_ejected = self.dust_ejected = self.dust_destroyed = 0.0
         self.queue, self._count = [], itertools.count()
@@ -94,9 +95,29 @@ class EventStepper:
         self.Z_IGM = cfg.metals.Z_IGM_Zsun * _z_sun()
         self.yield_Z_per_sn = cfg.metals.Z_yield / self.nu_SN       # Msun of metals per whole supernova
         self.yield_dust_per_sn = cfg.dust.dust_yield / self.nu_SN
-        self.gate = lambda history, t: True                         # M5 puts the cooling gate here
+        self.gate = self.star_formation_gate                        # replace to try another gate: f(history, t) -> bool
 
     # --- pieces -------------------------------------------------------------------------------------
+
+    def star_formation_gate(self, history, t):
+        """
+        Whether gas can form stars at time t: the halo has reached the mass (events.gate_mass) or virial temperature
+        (events.gate_T_vir_K) at which it cools, and, below events.gate_switch_z, also events.gate_T_vir_post_K (the
+        temperature below which reionisation keeps gas from cooling). No gate configured: always open.
+        """
+        ev = self.cfg.events
+        if ev.gate_mass is None and ev.gate_T_vir_K is None and ev.gate_switch_z is None:
+            return True
+        M, z = history.mass_at_t(t), history.z_at_t(t)
+        if ev.gate_mass is not None:
+            open_ = M >= ev.gate_mass
+        elif ev.gate_T_vir_K is not None:
+            open_ = bool(halo_scales.T_vir_K(M, z) >= ev.gate_T_vir_K)
+        else:
+            open_ = True
+        if ev.gate_switch_z is not None and z < ev.gate_switch_z:
+            open_ = open_ and bool(halo_scales.T_vir_K(M, z) >= ev.gate_T_vir_post_K)
+        return open_
 
     def supply(self, history, t_a, t_b):
         """Gas mass entering the reservoir during [t_a, t_b]."""
@@ -190,6 +211,7 @@ class EventStepper:
         state = State.empty(N, n)
         self.explosions = np.zeros(N, dtype=int)
         self.ejected = np.zeros((N, n))
+        self.returned = np.zeros((N, n))
         rng = np.random.default_rng(self.seed)
         for i in range(N):
             history = HaloHistory(halo_mass[i], redshift)
@@ -206,6 +228,7 @@ class EventStepper:
                 state.dust_mass[i, j] = res.dust
                 state.stellar_metallicity[i, j] = res.stars_metals / res.stars if res.stars > 0 else 0.0
                 self.ejected[i, j] = res.ejected
+                self.returned[i, j] = res.returned
             state.sfr[i, 1:] = np.diff(state.stars_mass[i]) / np.diff(cosmic_time)
             self.explosions[i] = res.n_explosions
         return state, cosmic_time

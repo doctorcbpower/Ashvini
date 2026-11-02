@@ -211,6 +211,19 @@ class BlackHoleParams:
 
 
 @dataclass
+class EventParams:
+    """
+    events -- options of the event stepper (steppers/events.py) only; the grid stepper ignores them. Every option is
+    off by default, so an event run without this section is the plain model. See MODELS.md, "Event stepper".
+    """
+    # star formation gate: gas cannot form stars until the halo is massive enough to cool
+    gate_T_vir_K: float = None        # virial temperature the halo must reach, K (None = no gate)
+    gate_mass: float = None           # or: halo mass in Msun (a molecular-hydrogen mass gate; replaces the temperature gate)
+    gate_switch_z: float = None       # below this redshift the halo must also reach gate_T_vir_post_K (None = off)
+    gate_T_vir_post_K: float = 1.0e4
+
+
+@dataclass
 class Params:
     io: IOParams
     sf: StarFormationParams
@@ -219,6 +232,7 @@ class Params:
     metals: MetalsParams
     dust: DustParams
     bh: BlackHoleParams
+    events: EventParams = field(default_factory=EventParams)
 
 
 def _reject_legacy_keys(raw):
@@ -264,6 +278,7 @@ def load_params(config_file=None) -> Params:
         reion=ReionizationParams(**raw["reionization"]),
         metals=MetalsParams(**raw["metallicity"]),
         dust=DustParams(**raw["dust"]),
+        events=EventParams(**raw.get("events", {})),
         bh=BlackHoleParams(
             efficiency=raw["black_holes"]["efficiency"],
             eta_agn=raw["black_holes"]["eta_agn"],
@@ -302,6 +317,7 @@ def print_config(params: Params):
     section("Metals", asdict(params.metals))
     section("Dust", asdict(params.dust))
     section("Black Holes", asdict(params.bh))
+    section("Event stepper", asdict(params.events))
 
     from .constants import Z_SUN
     from .imf import nu_SN

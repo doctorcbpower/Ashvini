@@ -341,8 +341,8 @@ def run_events(halo_mass, halo_mass_rate, redshift, config=None, sampler="smooth
     """
     The same haloes as run_forest, followed by the event stepper (steppers/events.py): individual supernovae at their own
     times. sampler is "smooth" (the expected supernovae, no randomness) or "stochastic" (seeded by `seed`).
-    Returns the run_forest dictionary plus "ejected_mass" (cumulative gas removed by supernovae) and
-    "n_explosions" (per halo).
+    Returns the run_forest dictionary plus "ejected_mass" (cumulative gas removed), "returned_mass" (cumulative
+    gas that fell back, zero unless events.recycling_fraction > 0) and "n_explosions" (per halo).
     """
     halo_mass = np.atleast_2d(halo_mass)
     halo_mass_rate = np.atleast_2d(halo_mass_rate)
@@ -355,6 +355,7 @@ def run_events(halo_mass, halo_mass_rate, redshift, config=None, sampler="smooth
         "halo_mass_rate": halo_mass_rate,
         "redshift": redshift,
         "ejected_mass": stepper.ejected,
+        "returned_mass": stepper.returned,
         "n_explosions": stepper.explosions,
     }
 

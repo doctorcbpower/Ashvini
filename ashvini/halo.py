@@ -33,3 +33,13 @@ def v_circ_cms(halo_mass, z, Delta=200.0):
 
 def v_esc_cms(halo_mass, z, Delta=200.0):
     return np.sqrt(2.0) * v_circ_cms(halo_mass, z, Delta)
+
+
+MU_NEUTRAL = 1.22        # mean molecular weight of neutral primordial gas
+M_PROTON_G = 1.6726e-24
+K_BOLTZMANN = 1.3807e-16  # erg/K
+
+
+def T_vir_K(halo_mass, z, Delta=200.0, mu=MU_NEUTRAL):
+    """Virial temperature, mu m_p V_c^2 / (2 k_B), K."""
+    return mu * M_PROTON_G * v_circ_cms(halo_mass, z, Delta) ** 2 / (2.0 * K_BOLTZMANN)

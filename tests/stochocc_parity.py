@@ -82,12 +82,12 @@ def stochocc(zout=ZGRID, eps_fb=0.0, chem=False, z_igm=1.0e-3 * Z_SUN, Mh=None, 
         def z_at_t(self, t): return float(utils.z_at_time(t / GYR))
         def mass_msun_at_t(self, t): return float((Mh or Mh_of_z)(self.z_at_t(t)))
         def v_esc_at_t(self, t): return float(H.v_esc_cms(self.mass_msun_at_t(t), self.z_at_t(t), cosmo, 200.0))
-        def T_vir_at_t(self, t): return 1.0e6
+        def T_vir_at_t(self, t): return float(H.T_vir(self.mass_msun_at_t(t), self.z_at_t(t), cosmo, 200.0))
         def t_dyn_at_t(self, t): return float(0.2047 / (utils.cosmo.H(self.z_at_t(t)).to("1/s").value))
 
     tr = Traj()
-    p = Params(f_b=FB, eps_ff=EPS_FF_STOCHOCC, eps_fb=eps_fb, T_vir_thresh=0.0, time_scheme="v2", sf_dt_max_myr=1.0,
-               lifetime_Z=0.002, chemistry=chem, Z_IGM=z_igm, Y_Z=0.06, Y_d=0.004, **extra)
+    p = Params(f_b=FB, eps_ff=EPS_FF_STOCHOCC, eps_fb=eps_fb, time_scheme="v2", sf_dt_max_myr=1.0,
+               lifetime_Z=0.002, chemistry=chem, Z_IGM=z_igm, Y_Z=0.06, Y_d=0.004, **{"T_vir_thresh": 0.0, **extra})
     out = []
     for zz in zout:
         smp = (WeightedQuadratureSampler(p.nu_SN, 200, 1.0, p.imf_slope, p.lifetime_scale, p.lifetime_Z)
@@ -131,5 +131,56 @@ def regenerate(processes=8):
     return out
 
 
+# --- the optional event-stepper features (milestone M5): a minihalo growing from 4e5 to 2e7 Msun between z = 20 and 10 ---
+MINIHALO = lambda z: 2.0e7 * np.exp(-0.4 * (np.asarray(z) - 10.0))
+OPTION_BASE = {"ash": {"sn.kernel": "imf", "sn.m_sn_max": 100.0, "sn.lifetime_Z": 0.002, "sf.efficiency": 0.015,
+                       "sn.closure": "energy", "sn.eps_fb": 0.1},
+               "sto": {"eps_fb": 0.1}}
+# case name -> the Ashvini Config changes and the Stochastic_Occupation Params that mean the same thing
+OPTION_CASES = {
+    "gate": {"ash": {"events.gate_T_vir_K": 5.0e3}, "sto": {"T_vir_thresh": 5.0e3}},
+}
+OPTION_GOLDEN = Path(__file__).parent / "golden" / "stochocc_options.json"
+
+
+def ashvini_option(case, sampler="smooth", seed=None):
+    """Event stepper on the minihalo with the case's options; returns the final-state masses."""
+    from ashvini.main import run_events
+    z = np.arange(20.0, 10.0 - 1e-9, -0.1)
+    M = MINIHALO(z)[None, :]
+    cfg = base_config(**{**OPTION_BASE["ash"], **(OPTION_CASES[case]["ash"] if case else {})})
+    r = run_events(M, np.zeros_like(M), z, config=cfg, sampler=sampler, seed=seed)
+    return {"M_star": r["stars_mass"][0, -1], "M_g": r["gas_mass"][0, -1], "M_ej": r["ejected_mass"][0, -1],
+            "M_ret": r["returned_mass"][0, -1]}
+
+
+def stochocc_option(case, sampler="smooth", seed=0):
+    st = stochocc(zout=(10.0,), Mh=MINIHALO, sampler=sampler, seed=seed,
+                  **{**OPTION_BASE["sto"], **(OPTION_CASES[case]["sto"] if case else {})})[0]
+    return {"M_star": st.M_star, "M_g": st.M_g, "M_ej": st.M_ej, "M_ret": st.M_ret}
+
+
+def regenerate_options(cases=None, processes=8):
+    """Run Stochastic_Occupation's smooth control for the option cases (and the plain minihalo, key 'plain') and update the pins."""
+    import json
+    from multiprocessing import Pool
+    assert available(), "Stochastic_Occupation not found: set STOCHOCC_SRC"
+    names = ["plain"] + list(cases or OPTION_CASES)
+    with Pool(min(processes, len(names))) as pool:
+        results = pool.map(_option_one, names)
+    out = json.loads(OPTION_GOLDEN.read_text()) if OPTION_GOLDEN.exists() else {}
+    out.update(dict(results))
+    OPTION_GOLDEN.write_text(json.dumps(out, indent=1))
+    return out
+
+
+def _option_one(name):
+    return name, stochocc_option(None if name == "plain" else name)
+
+
 if __name__ == "__main__":
-    regenerate()
+    import sys
+    if "options" in sys.argv:
+        regenerate_options([a for a in sys.argv[1:] if a != "options"] or None)
+    else:
+        regenerate()

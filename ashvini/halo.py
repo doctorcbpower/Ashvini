@@ -1,5 +1,5 @@
 """
-Halo scales from the virial mass and redshift, for the supernova closures that depend on the escape speed.
+Halo scales from the virial mass and redshift, for the supernova wind models that depend on the escape speed.
 Everything is a function of (M_h, z) only. CGS; halo mass in Msun. The virial radius is that of a sphere of
 mean density Delta (= 200) times the critical density at z; the escape speed is sqrt(2) times the circular
 speed at that radius (v_esc^2 = 2 V_c^2, a convention, not a derivation).

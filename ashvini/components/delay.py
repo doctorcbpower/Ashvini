@@ -50,7 +50,7 @@ class SupernovaDelay:
     Which star formation drives the supernova wind in each step (the same star formation rate drives the
     gas, metal and dust losses): zero ("no"), the present rate B_sf * M_gas ("instantaneous"), or the rate
     one delay time ago ("delayed"; no wind until a delay has elapsed). Here every star explodes exactly
-    t_d after it forms, a delta-function delay kernel (supernova.kernel = "delta").
+    t_d after it forms, a single delay (supernova.kernel = "delta").
     """
 
     def __init__(self, cfg, cosmic_time):
@@ -114,7 +114,7 @@ def explosion_kernel(cosmic_time, lifetimes_gyr):
 
 class LifetimeDistributionDelay:
     """
-    Supernova delay kernel from the stellar lifetimes (supernova.kernel = "imf"): each core-collapse progenitor
+    Supernova delay distribution from the stellar lifetimes (supernova.kernel = "imf"): each core-collapse progenitor
     explodes after its own main-sequence lifetime t_MS(m, Z), the masses following the IMF between m_sn_min
     and m_sn_max (supernova.n_progenitor_masses equal-probability bins). The stars formed in step k, S_k, are
     spread over the later steps with the weights of explosion_kernel, and the star formation rate that drives

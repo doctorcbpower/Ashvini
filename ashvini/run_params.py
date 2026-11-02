@@ -213,14 +213,14 @@ class BlackHoleParams:
 @dataclass
 class EventParams:
     """
-    events -- options of the event stepper (steppers/events.py) only; the grid stepper ignores them. Every option is
-    off by default, so an event run without this section is the plain model. See MODELS.md, "Event stepper".
+    events -- options of the event integrator (steppers/events.py) only; the grid integrator ignores them. Every option is
+    off by default, so an event run without this section is the plain model. See MODELS.md, "Event integrator".
     """
-    # star formation gate: gas cannot form stars until the halo is massive enough to cool
-    gate_T_vir_K: float = None        # virial temperature the halo must reach, K (None = no gate)
-    gate_mass: float = None           # or: halo mass in Msun (a molecular-hydrogen mass gate; replaces the temperature gate)
-    gate_switch_z: float = None       # below this redshift the halo must also reach gate_T_vir_post_K (None = off)
-    gate_T_vir_post_K: float = 1.0e4
+    # cooling threshold: gas cannot form stars until the halo is massive and hot enough for its gas to cool
+    cooling_T_vir_K: float = None        # virial temperature the halo must reach, K (None = no threshold)
+    cooling_mass: float = None           # or: halo mass in Msun (a molecular-hydrogen cooling mass; replaces the temperature condition)
+    reionised_below_z: float = None       # below this redshift (after reionisation) the halo must also reach cooling_T_vir_reionised_K (None = off)
+    cooling_T_vir_reionised_K: float = 1.0e4
     # inflow lag: gas takes inflow_kappa * r_vir / v_esc to reach the galaxy (a first-order store); 0 = at once
     inflow_kappa: float = 0.0
     # recycling: this fraction of the gas each explosion removes falls back into the reservoir recycling_kappa * r_vir / v_esc
@@ -228,14 +228,14 @@ class EventParams:
     recycling_fraction: float = 0.0
     recycling_kappa: float = 1.0
     recycling_fraction_Z: float = None
-    # energy bank: the energy of an explosion that finds less gas than it could unbind is kept (it decays over
+    # stored explosion energy: the energy of an explosion that finds less gas than it could unbind is kept (it decays over
     # bank_tau_myr; .inf = never) and spent unbinding gas as it arrives, before it reaches the reservoir. None = off.
     # Needs supernova.closure "energy".
     bank_tau_myr: float = None
-    # access fraction: one explosion can reach at most this fraction of the gas in the reservoir
+    # reachable gas fraction: one explosion can reach at most this fraction of the gas in the reservoir
     access_fraction: float = 1.0
-    # coupling switch: in a halo of at least eps_cut_mass (Msun) at the time of the explosion the energy closure uses
-    # eps_fb_above_cut instead of supernova.eps_fb (SNe confined in massive minihaloes). None = off. Needs closure "energy".
+    # change of coupling above a halo mass: in a halo of at least eps_cut_mass (Msun) at the time of the explosion the energy-driven wind uses
+    # eps_fb_above_cut instead of supernova.eps_fb (SNe confined in massive minihaloes). None = off. Needs wind model "energy".
     eps_cut_mass: float = None
     eps_fb_above_cut: float = 0.0
     # wind travel time: the gas an explosion will remove is fixed at the explosion, but leaves the reservoir

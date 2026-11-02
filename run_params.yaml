@@ -39,12 +39,12 @@ supernova:
   imf: "salpeter"
   m_sn_min: 8.0 # Msun
   m_sn_max: 40.0 # Msun
-  # When the stars explode and how much gas they remove (MODELS.md, "Delay kernel and closure options").
+  # When the stars explode and how much gas they remove (MODELS.md, "Delay between star formation and explosion, and the wind model").
   # The defaults are the Ashvini model; presets.stochocc_smooth_control() sets the Stochastic_Occupation smooth limit.
-  # kernel: "delta"      # "delta" (all after delay_time) or "imf" (each progenitor after its own lifetime)
-  # lifetime_Z: 0.002    # mass fraction; 0.002 Georgy+13, 0.014 Ekstrom+12 (used by kernel "imf" and the event stepper)
+  # kernel: "delta"      # distribution of delays between forming and exploding: "delta" (all after delay_time) or "imf" (each massive star after its own lifetime)
+  # lifetime_Z: 0.002    # mass fraction; 0.002 Georgy+13, 0.014 Ekstrom+12 (used by kernel "imf" and the event integrator)
   # n_progenitor_masses: 400
-  # closure: "ashvini"   # "ashvini", "momentum" (f_p, p_SN_msun_kms) or "energy" (eps_fb, E_SN_erg)
+  # closure: "ashvini"   # the wind model (gas removed per supernova): "ashvini", "momentum" (f_p, p_SN_msun_kms) or "energy" (eps_fb, E_SN_erg)
 
 reionization:
   UVB_enabled: True

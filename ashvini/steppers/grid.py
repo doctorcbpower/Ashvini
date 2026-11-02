@@ -100,8 +100,8 @@ class GridStepper:
                 dust_mass[:, j - 1], ML, wind_sfr, gm_prev, has_gas, gm_prev_safe, dt
             )
 
-            # --- enforce non-negativity. The gas mass is clamped first: the star formation rate below must be
-            # computed from the clamped value, not the closed-form update's raw output, which legitimately
+            # --- enforce non-negativity. Negative gas mass is set to zero first: the star formation rate below must be
+            # computed from the value after negative masses are set to zero, not the closed-form update's raw output, which legitimately
             # overshoots slightly negative when the decay is fast relative to dt. ---
             gas_mass[:, j] = np.maximum(gas_mass[:, j], 0.0)
             sfr[:, j] = self.star_formation.rate_coefficient(redshift[j]) * gas_mass[:, j]

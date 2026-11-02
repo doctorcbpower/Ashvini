@@ -8,7 +8,7 @@ extended on its own. `steppers.grid.GridStepper` composes them into the step-by-
     star_formation free-fall star formation rate coefficient
     inflow         gas accretion rate on to the galaxy (includes the UV suppression)
     delay          which star formation drives the supernova winds: none, present or delayed
-    closure        supernova mass loading (how much gas is blown out per unit star formation)
+    wind model        supernova mass loading (how much gas is blown out per unit star formation)
     chemistry      metals and dust
     blackholes     seeding, growth and AGN wind of the central black hole
 """

@@ -1,5 +1,5 @@
 """
-The history of one halo as a function of time, for the event stepper: M_h(t), z(t), and the escape speed.
+The history of one halo as a function of time, for the event integrator: M_h(t), z(t), and the escape speed.
 Built from the arrays a merger tree gives on its redshift grid. The mass between two nodes is interpolated
 linearly in ln M against z (linearly in M if either node has no mass, e.g. before the halo forms); outside the
 tabulated redshift range it is zero. Times are in Gyr, on Ashvini's clock (utils.time_at_z).

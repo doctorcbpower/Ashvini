@@ -27,30 +27,30 @@ def test_options_are_all_off_by_default():
     assert DEFAULT.events == EventParams()
 
 
-def test_gate_keeps_a_small_halo_from_forming_stars_until_it_is_hot_enough():
+def test_cooling_threshold_keeps_a_small_halo_from_forming_stars_until_it_is_hot_enough():
     from ashvini import utils
     from ashvini.config import override
     from ashvini.main import run_events
     z = np.arange(20.0, 10.0 - 1e-9, -0.2)
     M = P.MINIHALO(z)[None, :]
     base = P.base_config(**P.OPTION_BASE["ash"])
-    open_ = run_events(M, np.zeros_like(M), z, config=base)
-    gated = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.gate_T_vir_K": 5.0e3}))
-    first = np.argmax(gated["stars_mass"][0] > 0)
+    without = run_events(M, np.zeros_like(M), z, config=base)
+    with_threshold = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.cooling_T_vir_K": 5.0e3}))
+    first = np.argmax(with_threshold["stars_mass"][0] > 0)
     from ashvini import halo
     assert halo.T_vir_K(M[0, first], z[first]) >= 5.0e3 > halo.T_vir_K(M[0, first - 2], z[first - 2])
-    assert np.all(gated["stars_mass"][0, :first] == 0.0)
-    assert gated["gas_mass"][0, first - 1] > open_["gas_mass"][0, first - 1]      # the gas waits
-    # a mass gate set at that mass opens at about the same time
-    mass_gated = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.gate_mass": M[0, first]}))
-    assert abs(np.argmax(mass_gated["stars_mass"][0] > 0) - first) <= 1     # the gate is tested at substep starts
-    # below gate_switch_z the post-reionisation temperature is also required
-    late = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.gate_switch_z": 100.0, "events.gate_T_vir_post_K": 5.0e3}))
-    assert late["stars_mass"][0, -1] == pytest.approx(gated["stars_mass"][0, -1], rel=1e-9)
+    assert np.all(with_threshold["stars_mass"][0, :first] == 0.0)
+    assert with_threshold["gas_mass"][0, first - 1] > without["gas_mass"][0, first - 1]      # the gas waits
+    # a cooling mass set at that mass lets stars form at about the same time
+    mass_with_threshold = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.cooling_mass": M[0, first]}))
+    assert abs(np.argmax(mass_with_threshold["stars_mass"][0] > 0) - first) <= 1     # the threshold is tested at the start of each substep
+    # below reionised_below_z the post-reionisation temperature is also required
+    late = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.reionised_below_z": 100.0, "events.cooling_T_vir_reionised_K": 5.0e3}))
+    assert late["stars_mass"][0, -1] == pytest.approx(with_threshold["stars_mass"][0, -1], rel=1e-9)
 
 
-def test_gate_agrees_with_stochocc():
-    _agree("gate", 1.5e-2, 1.5e-2, 1.5e-2)    # the time the gate opens moves with the 0.1% difference in T_vir
+def test_cooling_threshold_agrees_with_stochocc():
+    _agree("cooling_threshold", 1.5e-2, 1.5e-2, 1.5e-2)    # the time the threshold is reached moves with the 0.1% difference in T_vir
 
 
 def test_inflow_lag_delays_the_supply_and_conserves_it():
@@ -226,7 +226,7 @@ def test_all_options_together_run_and_conserve_baryons():
     z = np.arange(20.0, 10.0 - 1e-9, -0.2)
     M = P.MINIHALO(z)[None, :]
     cfg = override(P.base_config(**{**P.OPTION_BASE["ash"], "sn.eps_fb": 0.5}), **{
-        "events.gate_T_vir_K": 3.0e3, "events.inflow_kappa": 1.0, "events.recycling_fraction": 0.3,
+        "events.cooling_T_vir_K": 3.0e3, "events.inflow_kappa": 1.0, "events.recycling_fraction": 0.3,
         "events.bank_tau_myr": 50.0, "events.access_fraction": 0.5, "events.eps_cut_mass": 1.0e7,
         "events.eps_fb_above_cut": 0.1, "events.wind_kappa": 1.0})
     for sampler in ("smooth", "stochastic"):

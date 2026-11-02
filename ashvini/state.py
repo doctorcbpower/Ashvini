@@ -1,7 +1,7 @@
 """
 State of the general chain (milestone M1 of docs/SUPERSET_DESIGN.md): the time series of every evolved
 quantity for N haloes on the shared redshift grid, in one place. Each array has shape (N, n_steps).
-The steppers write into it; `as_dict` gives the dictionary that run_forest has always returned.
+The time integrators write into it; `as_dict` gives the dictionary that run_forest has always returned.
 """
 from dataclasses import dataclass, field, fields
 

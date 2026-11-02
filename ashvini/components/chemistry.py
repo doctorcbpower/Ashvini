@@ -28,7 +28,7 @@ class MetalsAndDust:
 
     def metals_step(self, gas_metals_prev, stars_metals_prev, accretion, B_sf, ML, wind_sfr,
                     gas_prev, has_gas, gas_prev_safe, dt):
-        """Returns (gas_metals_raw, stars_metals_new), both before the non-negativity clamp."""
+        """Returns (gas_metals_raw, stars_metals_new), both before negative values are set to zero."""
         forcing = self.igm_metallicity * accretion + self.metal_yield * wind_sfr
         decay = B_sf + np.where(has_gas, ML * wind_sfr / gas_prev_safe, 0.0)
         gas_metals_raw = linear_ode_step(gas_metals_prev, forcing, decay, dt)

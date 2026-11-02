@@ -1,7 +1,7 @@
 """
 Drive Stochastic_Occupation's smooth control and Ashvini on one halo history (the setup of Stochastic_Occupation
 docs/ashvini_relation.md, parity audit): M_h(z) = 1e9 exp(-0.5 (z - 5)) Msun, z = 20 -> 5, Ashvini's clock and
-baryon fraction, no star formation gate, no UV suppression, no black hole, no gas at z = 20.
+baryon fraction, no cooling threshold for star formation, no UV suppression, no black hole, no gas at z = 20.
 
 Needs Stochastic_Occupation's source on the path: set STOCHOCC_SRC, or keep the repository at
 ~/MyCodes/Stochastic_Occupation. `available()` says whether it can be imported.
@@ -148,7 +148,7 @@ OPTION_CASES = {
     "coupling_switch": {"ash": {"sn.eps_fb": 1.0, "events.eps_cut_mass": 1.0e7, "events.eps_fb_above_cut": 0.05},
                         "sto": {"eps_fb": 1.0, "M_eps_cut": 1.0e7, "eps_fb_hi": 0.05}},
     "wind_travel": {"ash": {"sn.eps_fb": 1.0, "events.wind_kappa": 2.0}, "sto": {"eps_fb": 1.0, "wind_kappa": 2.0}},
-    "gate": {"ash": {"events.gate_T_vir_K": 5.0e3}, "sto": {"T_vir_thresh": 5.0e3}},
+    "cooling_threshold": {"ash": {"events.cooling_T_vir_K": 5.0e3}, "sto": {"T_vir_thresh": 5.0e3}},
 }
 OPTION_GOLDEN = Path(__file__).parent / "golden" / "stochocc_options.json"
 

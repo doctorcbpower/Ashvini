@@ -1,7 +1,7 @@
 """
 M3/M4 acceptance: Ashvini reproduces the Stochastic_Occupation smooth control.
 
-Setup and the pinned numbers: tests/stochocc_parity.py (M_h(z) = 1e9 exp(-0.5 (z-5)), z = 20 -> 5, Ashvini's clock, no gate,
+Setup and the stored reference numbers: tests/stochocc_parity.py (M_h(z) = 1e9 exp(-0.5 (z-5)), z = 20 -> 5, Ashvini's clock, no cooling threshold,
 no UV, no black hole). The pins in tests/golden/stochocc_smooth.json are Stochastic_Occupation's own output
 (WeightedQuadratureSampler, K = 200, lifetimes of Georgy+13 at Z = 0.002); `--parity` reruns it live and checks
 that the pins are still what that code gives.

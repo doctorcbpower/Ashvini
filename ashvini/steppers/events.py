@@ -1,13 +1,13 @@
 """
-The event stepper (milestone M4 of docs/SUPERSET_DESIGN.md): follows individual supernovae. Between events a halo's gas
+The event integrator (milestone M4 of docs/SUPERSET_DESIGN.md): follows individual supernovae. Between events a halo's gas
 reservoir is advanced exactly (a linear ODE solved in closed form); each supernova is processed at its own
 explosion time, with the halo's escape speed at that time, and removes at most the gas then present. It is the
 event-driven counterpart of GridStepper for one halo at a time, and shares the star formation law, the
-Ashvini mass-loading closure, and the metal and dust yields with it (Config sections sf, sn, metals, dust).
+Ashvini mass loading, and the metal and dust yields with it (Config sections sf, sn, metals, dust).
 
 What it does:
   supply      f_b * max(M_h(t_b) - M_h(t_a), 0) over each substep, reduced by the UV suppression
-              (equilibrium form of Okamoto et al 2008, as in Stochastic_Occupation; the grid stepper uses the
+              (equilibrium form of Okamoto et al 2008, as in Stochastic_Occupation; the grid integrator uses the
               rate-dependent form of ashvini.reionization)
   star formation   dM_g/dt = S - B_sf M_g exactly over each substep (B_sf from the star formation law, evaluated
               at the start of the substep); the stars formed are M_a + S dt - M_b exactly, and are handed to the
@@ -16,8 +16,8 @@ What it does:
   chemistry   metals follow the same exact substep; each explosion adds its yield of metals and dust, destroys
               dust (weight * m_swept * M_d/M_g * f_gas, at most the dust present), and carries off metals and
               dust in proportion to the gas it removes
-Not in this stepper: black holes and AGN winds (bh_mass is zero). Optional, all off by default (Config section `events`):
-the star formation gate, inflow lag, recycling, energy bank, access fraction, coupling switch, wind travel time.
+Not in this time integrator: black holes and AGN winds (bh_mass is zero). Optional, all off by default (Config section `events`):
+the cooling threshold for star formation, inflow lag, recycling, stored explosion energy, reachable gas fraction, change of coupling above a halo mass, wind travel time.
 
 Times are in Gyr, masses in Msun.
 """
@@ -98,29 +98,28 @@ class EventStepper:
         self.Z_IGM = cfg.metals.Z_IGM_Zsun * _z_sun()
         self.yield_Z_per_sn = cfg.metals.Z_yield / self.nu_SN       # Msun of metals per whole supernova
         self.yield_dust_per_sn = cfg.dust.dust_yield / self.nu_SN
-        self.gate = self.star_formation_gate                        # replace to try another gate: f(history, t) -> bool
 
     # --- pieces -------------------------------------------------------------------------------------
 
-    def star_formation_gate(self, history, t):
+    def can_form_stars(self, history, t):
         """
-        Whether gas can form stars at time t: the halo has reached the mass (events.gate_mass) or virial temperature
-        (events.gate_T_vir_K) at which it cools, and, below events.gate_switch_z, also events.gate_T_vir_post_K (the
-        temperature below which reionisation keeps gas from cooling). No gate configured: always open.
+        Whether gas can form stars at time t: the halo has reached the mass (events.cooling_mass) or virial temperature
+        (events.cooling_T_vir_K) at which it cools, and, below events.reionised_below_z, also events.cooling_T_vir_reionised_K (the
+        temperature below which reionisation keeps gas from cooling). With no threshold configured, gas can always form stars. To try another condition, assign a function of (history, t) returning True or False to `can_form_stars`.
         """
         ev = self.cfg.events
-        if ev.gate_mass is None and ev.gate_T_vir_K is None and ev.gate_switch_z is None:
+        if ev.cooling_mass is None and ev.cooling_T_vir_K is None and ev.reionised_below_z is None:
             return True
         M, z = history.mass_at_t(t), history.z_at_t(t)
-        if ev.gate_mass is not None:
-            open_ = M >= ev.gate_mass
-        elif ev.gate_T_vir_K is not None:
-            open_ = bool(halo_scales.T_vir_K(M, z) >= ev.gate_T_vir_K)
+        if ev.cooling_mass is not None:
+            can_cool = M >= ev.cooling_mass
+        elif ev.cooling_T_vir_K is not None:
+            can_cool = bool(halo_scales.T_vir_K(M, z) >= ev.cooling_T_vir_K)
         else:
-            open_ = True
-        if ev.gate_switch_z is not None and z < ev.gate_switch_z:
-            open_ = open_ and bool(halo_scales.T_vir_K(M, z) >= ev.gate_T_vir_post_K)
-        return open_
+            can_cool = True
+        if ev.reionised_below_z is not None and z < ev.reionised_below_z:
+            can_cool = can_cool and bool(halo_scales.T_vir_K(M, z) >= ev.cooling_T_vir_reionised_K)
+        return can_cool
 
     def lag_and_bank(self, history, res, t_a, dt, supply):
         """What reaches the reservoir in [t_a, t_a + dt] of the supply `supply` that arrives at the halo."""
@@ -160,7 +159,7 @@ class EventStepper:
             return
         supply = self.supply(history, t_a, t_b)
         supply = self.lag_and_bank(history, res, t_a, dt, supply)
-        if not self.gate(history, t_a) or res.gas + supply <= 0.0:
+        if not self.can_form_stars(history, t_a) or res.gas + supply <= 0.0:
             res.gas += supply
             res.gas_metals += self.Z_IGM * supply
             res.t = t_b

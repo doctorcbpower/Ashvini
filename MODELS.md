@@ -65,7 +65,7 @@ Stellar metal mass (new stars inherit the gas-phase metal fraction at formation,
 dM_Z,star/dt = (eps_ff/t_ff) * M_Z,gas
 ```
 
-`SFR_wind` is the same quantity as in the gas equation (zero, present or delayed, set by `supernova.type`). In the vectorised integrator the stellar mass and stellar metals formed in a step are obtained from the exact budget identity of the linear step, so gas + stars + removed mass balance to round-off and a reservoir that is empty at the start of a step forms stars in it.
+`SFR_wind` is the same quantity as in the gas equation (zero, present or delayed, set by `supernova.type`). In the vectorised integrator the stellar mass and stellar metals formed in a step follow from mass balance over the step (for `dy/dt = F - D y`, the time integral of `D y` is `y0 + F dt - y1`), so gas + stars + removed mass balance to round-off and a reservoir that is empty at the start of a step forms stars in it.
 
 Stellar metallicity `Z_star = M_Z,star/M_star` (0 if `M_star=0`) feeds back into the mass-loading factor and dust wind-loss below.
 
@@ -118,42 +118,43 @@ eta_w(z, M_halo, Z_star) = epsilon_p * pi_fid * (10^11.5 / M_halo)^(1/3) * (9/(1
 | delay_time | `supernova.delay_time` | 0.015 Gyr | Lookback time for the delayed-feedback SFR |
 | epsilon_p | `supernova.epsilon_p` | 5 | Mass-loading normalization |
 | pi_fid | `supernova.pi_fid` | 1 | Fiducial mass-loading efficiency multiplier |
-| kernel | `supernova.kernel` | `"delta"` | When stars explode: `"delta"` (all after `delay_time`) or `"imf"` (each progenitor after its own lifetime) |
-| closure | `supernova.closure` | `"ashvini"` | How much gas the explosions remove: `"ashvini"` (the mass loading above), `"momentum"` or `"energy"` |
+| kernel | `supernova.kernel` | `"delta"` | The distribution of times between a star forming and exploding: `"delta"` (every star after `delay_time`) or `"imf"` (each massive star after its own lifetime) |
+| closure | `supernova.closure` | `"ashvini"` | The wind model, i.e. how much gas each supernova removes: `"ashvini"` (the mass loading above), `"momentum"` (momentum-driven) or `"energy"` (energy-driven) |
 
-### Delay kernel and closure options (`components/delay.py`, `components/closure.py`)
+### Delay between star formation and explosion, and the wind model (`components/delay.py`, `components/closure.py`)
 
-**Kernel `"imf"`.** Each core-collapse progenitor, mass `m` drawn from the IMF between `m_sn_min` and `m_sn_max` (`n_progenitor_masses` equal-probability bins), explodes `t_MS(m, Z)` after it forms (`stellar_lifetimes.py`; Georgy et al 2013 at `lifetime_Z` = 0.002, Ekstrom et al 2012 at 0.014, log-Z interpolation between, rotating models, end of hydrogen burning at X_c = 1e-4). With `F(s)` the fraction of progenitors exploded by age `s` and `G = integral F`, the fraction of the stars formed (uniformly) in step `k` that explode in step `j` is `K[j,k] = [G(T_j - T_{k-1}) - G(T_j - T_k) - G(T_{j-1} - T_{k-1}) + G(T_{j-1} - T_k)] / dT_k`, exact for star formation constant within a step. The star formation that drives the wind in step `j` is `sum_k K[j,k] S_k / dt_j` over earlier steps (`S_k` the stars formed in step `k`); explosions inside the step of formation go off at the start of the next. The same rate drives gas, metals and dust. With a single lifetime it is the delta kernel up to one step. Only used when `supernova.type` is `"delayed"`.
+**Delay distribution `"imf"`.** Each massive star that explodes as a supernova, with initial mass `m` drawn from the IMF between `m_sn_min` and `m_sn_max` (`n_progenitor_masses` bins of equal probability), explodes `t_MS(m, Z)` after it forms, where `t_MS` is its main-sequence lifetime (`stellar_lifetimes.py`; Georgy et al 2013 at `lifetime_Z` = 0.002, Ekstrom et al 2012 at 0.014, interpolated in log Z between them; rotating models; the lifetime ends when the central hydrogen fraction falls to 1e-4). Let `F(s)` be the fraction of these stars that have exploded a time `s` after forming, and `G` the integral of `F`. Then the fraction of the stars formed (at a constant rate) in step `k` whose supernovae go off in step `j` is `K[j,k] = [G(T_j - T_{k-1}) - G(T_j - T_k) - G(T_{j-1} - T_{k-1}) + G(T_{j-1} - T_k)] / dT_k`, where `T` are the cosmic times at the step boundaries and `dT_k` is the length of step `k`; this is exact when the star formation rate is constant within a step. The star formation rate that drives the wind in step `j` is `sum_k K[j,k] S_k / dt_j` over earlier steps, with `S_k` the mass of stars formed in step `k`. Supernovae that would go off within the step in which their stars formed are counted at the start of the next step. The same rate drives the loss of gas, metals and dust. With a single lifetime this is the single delay `delay_time` (to within one step). Used only when `supernova.type` is `"delayed"`.
 
-**Closures.** Per unit mass of stars formed, `eta_w = nu_SN * (gas removed per supernova)`:
+**Wind models.** The mass loading `eta_w` is the gas removed per unit mass of stars formed, `eta_w = nu_SN * (gas removed by one supernova)`, with `nu_SN` the number of supernova progenitors per Msun of stars formed for the chosen IMF and mass range:
 
 ```
 ashvini   eta_w from the calibrated formula above
-momentum  eta_w = nu_SN * f_p * p_SN / v_esc                 (p_SN = 3e5 Msun km/s)
-energy    eta_w = nu_SN * 2 * eps_fb * E_SN / v_esc^2        (E_SN = 1e51 erg)
+momentum  eta_w = nu_SN * f_p * p_SN / v_esc                 (p_SN = 3e5 Msun km/s, the momentum one supernova delivers)
+energy    eta_w = nu_SN * 2 * eps_fb * E_SN / v_esc^2        (E_SN = 1e51 erg, the energy of one supernova;
+                                                              eps_fb = the fraction of it that unbinds gas)
 ```
 
-`v_esc = sqrt(2) V_c` at the virial radius of a halo of mean density 200 times critical (`halo.py`). `nu_SN` is the number of progenitors per Msun of stars for the configured IMF and mass range. The Ashvini mass loading follows `v_esc^-1`: it equals the momentum closure with `f_p` = 0.7646 at zero stellar metallicity to 0.3 percent over 1e6-1e10 Msun, z = 5-15 (8-100 Msun progenitors). `presets.stochocc_smooth_control()` sets this up together with Stochastic_Occupation's star formation rate. The grid stepper applies no limit at the gas present (the gas mass is clamped at zero afterwards); the event stepper limits each explosion at the gas present.
+`v_esc = sqrt(2) V_c`, with `V_c` the circular speed at the virial radius of a halo whose mean density is 200 times the critical density (`halo.py`). The Ashvini mass loading falls as `v_esc^-1`, like a momentum-driven wind: it equals the momentum-driven wind with `f_p` = 0.7646 at zero stellar metallicity to 0.3 percent over 1e6-1e10 Msun and z = 5-15 (for 8-100 Msun progenitors). `presets.stochocc_smooth_control()` sets this up together with Stochastic_Occupation's star formation rate. The grid integrator does not limit the gas removed to the gas present (a negative gas mass is set to zero afterwards); the event integrator does.
 
-### Event stepper (`steppers/events.py`, `main.run_events`)
+### Event integrator (`steppers/events.py`, `main.run_events`)
 
-Follows individual explosions for one halo at a time. Between events the gas, stars, metals are advanced exactly (`dM/dt = S - kM` in closed form, `k` the star formation rate coefficient at the start of the substep, supply `S = f_b max(dM_h, 0)` reduced by the equilibrium UV suppression of Okamoto et al 2008); the stars formed in a substep are passed to a sampler (`samplers.py`) which returns the explosions they cause; each explosion is processed at its own time with `v_esc` and `M_h` at that time, adds its metal and dust yield (`Z_yield`, `dust_yield` per Msun of stars, divided by `nu_SN` per supernova), destroys dust (`weight * m_swept * M_d/M_g * f_gas`, at most the dust present), and removes `min(M_gas, weight * closure)` of gas, with metals and dust in proportion. Samplers: `"smooth"` (the expected explosions with fractional weights on K = 100 representative masses, released in 1 Myr batches: no randomness) and `"stochastic"` (Poisson counts of whole supernovae, random masses). Not included: black holes, the star formation gate, inflow lag, recycling, energy bank (milestone M5). The supply and the UV suppression use the equilibrium form, unlike the grid stepper's rate-dependent one.
+Follows individual supernovae for one halo at a time. Between supernovae the gas, stars and metals are advanced exactly (`dM/dt = S - kM`, solved in closed form, with `k` the star formation rate per unit gas mass at the start of the substep and the gas supply `S = f_b max(dM_h, 0)` reduced by the equilibrium UV suppression of Okamoto et al 2008). The stars formed in a substep are passed to `samplers.py`, which returns the supernovae they will produce. Each supernova acts at the moment it explodes, using the halo mass and escape speed at that moment: it adds its metals and dust (`Z_yield` and `dust_yield` per Msun of stars, divided by `nu_SN` per supernova), destroys dust (`weight * m_swept * M_d/M_g * f_gas`, at most the dust present), and removes `min(M_gas, weight * (gas removed by one supernova))` of gas, with metals and dust in proportion to the gas. Here `weight` is the fraction of a whole supernova that the event stands for. Two ways of choosing the supernovae: `"smooth"` (the expected supernovae, as fractions of a supernova, on K = 100 representative masses, released in batches of 1 Myr; no randomness) and `"stochastic"` (a Poisson number of whole supernovae with random masses). Not included: black holes. The gas supply and the UV suppression use the equilibrium form, unlike the grid integrator's form that depends on the growth rate.
 
-#### Optional features of the event stepper (Config section `events`, all off by default)
+#### Optional physics of the event integrator (Config section `events`, all off by default)
 
-Each is checked against Stochastic_Occupation's smooth control (`tests/test_event_options.py`; pins in `tests/golden/stochocc_options.json`). `tau` below is `kappa * r_vir / v_esc` at the time named.
+Each is compared with Stochastic_Occupation's smooth model (`tests/test_event_options.py`; reference numbers in `tests/golden/stochocc_options.json`). `tau` below is `kappa * r_vir / v_esc` at the time named: the time to travel the virial radius `r_vir` at the escape speed `v_esc`, multiplied by the number `kappa` set in the Config.
 
 | Key | What it does |
 |---|---|
-| `gate_T_vir_K`, `gate_mass`, `gate_switch_z`, `gate_T_vir_post_K` | Gas forms stars only when the halo has `T_vir` (mu = 1.22) above `gate_T_vir_K`, or mass above `gate_mass` (replaces the temperature test); below `gate_switch_z` it must also exceed `gate_T_vir_post_K`. Tested at the start of each substep. |
-| `inflow_kappa` | The supply reaches the reservoir through a first-order store with `tau` at the start of the substep, solved exactly. |
-| `recycling_fraction`, `recycling_kappa`, `recycling_fraction_Z` | That fraction of the gas an explosion removes returns after `tau` at the explosion; `recycling_fraction_Z` (default: the same) is the fraction of the removed metals and dust that return. |
-| `bank_tau_myr` | The energy `(wanted - removed)/2 * v_esc^2` of an explosion that finds less gas than its closure could unbind is kept, decays over `bank_tau_myr` (`inf` = never), and unbinds arriving gas before it reaches the reservoir. Needs the energy closure. |
-| `access_fraction` | One explosion removes at most this fraction of the gas present. A cap on each explosion, so the answer depends on how the supernovae are split (the smooth sampler's `K`). |
-| `eps_cut_mass`, `eps_fb_above_cut` | Above this halo mass at the explosion time the energy closure uses `eps_fb_above_cut`. Needs the energy closure. |
-| `wind_kappa` | The mass an explosion will remove is fixed at the explosion, and removed (limited by the gas then present) `tau` later; metals and dust are lost with it at delivery. |
+| `cooling_T_vir_K`, `cooling_mass`, `reionised_below_z`, `cooling_T_vir_reionised_K` | Cooling threshold: gas forms stars only when the halo's virial temperature `T_vir` (mu = 1.22) is above `cooling_T_vir_K`, or its mass above `cooling_mass` (which replaces the temperature condition); below redshift `reionised_below_z` it must also exceed `cooling_T_vir_reionised_K` (gas in smaller haloes cannot cool after reionisation). Tested at the start of each substep. |
+| `inflow_kappa` | Gas takes a time `tau` (at the start of the substep) to reach the galaxy: the supply passes through a reservoir that empties at rate `1/tau`, solved exactly. |
+| `recycling_fraction`, `recycling_kappa`, `recycling_fraction_Z` | This fraction of the gas a supernova removes falls back into the galaxy after `tau` (at the supernova); `recycling_fraction_Z` (default: the same) is the fraction of the removed metals and dust that fall back. |
+| `bank_tau_myr` | Energy kept for later: when a supernova finds less gas than its energy could unbind, the unused energy `(wanted - removed)/2 * v_esc^2` is stored, decays over `bank_tau_myr` (`inf` = never), and removes gas as it arrives, before it reaches the galaxy. Needs the energy-driven wind. |
+| `access_fraction` | One supernova can reach only this fraction of the gas present. Because the limit applies to each supernova separately, the answer depends on how the expected supernovae are divided into separate explosions (the smooth sampler's `K`). |
+| `eps_cut_mass`, `eps_fb_above_cut` | Above this halo mass at the time of the explosion the energy-driven wind uses a different coupling `eps_fb_above_cut` (supernovae confined in massive minihaloes). Needs the energy-driven wind. |
+| `wind_kappa` | The gas a supernova will remove is fixed when it explodes, but leaves the galaxy a time `tau` later (limited to the gas then present); metals and dust are lost with it then. The gas can form stars in the meantime. |
 
-Differences from Stochastic_Occupation: it asserts against several of these combined with chemistry (and with the momentum closure); the event stepper always carries metals and dust and allows every combination, so those combinations are not checked against it.
+Stochastic_Occupation does not allow several of these together with chemistry (or with the momentum-driven wind). The event integrator always follows metals and dust and allows every combination, so those combinations are not compared with it.
 
 ## Black hole growth ([`black_holes_growth.py`](ashvini/black_holes_growth.py))
 
@@ -494,7 +495,7 @@ Excluded: black-hole mergers, super-Eddington growth, nuclear dark matter, an ev
 
 `run1()`/`run_forest()` (the production path) integrate the same five ODEs as `run1_scalar()` (the `solve_ivp` reference), but using closed-form/quadrature updates chosen per-equation:
 
-- **Stellar mass and stellar metals**: from the budget identity of the gas and metals updates: integrating `dy/dt = F - D*y` gives `D * integral(y dt) = y0 + F*dt - y1`, so the stars formed are `(B_sf / D) * (y0 + F*dt - y1)`, exact and conserving to round-off (`components/gas.py`, `components/chemistry.py`).
+- **Stellar mass and stellar metals**: from mass balance over the step: for `dy/dt = F - D*y` the time integral of `D*y` is `y0 + F*dt - y1`, so the stars formed are `(B_sf / D) * (y0 + F*dt - y1)`, exact and conserving mass to round-off (`components/gas.py`, `components/chemistry.py`).
 - **Gas mass, gas metals, dust mass**: each is affine, `dy/dt = forcing - decay*y`, with forcing/decay frozen at the step midpoint redshift -> solved exactly via an exponential integrator (`components/ode.linear_ode_step`).
 - **Black hole mass**: piecewise (gas-supply-limited vs. Eddington-limited, with a possible regime crossover mid-step) -> solved exactly per-regime rather than approximated.
 

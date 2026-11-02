@@ -61,7 +61,7 @@ Alternatively, `run()` can generate trees live -- no intermediate file -- by set
 
 ## Learning the model
 
-Start with [docs/STUDENT_GUIDE.md](docs/STUDENT_GUIDE.md) and `notebooks/ashvini_tour.ipynb`: how the code is laid out, how to change a parameter, swap a piece of physics, follow individual supernovae, and how to know a change is right. [docs/RESERVOIRS.md](docs/RESERVOIRS.md) says which modules are frozen.
+Start with [docs/STUDENT_GUIDE.md](docs/STUDENT_GUIDE.md) and `notebooks/ashvini_tour.ipynb`: how the code is laid out, how to change a parameter, replace a piece of physics, follow individual supernovae, and how to check that a change is right. [docs/RESERVOIRS.md](docs/RESERVOIRS.md) says which modules are kept unchanged.
 
 ```python
 from ashvini import utils
@@ -77,9 +77,9 @@ result = run_forest(halo_mass, rate, z, config=override(DEFAULT, **{"sf.efficien
 | Module | Responsibility |
 |---|---|
 | `config.py`, `state.py` | `Config` (the parameter tree; `DEFAULT`, `override`, `validate`) and `State` (the evolving arrays) |
-| `components/` | One piece of physics each: `star_formation`, `inflow`, `delay` (when stars explode), `closure` (how much gas explosions remove), `gas`, `chemistry`, `blackholes`, `ode` |
-| `steppers/` | `grid.py` (`GridStepper`: all haloes of a forest, step by step on the tree grid) and `events.py` (`EventStepper`: individual supernovae at their own times, with optional gate, inflow lag, recycling, energy bank, ...) |
-| `imf.py`, `stellar_lifetimes.py`, `halo.py`, `samplers.py`, `trajectory.py`, `presets.py` | IMF and supernova rate; main-sequence lifetimes (Ekstrom 2012, Georgy 2013); halo scales; supernova samplers; the halo history for the event stepper; ready-made parameter sets |
+| `components/` | One piece of physics each: `star_formation`, `inflow`, `delay` (time between a star forming and exploding), `closure` (the wind model: how much gas each supernova removes), `gas`, `chemistry`, `blackholes`, `ode` |
+| `steppers/` | The two time integrators: `grid.py` (`GridStepper`: all haloes of a forest, step by step on the tree grid) and `events.py` (`EventStepper`: individual supernovae at the moment each explodes, with optional cooling threshold, delayed inflow, gas falling back, stored explosion energy, ...) |
+| `imf.py`, `stellar_lifetimes.py`, `halo.py`, `samplers.py`, `trajectory.py`, `presets.py` | IMF and supernova rate; main-sequence lifetimes (Ekstrom 2012, Georgy 2013); halo scales; random or expected supernovae of a stellar population; the halo history for the event integrator; ready-made parameter sets |
 | `main.py` | Drives the integration: `run1()` (vectorised, fast path), `run1_scalar()` (solve_ivp reference), `run_forest()` (all haloes at once), `run()` (CLI entry point, reads or generates trees, writes HDF5) |
 | `run_params.py` / `run_params.yaml` | Dataclass-based config loader |
 | `pymctrees_adapter.py` | pymctrees <-> Ashvini tree-format conversion (unit/ordering conversions, pre-formation-prefix handling), shared by `scripts/build_trees_from_pymctrees.py` (offline) and `run()`'s live `tree_source: pymctrees` path |
@@ -96,8 +96,8 @@ result = run_forest(halo_mass, rate, z, config=override(DEFAULT, **{"sf.efficien
 | `reionization.py` | UV background suppression of gas accretion |
 | `utils.py` | Merger-tree I/O, cosmic time/redshift interpolation |
 | `critical_seed.py` | General-purpose bisection for the black-hole seed mass at which strict Eddington-limited growth reaches a target overmassiveness (`M_BH(z_anchor) = f_bh*M_star(z_anchor)`), against `main.run_forest()`; vectorised across an ensemble of haloes/trees, one independent bisection per halo |
-| `reservoir_stock.py` | The Minimal Viable Model (MVM) of the galaxy and nuclear reservoirs: the model implementation behind the 2026 paper "Critical seed masses for massive black holes in the early Universe". **Frozen**; see the section below and `docs/PRODUCTION_PROVENANCE.md` |
-| `reservoir_stock_premvm.py` | Frozen exploratory model that preceded the MVM; a reference only, not used for any result of the paper |
+| `reservoir_stock.py` | The Minimal Viable Model (MVM) of the galaxy and nuclear reservoirs: the model implementation behind the 2026 paper "Critical seed masses for massive black holes in the early Universe". **Kept unchanged**; see the section below and `docs/PRODUCTION_PROVENANCE.md` |
+| `reservoir_stock_premvm.py` | Exploratory model that preceded the MVM, kept unchanged; a reference only, not used for any result of the paper |
 | `paper_reservoir.py` | Halo-growth-rate (GRUMPY-style spline), UV and cold/hot suppression, virial-quantity and tree-interpolation helpers imported by `reservoir_stock.py`. Its own reservoir integrator (`run_reservoir_paper`, the earlier "Differential Growth" model) is **superseded** by `reservoir_stock.py` and is kept for the record |
 
 ## Reproducing figures
@@ -174,7 +174,7 @@ Open it with `jupyter notebook notebooks/pymctrees_ashvini_demo.ipynb` after `pi
 
 ```
 pip install -r requirements-dev.txt
-pytest tests/            # about four minutes
+pytest tests/            # about five minutes
 pytest tests/ --parity   # also reruns Stochastic_Occupation live (needs it next to this repository, or STOCHOCC_SRC)
 ```
 

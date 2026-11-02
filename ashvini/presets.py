@@ -21,9 +21,9 @@ def ashvini_efficiency_for_stochocc(eps_ff):
 def stochocc_smooth_control(cfg=None, eps_ff=0.02178, f_p=0.7646, **changes):
     """
     The smooth limit of Stochastic_Occupation: supernovae from 8-100 Msun progenitors, each exploding after its own
-    main-sequence lifetime (Georgy et al 2013, Z = 0.002), removing f_p * p_SN / v_esc of gas (momentum closure),
+    main-sequence lifetime (Georgy et al 2013, Z = 0.002), removing f_p * p_SN / v_esc of gas (momentum-driven wind),
     star formation at Stochastic_Occupation's eps_ff (0.02178 equals Ashvini's 0.015). f_p = 0.7646 is the value at
-    which the momentum closure equals Ashvini's calibrated mass loading at zero stellar metallicity
+    which the momentum-driven wind equals Ashvini's calibrated mass loading at zero stellar metallicity
     (to 0.3 percent for halo masses 1e6-1e10 Msun and z = 5-15); Stochastic_Occupation's audit used 0.7625.
     """
     return override(cfg if cfg is not None else DEFAULT, **{

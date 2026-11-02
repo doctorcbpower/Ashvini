@@ -339,7 +339,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
 def run_events(halo_mass, halo_mass_rate, redshift, config=None, sampler="smooth", seed=None,
                gas_mass0=0.0, stars_mass0=0.0, **stepper_kwargs):
     """
-    The same haloes as run_forest, followed by the event stepper (steppers/events.py): individual supernovae at their own
+    The same haloes as run_forest, followed by the event integrator (steppers/events.py): individual supernovae at their own
     times. sampler is "smooth" (the expected supernovae, no randomness) or "stochastic" (seeded by `seed`).
     Returns the run_forest dictionary plus "ejected_mass" (cumulative gas removed), "returned_mass" (cumulative
     gas that fell back, zero unless events.recycling_fraction > 0) and "n_explosions" (per halo).

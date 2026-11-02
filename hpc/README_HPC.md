@@ -23,3 +23,13 @@ assumptions and the checks. I have not run this on OzSTAR; the Slurm account, pa
 - Compute nodes may lack internet: nothing here downloads anything (the foraois configs are read from `FORAOIS_CONFIG_DIR`).
 - Everything is seeded (tree seed 42 + mass index), so a rerun on the same software gives identical trees.
 - Environment variables: `SHMR_OUT`, `FORAOIS_CONFIG_DIR`, `SHMR_N_HALOES` (see `scripts/shmr_z0_common.py`).
+
+## Parameter-space exploration (`docs/PARAMETER_SPACE_AUDIT.md`)
+Five sub-spaces (the current or the Schmidt-Kennicutt star formation law, with Ashvini's or the energy-driven wind, and one with the
+rate-dependent UV form), sampled with the Saltelli scheme (N = 128): 6912 samples in all, about 15 s each (nine halo masses, 100 haloes
+each), about 30 CPU hours.
+1. `bash hpc/submit_space.sh` (generates the trees if missing, then submits `--array=0-199 hpc/submit_samples.sbatch`; each task does about 35 samples).
+2. A task that hits the time limit is resubmitted with the same command (`--array=17,42`): it continues from its last saved sample.
+3. Copy `$SHMR_OUT/space/*.npz` back, then `python scripts/space_analyse.py` (Sobol indices with bootstrap errors, the accepted samples, the
+   predicted band at 1e8 - 3e9 Msun; writes `space_summary.txt` and two figures).
+Design, parameters and ranges: `scripts/space_common.py`.

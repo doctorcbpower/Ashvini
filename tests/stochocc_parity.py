@@ -141,6 +141,9 @@ OPTION_CASES = {
     "inflow_lag": {"ash": {"events.inflow_kappa": 3.0}, "sto": {"inflow_kappa": 3.0}},
     "recycling": {"ash": {"events.recycling_fraction": 0.5, "events.recycling_kappa": 1.0},
                   "sto": {"rec_frac": 0.5, "rec_kappa": 1.0}},
+    # strong coupling, so that explosions regularly find less gas than their energy could unbind; the control has no bank
+    "energy_bank_control": {"ash": {"sn.eps_fb": 1.0}, "sto": {"eps_fb": 1.0}},
+    "energy_bank": {"ash": {"sn.eps_fb": 1.0, "events.bank_tau_myr": 100.0}, "sto": {"eps_fb": 1.0, "bank_tau_myr": 100.0}},
     "gate": {"ash": {"events.gate_T_vir_K": 5.0e3}, "sto": {"T_vir_thresh": 5.0e3}},
 }
 OPTION_GOLDEN = Path(__file__).parent / "golden" / "stochocc_options.json"

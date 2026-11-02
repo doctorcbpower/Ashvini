@@ -17,7 +17,7 @@ What it does:
               dust (weight * m_swept * M_d/M_g * f_gas, at most the dust present), and carries off metals and
               dust in proportion to the gas it removes
 Not in this stepper: black holes and AGN winds (bh_mass is zero). Optional, all off by default (Config section `events`):
-the star formation gate, inflow lag, recycling.
+the star formation gate, inflow lag, recycling, energy bank.
 
 Times are in Gyr, masses in Msun.
 """
@@ -29,7 +29,7 @@ import numpy as np
 from .. import halo as halo_scales
 from .. import utils
 from ..config import resolve
-from ..constants import Gyr_s
+from ..constants import Gyr_s, Msun_g
 from ..reionization_physics import mu_c, s as uv_shape
 from ..components.closure import make_closure
 from ..components.star_formation import FreeFallStarFormation
@@ -71,6 +71,7 @@ class _Reservoirs:
         self.metals_ejected = self.dust_ejected = self.dust_destroyed = 0.0
         self.queue, self._count = [], itertools.count()
         self.n_explosions = 0
+        self.bank = 0.0               # erg, explosion energy kept for unbinding later gas (events.bank_tau_myr)
         self.in_transit = 0.0         # gas on its way to the reservoir (events.inflow_kappa)
 
     def push(self, t, mass, weight, ret=None, ret_Z=0.0, ret_d=0.0):
@@ -131,6 +132,15 @@ class EventStepper:
             tau = ev.inflow_kappa * halo_scales.r_vir_cm(M_a, z_a) / history.v_esc_at_t(t_a) / Gyr_s
             stored = res.in_transit * np.exp(-dt / tau) + supply * (tau / dt) * (-np.expm1(-dt / tau))
             supply, res.in_transit = res.in_transit + supply - stored, stored
+        if ev.bank_tau_myr is not None and M_a > 0.0:
+            v_esc = history.v_esc_at_t(t_a)
+            if np.isfinite(ev.bank_tau_myr):
+                res.bank *= np.exp(-dt / (ev.bank_tau_myr * MYR_GYR))
+            if res.bank > 0.0 and supply > 0.0:
+                removed = min(supply, 2.0 * res.bank / v_esc ** 2 / Msun_g)    # gas the stored energy can unbind
+                res.bank -= 0.5 * removed * Msun_g * v_esc ** 2
+                res.ejected += removed
+                supply -= removed
         return supply
 
     def supply(self, history, t_a, t_b):
@@ -182,6 +192,7 @@ class EventStepper:
             return
         z = history.z_at_t(t_sn)
         M_h = history.mass_at_t(t_sn)
+        v_esc = history.v_esc_at_t(t_sn)
         dZ = weight * self.yield_Z_per_sn
         dD = weight * self.yield_dust_per_sn
         res.gas_metals += dZ
@@ -205,8 +216,10 @@ class EventStepper:
         ev = cfg.events
         fraction_Z = ev.recycling_fraction if ev.recycling_fraction_Z is None else ev.recycling_fraction_Z
         if (ev.recycling_fraction > 0.0 or fraction_Z > 0.0) and removed > 0.0:
-            tau = ev.recycling_kappa * halo_scales.r_vir_cm(M_h, z) / history.v_esc_at_t(t_sn) / Gyr_s
+            tau = ev.recycling_kappa * halo_scales.r_vir_cm(M_h, z) / v_esc / Gyr_s
             res.push(t_sn + tau, 0.0, 0.0, ev.recycling_fraction * removed, fraction_Z * lost_Z, fraction_Z * lost_d)
+        if ev.bank_tau_myr is not None and wanted > removed:      # energy that found no gas to unbind
+            res.bank += 0.5 * (wanted - removed) * Msun_g * v_esc ** 2
         res.gas -= removed
         res.ejected += removed
         res.n_explosions += 1

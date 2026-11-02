@@ -228,6 +228,10 @@ class EventParams:
     recycling_fraction: float = 0.0
     recycling_kappa: float = 1.0
     recycling_fraction_Z: float = None
+    # energy bank: the energy of an explosion that finds less gas than it could unbind is kept (it decays over
+    # bank_tau_myr; .inf = never) and spent unbinding gas as it arrives, before it reaches the reservoir. None = off.
+    # Needs supernova.closure "energy".
+    bank_tau_myr: float = None
 
 
 @dataclass

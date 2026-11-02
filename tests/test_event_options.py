@@ -14,7 +14,7 @@ def _agree(case, rel_stars=5e-3, rel_ej=5e-3, rel_gas=5e-3):
     a, s = P.ashvini_option(None if case == "plain" else case), PIN[case]
     assert a["M_star"] == pytest.approx(s["M_star"], rel=rel_stars), a
     assert a["M_ej"] == pytest.approx(s["M_ej"], rel=rel_ej), a
-    assert a["M_g"] == pytest.approx(s["M_g"], rel=rel_gas), a
+    assert a["M_g"] == pytest.approx(s["M_g"], rel=rel_gas, abs=1.0), a
 
 
 def test_the_plain_minihalo_agrees_with_stochocc():
@@ -97,3 +97,45 @@ def test_recycling_returns_gas_conserves_baryons_and_metals():
 
 def test_recycling_agrees_with_stochocc():
     _agree("recycling", 1.5e-2, 1.5e-2, 1.5e-2)
+
+
+def test_energy_bank_spends_stored_energy_on_arriving_gas_and_decays():
+    from ashvini import utils
+    from ashvini.config import override
+    from ashvini.constants import Msun_g
+    from ashvini.main import run_events
+    from ashvini.steppers.events import EventStepper, _Reservoirs
+    from ashvini.trajectory import HaloHistory
+    z = np.arange(20.0, 10.0 - 1e-9, -0.2)
+    M = P.MINIHALO(z)
+    base = P.base_config(**P.OPTION_BASE["ash"])
+    stepper = EventStepper(override(base, **{"events.bank_tau_myr": 30.0}))
+    hist = HaloHistory(M, z)
+    t, dt = 0.5 * (hist.t_min + hist.t_max), 1.0e-3
+    v = hist.v_esc_at_t(t)
+    res = _Reservoirs(t, 0.0, 0.0)
+    res.bank = 3.0e50                                     # enough to unbind less than the arriving gas
+    decayed = res.bank * np.exp(-dt / 0.03)
+    can_unbind = 2.0 * decayed / v ** 2 / Msun_g
+    supply = 10.0 * can_unbind
+    through = stepper.lag_and_bank(hist, res, t, dt, supply)
+    assert through == pytest.approx(supply - can_unbind, rel=1e-12) and res.ejected == pytest.approx(can_unbind, rel=1e-12)
+    assert res.bank == pytest.approx(0.0, abs=1e-6 * decayed)             # all of it spent
+    res.bank = 3.0e50                                     # now more energy than the arriving gas needs
+    res.ejected = 0.0
+    little = 1e-3 * can_unbind
+    assert stepper.lag_and_bank(hist, res, t, dt, little) == 0.0 and res.bank > 0.0
+    # conservation in a full run, and a momentum closure cannot use a bank
+    bank = run_events(M[None, :], np.zeros((1, len(z))), z, config=override(base, **{"events.bank_tau_myr": 30.0}))
+    supplied = (utils.Omega_b / utils.Omega_m) * (M[-1] - M[0])
+    assert bank["gas_mass"][0, -1] + bank["stars_mass"][0, -1] + bank["ejected_mass"][0, -1] == pytest.approx(supplied, rel=1e-9)
+    with pytest.raises(ValueError, match="energy"):
+        override(base, **{"sn.closure": "momentum", "events.bank_tau_myr": 30.0})
+
+
+def test_energy_bank_agrees_with_stochocc():
+    # the bank must matter here, or agreement would say nothing: it removes the gas and a fifth of the stars
+    assert PIN["energy_bank"]["M_star"] < 0.9 * PIN["energy_bank_control"]["M_star"]
+    assert PIN["energy_bank"]["M_g"] < 0.01 * PIN["energy_bank_control"]["M_g"]
+    _agree("energy_bank", 1.5e-2, 1.5e-2, 1.5e-2)
+    _agree("energy_bank_control", 1.5e-2, 1.5e-2, 5e-2)       # the gas is a small remainder of the supply

@@ -50,6 +50,14 @@ VARIANTS = {
     "sk_chi0.06_slope1": {**SK, "disc.angular_momentum_ratio": disc_size(0.06), "disc.schmidt_kennicutt_slope": 1.0},
     "current_zrei6": {"reion.z_reion": 6.0},
     "current_zrei8": {"reion.z_reion": 8.0},
+    # the equilibrium form of the UV suppression (mass and redshift only; reion.form)
+    "eq_eps0.005": {"reion.form": "equilibrium", "sf.efficiency": 0.005},
+    "eq_eps0.015": {"reion.form": "equilibrium"},
+    "eq_eps0.05": {"reion.form": "equilibrium", "sf.efficiency": 0.05},
+    "eq_sk_chi0.06": {**SK, "reion.form": "equilibrium", "disc.angular_momentum_ratio": disc_size(0.06)},
+    "eq_sk_chi0.06_A/3": {**SK, "reion.form": "equilibrium", "disc.angular_momentum_ratio": disc_size(0.06), "disc.schmidt_kennicutt_normalisation": 2.5e-4 / 3},
+    "eq_zrei6": {"reion.form": "equilibrium", "reion.z_reion": 6.0},
+    "eq_zrei8": {"reion.form": "equilibrium", "reion.z_reion": 8.0},
     "current_noUV": {"reion.UVB_enabled": False},
     "sk_chi0.06_noUV": {**SK, "disc.angular_momentum_ratio": disc_size(0.06), "reion.UVB_enabled": False},
 }

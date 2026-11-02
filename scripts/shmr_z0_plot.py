@@ -31,9 +31,10 @@ def main():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     variants = [v for v in C.VARIANTS if load(v)]
-    fig, axes = plt.subplots(1, 3, figsize=(17, 5), sharey=True)
+    fig, axes = plt.subplots(1, 4, figsize=(22, 5), sharey=True)
     groups = [("star formation efficiency of the current law", ["current_eps0.005", "current_eps0.015", "current_eps0.05"]),
               ("Schmidt-Kennicutt law, disc size", ["sk_chi0.025", "sk_chi0.06", "sk_chi0.06_small", "sk_chi0.06_large", "sk_chi0.06_slope1"]),
+              ("equilibrium UV suppression (reion.form)", ["eq_eps0.005", "eq_eps0.015", "eq_eps0.05", "eq_sk_chi0.06", "eq_sk_chi0.06_A/3", "eq_zrei6", "eq_zrei8"]),
               ("reionisation (current law unless stated)", ["current_zrei6", "current_eps0.015", "current_zrei8", "current_noUV", "sk_chi0.06_noUV"])]
     mh = np.logspace(8, 12, 100)
     lines = []

@@ -79,6 +79,23 @@ def epsilon(z, cfg=None):
     return epsilon
 
 
+def uv_suppression_equilibrium(z_val, m_halo, cfg=None):
+    """
+    Fraction of the cosmological baryon accretion a halo of mass m_halo keeps at redshift z_val: the equilibrium suppression
+    s(M / M_c(z), omega) of Okamoto, Gnedin & Frenk (2008), a function of mass and redshift only (1 above z = 10, 0 for a
+    halo with no mass). No dependence on the growth rate, so it does not depend on the time step of the trees.
+    """
+    z_val = np.asarray(z_val, dtype=float)
+    m_halo = np.asarray(m_halo, dtype=float)
+    suppression = np.ones_like(z_val)
+    mask = z_val <= 10
+    mh = m_halo[mask]
+    resolved = mh > 0
+    values = s(mu_c(z_val[mask], np.where(resolved, mh, 1.0), cfg), _shape(cfg)[2])
+    suppression[mask] = np.where(resolved, values, 0.0)
+    return suppression
+
+
 def uv_suppression(z_val, m_halo, mdot_halo, cfg=None):
     z_val = np.asarray(z_val)
     m_halo = np.asarray(m_halo)

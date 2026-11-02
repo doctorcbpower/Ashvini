@@ -27,7 +27,9 @@ def gas_inflow_rate(redshift, halo_mass, halo_mass_dot, UV_background=None, cfg=
     if UV_background is None:
         UV_background = resolve(cfg).reion.UVB_enabled
     gas_accretion_rate = (Omega_b / Omega_m) * halo_mass_dot
-    if UV_background:
+    if UV_background and resolve(cfg).reion.form == "equilibrium":
+        gas_accretion_rate *= reion.uv_suppression_equilibrium(redshift, halo_mass, cfg)
+    elif UV_background:
         if cfg is None:
             gas_accretion_rate *= reion.uv_suppression(redshift, halo_mass, halo_mass_dot)
         else:

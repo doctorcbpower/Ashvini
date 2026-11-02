@@ -110,3 +110,31 @@ def test_uv_suppression_is_finite_for_a_late_reionisation_redshift():
         z = np.linspace(0.0, 10.0, 41)
         out = reion.uv_suppression(z, 1e9 * np.ones_like(z), 1e8 * np.ones_like(z), cfg)
         assert np.all(np.isfinite(out)) and np.all(out >= 0.0), z_rei
+
+
+def test_equilibrium_uv_form_is_the_mass_and_redshift_suppression_of_the_reservoir_model():
+    import numpy as np
+    from ashvini import reionization as reion
+    from ashvini.paper_reservoir import uv_suppression_mass_only
+    z = np.array([0.0, 3.0, 6.0, 9.0, 12.0, 6.0])
+    m = np.array([1e9, 1e10, 1e11, 1e8, 1e9, 0.0])
+    got = reion.uv_suppression_equilibrium(z, m)
+    assert np.allclose(got, uv_suppression_mass_only(z, m), rtol=1e-12)
+    assert got[4] == 1.0 and got[5] == 0.0                                  # above z = 10 and with no mass
+    zz = np.full(50, 2.0); mm = np.logspace(8, 12, 50)
+    assert np.all(np.diff(reion.uv_suppression_equilibrium(zz, mm)) >= 0)    # more massive haloes keep more of their accretion
+
+
+def test_the_equilibrium_form_does_not_depend_on_the_halo_growth_rate_and_is_selectable():
+    import numpy as np
+    from ashvini.config import DEFAULT, override
+    from ashvini.gas_evolve import gas_inflow_rate
+    eq = override(DEFAULT, **{"reion.form": "equilibrium"})
+    z, m = np.array([4.0]), np.array([3e9])
+    a = gas_inflow_rate(z, m, np.array([1e8]), cfg=eq) / 1e8
+    b = gas_inflow_rate(z, m, np.array([1e9]), cfg=eq) / 1e9
+    assert np.allclose(a, b, rtol=1e-12)
+    assert DEFAULT.reion.form == "rate_dependent"
+    import pytest
+    with pytest.raises(ValueError, match="reionization.form"):
+        override(DEFAULT, **{"reion.form": "nope"})

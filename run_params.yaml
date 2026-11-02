@@ -51,6 +51,7 @@ reionization:
   z_reion: 7
   gamma: 15
   omega: 2
+  # form: "rate_dependent"  # or "equilibrium": suppression of the equilibrium baryon fraction at the halo mass and redshift alone (docs/UV_SUPPRESSION_AUDIT.md)
 
 metallicity:
   Z_IGM_Zsun: 1.0e-3 # metallicity of inflowing gas in units of Z_sun (Z_sun = 0.015 as a mass fraction, constants.Z_SUN)

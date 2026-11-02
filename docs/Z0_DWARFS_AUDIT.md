@@ -55,3 +55,14 @@ The Slurm account and partition, the Python module lines, a scratch path, and wh
 ## Not in scope
 
 Subhalo or satellite physics, tidal stripping, a molecular-gas model, the stochastic star formation perturbation of Pan & Kravtsov, and new physics.
+
+## Results of the first run (2026-11-03; 100 haloes at each of nine masses, Zhang-Hui trees, grid integrator)
+
+Tables: `scripts/output/shmr_z0/summary.txt`; plot: `shmr_z0_laws.png`. Median stellar mass relative to the published relations; Moster+13 and Behroozi+13 agree within a factor 2.2 between 3e10 and 1e12 Msun and diverge below (factors 4, 12, 36 and 340 at 1e10, 3e9, 1e9 and 1e8): the relations are extrapolations below about 3e10.
+
+- **Star formation law.** With the default (rate-dependent) UV suppression the law matters only above about 3e10 Msun. The Schmidt-Kennicutt law gives 1.1 times Moster+13 at 1e11-1e12 where the current law gives 0.2-0.3, but 2.4 times Behroozi+13 at 1e11. Below 1e10 all laws give the same plateau, M*/M_halo of about 2e-5, a factor 18-70 below the relations at 1e10.
+- **Where the plateau and the step come from.** With the UV background off there is no plateau and no step (the dwarfs are then 2-3 times above Behroozi). With the default UV form 60-99 percent of the stars in haloes below 1e10 Msun form before z = 7, and almost none after z = 3.
+- **Equilibrium UV form** (`reion.form = "equilibrium"`). The step disappears. With the current law (efficiency 0.015) the median is 1.1-1.6 times Behroozi+13 from 1e10 to 1e11 Msun, 0.5 and 0.33 times at 3e11 and 1e12. Stars in haloes of 3e8 Msun or less are fossils (more than 80 percent formed before z = 7), with M*/M_halo of about 1e-5 to 2e-5; at 1e9 the transition has begun (39 percent before z = 7). With the Schmidt-Kennicutt law the massive end reaches 1.3-1.7 times Moster at 1e12 but is 4.5-7 times too high at 1e10-3e10.
+- **No single efficiency or law gives the shape.** M*/M_halo rises by about 30 between 1e10 and 1e12 in both published relations and by about 4 (current law) in Ashvini.
+- **Found on the way:** `reionization.epsilon` gave nan for `z_reion` of about 6.5 or less (fixed, with a test).
+- **Not tuned.** No parameter was adjusted to match either relation.

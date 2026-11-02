@@ -94,6 +94,10 @@ class ReionizationParams:
     z_reion: float
     gamma: float
     omega: float
+    # "rate_dependent" (default): the suppression depends on the halo mass and its growth rate, and stops accretion while the
+    # equilibrium baryon fraction is falling (docs/UV_SUPPRESSION_AUDIT.md). "equilibrium": the suppression of the
+    # equilibrium baryon fraction at the halo mass and redshift alone (Okamoto et al. 2008; the form the reservoir model uses).
+    form: str = "rate_dependent"
 
 
 @dataclass

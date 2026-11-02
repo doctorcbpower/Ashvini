@@ -3,7 +3,7 @@
 What this runs: the stellar-to-halo mass relation at z = 0 for 10 variants of Ashvini's star formation (the current law at three efficiencies,
 the Schmidt-Kennicutt disc law at several disc sizes and slopes, two reionisation redshifts), on Zhang-Hui trees at nine halo masses from 1e8 to
 1e12 Msun, compared with the Moster et al. (2013) and Behroozi et al. (2013) relations. See `docs/Z0_DWARFS_AUDIT.md` for the question, the
-assumptions and the checks. I have not run this on OzSTAR; the Slurm account, partition and Python module lines are placeholders marked TODO.
+assumptions and the checks. I have not run this on OzSTAR. The job scripts follow the style of the Stochastic_Occupation `hpc/` scripts: no partition (the cluster default), the account as a commented `## #SBATCH --account=<your-project-account>` line to uncomment or pass with `sbatch --account=...`, and your own virtual environment (`VENV=...`, default `venv`). Only the Python module line in `hpc/setup_env.sh` is still a TODO.
 
 ## Cost (measured on a laptop, 2026-11-03)
 - Trees: about 35 s per halo mass, almost independent of the number of haloes (the time is the set-up, not the trees), so 1000 haloes per mass costs about the same as 5.
@@ -13,11 +13,11 @@ assumptions and the checks. I have not run this on OzSTAR; the Slurm account, pa
 
 ## Steps
 1. On the cluster, clone Ashvini and foraois (the runs here used foraois commit `94ddf3a`, see `hpc/foraois_commit.txt`), or unpack the tarballs from `bash hpc/make_package.sh`.
-2. Edit the `module` lines in `hpc/setup_env.sh` and the `--account`/`--partition` lines in the two `.sbatch` files, then `bash hpc/setup_env.sh <path-to-foraois>`.
+2. Edit the `module` line in `hpc/setup_env.sh` (check `module avail python`), then `bash hpc/setup_env.sh <path-to-foraois>`; uncomment the `--account` line in the `.sbatch` files, or pass `--account=` to `sbatch`.
 3. Submit: `bash hpc/submit_all.sh` (trees, then the variants once the trees are done). Or by hand:
    `sbatch --array=0-8 hpc/submit_trees.sbatch` then `sbatch --array=0-8 --dependency=afterok:<jobid> hpc/submit_variants.sbatch`.
 4. Both steps are resumable: finished files are skipped, so a failed task can be resubmitted with the same command (`--array=3,7`).
-5. Copy `$SHMR_OUT` (default `scripts/output/shmr_z0`) back, then `python scripts/shmr_z0_plot.py` locally.
+5. `sbatch hpc/submit_plot.sbatch` makes the figures and tables on the cluster, or copy `$SHMR_OUT` (default `scripts/output/shmr_z0`) back and run `python scripts/shmr_z0_plot.py` locally.
 
 ## Things to know
 - Compute nodes may lack internet: nothing here downloads anything (the foraois configs are read from `FORAOIS_CONFIG_DIR`).

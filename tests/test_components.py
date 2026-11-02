@@ -1,4 +1,4 @@
-"""M2: the components behind GridStepper can be used on their own and replaced one at a time."""
+"""M2: the components behind GridIntegrator can be used on their own and replaced one at a time."""
 import numpy as np
 import pytest
 
@@ -6,7 +6,7 @@ from ashvini import main
 from ashvini.components.ode import linear_ode_step
 from ashvini.components.star_formation import FreeFallStarFormation
 from ashvini.config import DEFAULT
-from ashvini.steppers.grid import GridStepper
+from ashvini.integrators.grid import GridIntegrator
 
 
 @pytest.fixture
@@ -18,10 +18,10 @@ def forest():
     return halo_mass, rate, redshift
 
 
-def test_run_forest_is_the_default_stepper(forest):
+def test_run_forest_is_the_default_integrator(forest):
     halo_mass, rate, redshift = forest
     result = main.run_forest(halo_mass, rate, redshift)
-    state, _ = GridStepper().run(halo_mass, rate, redshift)
+    state, _ = GridIntegrator().run(halo_mass, rate, redshift)
     for name, values in state.as_dict().items():
         assert np.array_equal(result[name], values)
 
@@ -33,10 +33,10 @@ def test_replacing_the_star_formation_law_changes_the_stars_not_the_inflow(fores
         def rate_coefficient(self, redshift):
             return 2.0 * super().rate_coefficient(redshift)
 
-    base, _ = GridStepper().run(halo_mass, rate, redshift)
-    stepper = GridStepper()
-    stepper.star_formation = DoubleRate(DEFAULT)
-    faster, _ = stepper.run(halo_mass, rate, redshift)
+    base, _ = GridIntegrator().run(halo_mass, rate, redshift)
+    integrator = GridIntegrator()
+    integrator.star_formation = DoubleRate(DEFAULT)
+    faster, _ = integrator.run(halo_mass, rate, redshift)
     assert np.all(faster.stars_mass[:, -1] > base.stars_mass[:, -1])
     assert np.all(faster.gas_mass[:, -1] < base.gas_mass[:, -1])
 

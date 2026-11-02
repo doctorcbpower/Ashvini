@@ -28,8 +28,8 @@ def stochocc_smooth_control(cfg=None, eps_ff=0.02178, f_p=0.7646, **changes):
     """
     return override(cfg if cfg is not None else DEFAULT, **{
         "sf.efficiency": ashvini_efficiency_for_stochocc(eps_ff),
-        "sn.type": "delayed", "sn.kernel": "imf", "sn.lifetime_Z": 0.002,
+        "sn.type": "delayed", "sn.delay_distribution": "stellar_lifetimes", "sn.lifetime_Z": 0.002,
         "sn.m_sn_min": 8.0, "sn.m_sn_max": 100.0,
-        "sn.closure": "momentum", "sn.f_p": f_p, "sn.p_SN_msun_kms": 3.0e5,
+        "sn.wind_model": "momentum", "sn.f_p": f_p, "sn.p_SN_msun_kms": 3.0e5,
         **changes,
     })

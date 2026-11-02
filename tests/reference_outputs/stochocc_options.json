@@ -23,25 +23,25 @@
   "M_ej": 4002471.6053484282,
   "M_ret": 1430036.991008574
  },
- "energy_bank": {
+ "stored_energy": {
   "M_star": 893.7839396748751,
   "M_g": 0.0,
   "M_ej": 3104000.820698605,
   "M_ret": 0.0
  },
- "energy_bank_control": {
+ "stored_energy_control": {
   "M_star": 1091.7549373694746,
   "M_g": 160565.33619637787,
   "M_ej": 2943237.5135055305,
   "M_ret": 0.0
  },
- "access_fraction": {
+ "reachable_gas_fraction": {
   "M_star": 973.2136678271644,
   "M_g": 2415.909787610173,
   "M_ej": 3101505.481184066,
   "M_ret": 0.0
  },
- "coupling_switch": {
+ "coupling_change": {
   "M_star": 7022.1635201488725,
   "M_g": 668057.7450603545,
   "M_ej": 2429814.696059328,

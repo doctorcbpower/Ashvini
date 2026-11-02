@@ -21,8 +21,8 @@ DEFAULT = PARAMS  # the same object as run_params.PARAMS
 SN_TYPES = ("delayed", "instantaneous", "no")
 GROWTH_MODELS = ("pznk11_freefall", "hobbs_slimdisk")
 TREE_SOURCES = ("file", "pymctrees")
-KERNELS = ("delta", "imf")
-CLOSURES = ("ashvini", "momentum", "energy")
+DELAY_DISTRIBUTIONS = ("single_delay", "stellar_lifetimes")
+WIND_MODELS = ("ashvini", "momentum", "energy")
 
 
 def resolve(cfg=None):
@@ -43,18 +43,18 @@ def validate(cfg):
         raise ValueError(f"supernova.type must be one of {SN_TYPES}; got {cfg.sn.type!r}.")
     if cfg.sn.delay_time < 0:
         raise ValueError(f"supernova.delay_time must be >= 0 Gyr; got {cfg.sn.delay_time}.")
-    if cfg.sn.kernel not in KERNELS:
-        raise ValueError(f"supernova.kernel must be one of {KERNELS}; got {cfg.sn.kernel!r}.")
-    if cfg.sn.closure not in CLOSURES:
-        raise ValueError(f"supernova.closure must be one of {CLOSURES}; got {cfg.sn.closure!r}.")
-    if cfg.sn.kernel == "imf" and cfg.sn.m_sn_max > 100.0:
-        raise ValueError("supernova.m_sn_max must be <= 100 Msun with kernel 'imf' (the lifetime grids stop there).")
-    if cfg.events.bank_tau_myr is not None and cfg.sn.closure != "energy":
-        raise ValueError("events.bank_tau_myr needs supernova.closure 'energy' (the bank stores unused explosion energy).")
-    if cfg.events.eps_cut_mass is not None and cfg.sn.closure != "energy":
-        raise ValueError("events.eps_cut_mass switches the energy closure's eps_fb, so it needs supernova.closure 'energy'.")
-    if not 0.0 < cfg.events.access_fraction <= 1.0:
-        raise ValueError(f"events.access_fraction must be in (0, 1]; got {cfg.events.access_fraction}.")
+    if cfg.sn.delay_distribution not in DELAY_DISTRIBUTIONS:
+        raise ValueError(f"supernova.delay_distribution must be one of {DELAY_DISTRIBUTIONS}; got {cfg.sn.delay_distribution!r}.")
+    if cfg.sn.wind_model not in WIND_MODELS:
+        raise ValueError(f"supernova.wind_model must be one of {WIND_MODELS}; got {cfg.sn.wind_model!r}.")
+    if cfg.sn.delay_distribution == "stellar_lifetimes" and cfg.sn.m_sn_max > 100.0:
+        raise ValueError("supernova.m_sn_max must be <= 100 Msun with delay_distribution 'stellar_lifetimes' (the lifetime grids stop there).")
+    if cfg.events.stored_energy_loss_time_myr is not None and cfg.sn.wind_model != "energy":
+        raise ValueError("events.stored_energy_loss_time_myr needs supernova.wind_model 'energy' (the bank stores unused explosion energy).")
+    if cfg.events.coupling_change_mass is not None and cfg.sn.wind_model != "energy":
+        raise ValueError("events.coupling_change_mass switches the energy wind_model's eps_fb, so it needs supernova.wind_model 'energy'.")
+    if not 0.0 < cfg.events.reachable_gas_fraction <= 1.0:
+        raise ValueError(f"events.reachable_gas_fraction must be in (0, 1]; got {cfg.events.reachable_gas_fraction}.")
     if cfg.bh.growth_model not in GROWTH_MODELS:
         raise ValueError(f"black_holes.growth_model must be one of {GROWTH_MODELS}; got {cfg.bh.growth_model!r}.")
     if cfg.io.tree_source not in TREE_SOURCES:

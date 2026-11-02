@@ -1,11 +1,11 @@
 """
 Characterisation cases (milestone M0 of docs/SUPERSET_DESIGN.md): a fixed set of runs of the general chain
-and of the frozen MVM whose outputs are pinned in tests/golden/*.json. They were captured from the code
+and of the frozen MVM whose outputs are pinned in tests/reference_outputs/*.json. They were captured from the code
 as it stood on 2026-11-02 (after the chemistry and units corrections) and must not change during the
 refactor into Config / State / components (M1-M2) except by a deliberate, documented recapture.
 
 `apply_case` is the only place that knows how to set parameters for a case. Before milestone M1 it patched
-module-level values; it now patches config.DEFAULT. The golden numbers did not move, which is the point.
+module-level values; it now patches config.DEFAULT. The reference_outputs numbers did not move, which is the point.
 """
 import os
 import hashlib
@@ -18,7 +18,7 @@ from ashvini.run_params import PARAMS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = os.path.join(HERE, "fixtures", "merger_trees_fixture.h5")
-GOLDEN_DIR = os.path.join(HERE, "golden")
+GOLDEN_DIR = os.path.join(HERE, "reference_outputs")
 MASS_BINS = (1e8, 1e10, 1e11)
 KEYS = ("gas_mass", "stars_mass", "gas_metals", "stars_metals", "dust_mass", "bh_mass", "sfr")
 MVM_SHA256 = "31c701dd8f298d4b7bfc2bfb4d74f90fbe77106c817670a1432563b86d255f63"
@@ -101,7 +101,7 @@ def mvm_sha256():
 
 
 def regenerate():
-    """Recapture all golden files from the current code. Only for a deliberate, documented change."""
+    """Recapture all reference_outputs files from the current code. Only for a deliberate, documented change."""
     from _pytest.monkeypatch import MonkeyPatch
     general = {}
     for name, case in CASES.items():

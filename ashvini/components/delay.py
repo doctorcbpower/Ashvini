@@ -50,7 +50,7 @@ class SupernovaDelay:
     Which star formation drives the supernova wind in each step (the same star formation rate drives the
     gas, metal and dust losses): zero ("no"), the present rate B_sf * M_gas ("instantaneous"), or the rate
     one delay time ago ("delayed"; no wind until a delay has elapsed). Here every star explodes exactly
-    t_d after it forms, a single delay (supernova.kernel = "delta").
+    t_d after it forms, a single delay (supernova.delay_distribution = "single_delay").
     """
 
     def __init__(self, cfg, cosmic_time):
@@ -83,7 +83,7 @@ def lifetime_distribution_integral(tau_gyr, lifetimes_gyr):
     return (k * tau - csum[k]) / len(t)
 
 
-def explosion_kernel(cosmic_time, lifetimes_gyr):
+def explosion_time_fractions(cosmic_time, lifetimes_gyr):
     """
     K[j, k]: the fraction of the stars formed (uniformly in time) in step k, between cosmic_time[k-1] and
     cosmic_time[k], whose supernovae go off in step j. With F the fraction exploded by age s and G its
@@ -114,10 +114,10 @@ def explosion_kernel(cosmic_time, lifetimes_gyr):
 
 class LifetimeDistributionDelay:
     """
-    Supernova delay distribution from the stellar lifetimes (supernova.kernel = "imf"): each core-collapse progenitor
+    Supernova delay distribution from the stellar lifetimes (supernova.delay_distribution = "stellar_lifetimes"): each core-collapse progenitor
     explodes after its own main-sequence lifetime t_MS(m, Z), the masses following the IMF between m_sn_min
     and m_sn_max (supernova.n_progenitor_masses equal-probability bins). The stars formed in step k, S_k, are
-    spread over the later steps with the weights of explosion_kernel, and the star formation rate that drives
+    spread over the later steps with the weights of explosion_time_fractions, and the star formation rate that drives
     the wind in step j is the sum of S_k K[j, k] / dt_j over earlier steps. It reduces to the delta
     function as the lifetimes approach a single value; the mean delay is the IMF-averaged lifetime.
 
@@ -133,7 +133,7 @@ class LifetimeDistributionDelay:
         )
         self.lifetimes_gyr = t_ms_myr(masses, cfg.sn.lifetime_Z) * 1.0e-3
         self.cosmic_time = np.asarray(cosmic_time, dtype=float)
-        self.kernel = explosion_kernel(self.cosmic_time, self.lifetimes_gyr)
+        self.fractions = explosion_time_fractions(self.cosmic_time, self.lifetimes_gyr)
 
     def feedback_type(self, j):
         return self.eff_type
@@ -145,9 +145,9 @@ class LifetimeDistributionDelay:
             return B_sf * gas_prev
         dt = self.cosmic_time[j] - self.cosmic_time[j - 1]
         formed = np.diff(state.stars_mass[:, :j], axis=1)          # stars formed in steps 1..j-1
-        return formed @ self.kernel[j, 1:j] / dt
+        return formed @ self.fractions[j, 1:j] / dt
 
 
 def make_delay(cfg, cosmic_time):
-    """The supernova delay selected by cfg.sn.kernel."""
-    return (LifetimeDistributionDelay if cfg.sn.kernel == "imf" else SupernovaDelay)(cfg, cosmic_time)
+    """The supernova delay selected by cfg.sn.delay_distribution."""
+    return (LifetimeDistributionDelay if cfg.sn.delay_distribution == "stellar_lifetimes" else SupernovaDelay)(cfg, cosmic_time)

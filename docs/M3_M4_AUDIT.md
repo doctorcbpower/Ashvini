@@ -41,7 +41,7 @@ D1: keep 0.141/H; the stochocc star formation law is a preset (eps_ff = 0.02178)
 
 ## 6. Ambiguities that change results materially
 
-A. **Reservoir limit on the grid.** (a) Leave it out of the GridStepper: the smooth-control reproduction holds where gas is plentiful and fails where gas runs out; the limit exists only in the EventStepper, where it is natural. (b) Add a limit to the GridStepper: the removal each step is capped at the gas available. This changes the stored reference Ashvini output in the gas-poor regime and makes the grid depend on the step size more. My recommendation is (a). The consequence is that "grid versus events" comparisons in minihaloes are a statement about the gas limit, not only about discreteness; the audit docs of stochocc already say this.
+A. **Reservoir limit on the grid.** (a) Leave it out of the GridIntegrator: the smooth-control reproduction holds where gas is plentiful and fails where gas runs out; the limit exists only in the EventIntegrator, where it is natural. (b) Add a limit to the GridIntegrator: the removal each step is capped at the gas available. This changes the stored reference Ashvini output in the gas-poor regime and makes the grid depend on the step size more. My recommendation is (a). The consequence is that "grid versus events" comparisons in minihaloes are a statement about the gas limit, not only about discreteness; the audit docs of stochocc already say this.
 B. **Which clock and halo-growth rule decide the agreement tests.** Ashvini's astropy clock with the stochocc ln M interpolation as an event-integrator option, tests at 1e-4 relative; or a stochocc-compatible clock inside the agreement tests only so they hold to round-off. I recommend the first, with the second as a test fixture so the "to round-off" statement is checked once, against stochocc's own numbers, without changing Ashvini's clock.
 C. **Which samplers to port in M4.** stochocc has five. The paper's control is `WeightedQuadratureSampler`; the stochastic one is `StochasticSampler`/`sample_episode`. `PacketSampler`, `DeterministicQuadratureSampler` and `SwitchOffSampler` are diagnostic variants. I recommend porting the two used in the paper and the K-quantile IMF machinery, and leaving the other three in Stochastic_Occupation.
 D. **What M4 contains.** The design puts the cooling threshold, inflow lag, recycling, stored explosion energy, f_access, M_eps_cut and wind travel time in M5. Chemistry (metals, dust, the dust destruction per explosion) is not listed in M5, so I read it as part of M4; the T_vir cooling threshold is in M5, so M4's stored tests run with the cooling threshold off. Say if you want the cooling threshold in M4.
@@ -62,7 +62,7 @@ M4
 * Events processed at their own times: an event inside a step uses v_esc at its time (stochocc `test_engine`).
 * Smooth sampler equals stochocc's stored numbers on a synthetic trajectory.
 * Stochastic ensemble mean and scatter against the stochocc ensemble at matching seeds and sample size, within the sampling error of the mean.
-* With a very large number of progenitors per event the event integrator converges to the GridStepper with the IMF delay distribution (the smooth limit is shared).
+* With a very large number of progenitors per event the event integrator converges to the GridIntegrator with the IMF delay distribution (the smooth limit is shared).
 
 ## Not in scope
 

@@ -8,7 +8,7 @@ class FreeFallStarFormation:
     cfg.sf.efficiency. B_sf is the same for every halo at a given redshift.
 
     To try another law, write a class with the same `rate_coefficient(redshift)` and hand it to the
-    time integrator (see steppers/grid.py).
+    time integrator (see integrators/grid.py).
     """
 
     def __init__(self, cfg):

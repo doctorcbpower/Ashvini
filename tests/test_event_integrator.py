@@ -1,4 +1,4 @@
-"""M4: the event stepper, its samplers and its agreement with the grid stepper in the smooth limit."""
+"""M4: the event integrator, its samplers and its agreement with the grid integrator in the smooth limit."""
 import numpy as np
 import pytest
 
@@ -6,7 +6,7 @@ from ashvini import utils
 from ashvini.config import DEFAULT, override
 from ashvini.main import run_events, run_forest
 from ashvini.samplers import SmoothSampler, StochasticSampler, make_sampler
-from ashvini.steppers.events import EventStepper, exact_substep
+from ashvini.integrators.events import EventIntegrator, exact_substep
 from ashvini.trajectory import HaloHistory
 
 NO_SEEDS = {"bh.seeding.pop3.enabled": False, "bh.seeding.direct_collapse.enabled": False,
@@ -14,7 +14,7 @@ NO_SEEDS = {"bh.seeding.pop3.enabled": False, "bh.seeding.direct_collapse.enable
 
 
 def cfg_with(**changes):
-    return override(DEFAULT, **{**NO_SEEDS, "sn.kernel": "imf", "sn.m_sn_max": 100.0, **changes})
+    return override(DEFAULT, **{**NO_SEEDS, "sn.delay_distribution": "stellar_lifetimes", "sn.m_sn_max": 100.0, **changes})
 
 
 def history(M_start, M_end, z0=20.0, z1=12.0, n=40):
@@ -51,9 +51,9 @@ def test_stochastic_sampler_counts_are_poisson_with_the_expected_mean():
 
 
 def test_baryons_are_conserved_with_and_without_the_gas_limit():
-    for closure_changes in ({"sn.closure": "momentum", "sn.f_p": 0.76},
-                            {"sn.closure": "energy", "sn.eps_fb": 1.0}):             # strong: the limit bites
-        cfg = cfg_with(**closure_changes)
+    for wind_changes in ({"sn.wind_model": "momentum", "sn.f_p": 0.76},
+                            {"sn.wind_model": "energy", "sn.eps_fb": 1.0}):             # strong: the limit bites
+        cfg = cfg_with(**wind_changes)
         Mh, Mdot, z = history(2e7, 1e8)
         for sampler in ("smooth", "stochastic"):
             r = run_events(Mh, Mdot, z, config=cfg, sampler=sampler, seed=1, gas_mass0=1e4)
@@ -64,7 +64,7 @@ def test_baryons_are_conserved_with_and_without_the_gas_limit():
 
 
 def test_without_feedback_everything_is_gas_or_stars():
-    cfg = cfg_with(**{"sn.closure": "energy", "sn.eps_fb": 0.0})
+    cfg = cfg_with(**{"sn.wind_model": "energy", "sn.eps_fb": 0.0})
     Mh, Mdot, z = history(1e8, 1e9)
     r = run_events(Mh, Mdot, z, config=cfg)
     assert r["ejected_mass"][0, -1] == 0.0
@@ -73,13 +73,13 @@ def test_without_feedback_everything_is_gas_or_stars():
 
 
 def test_each_explosion_is_evaluated_at_its_own_time():
-    cfg = cfg_with(**{"sn.closure": "momentum", "sn.f_p": 0.76})
+    cfg = cfg_with(**{"sn.wind_model": "momentum", "sn.f_p": 0.76})
     Mh, Mdot, z = history(2e7, 2e9, n=12)            # coarse grid, fast growth
-    stepper = EventStepper(cfg)
+    integrator = EventIntegrator(cfg)
     seen = []
-    original = stepper.closure.per_supernova
-    stepper.closure.per_supernova = lambda zz, M, Zs: (seen.append((zz, M)), original(zz, M, Zs))[1]
-    state, _ = stepper.run(Mh, Mdot, z, gas_mass0=1e4)
+    original = integrator.wind_model.per_supernova
+    integrator.wind_model.per_supernova = lambda zz, M, Zs: (seen.append((zz, M)), original(zz, M, Zs))[1]
+    state, _ = integrator.run(Mh, Mdot, z, gas_mass0=1e4)
     assert len(seen) > 100
     nodes_z, nodes_M = set(np.round(z, 9)), set(np.round(Mh[0], 3))
     off_node = [(zz, M) for zz, M in seen if round(zz, 9) not in nodes_z and round(M, 3) not in nodes_M]
@@ -89,7 +89,7 @@ def test_each_explosion_is_evaluated_at_its_own_time():
 
 
 def test_the_gas_limit_removes_exactly_the_gas_present():
-    cfg = cfg_with(**{"sn.closure": "energy", "sn.eps_fb": 50.0})       # each explosion could remove far more than exists
+    cfg = cfg_with(**{"sn.wind_model": "energy", "sn.eps_fb": 50.0})       # each explosion could remove far more than exists
     Mh, Mdot, z = history(2e6, 3e6, n=20)
     r = run_events(Mh, Mdot, z, config=cfg, gas_mass0=100.0)
     assert np.all(r["gas_mass"] >= 0.0)
@@ -97,7 +97,7 @@ def test_the_gas_limit_removes_exactly_the_gas_present():
 
 
 def test_same_seed_same_result_and_smooth_is_deterministic():
-    cfg = cfg_with(**{"sn.closure": "momentum", "sn.f_p": 0.76})
+    cfg = cfg_with(**{"sn.wind_model": "momentum", "sn.f_p": 0.76})
     Mh, Mdot, z = history(2e7, 1e8, n=20)
     a = run_events(Mh, Mdot, z, config=cfg, sampler="stochastic", seed=5)
     b = run_events(Mh, Mdot, z, config=cfg, sampler="stochastic", seed=5)
@@ -108,7 +108,7 @@ def test_same_seed_same_result_and_smooth_is_deterministic():
 
 def test_stochastic_ensemble_mean_matches_the_smooth_control_in_a_gas_rich_halo():
     """Plenty of gas, weak feedback: no gas limit is reached, so the stochastic mean is the smooth control."""
-    cfg = cfg_with(**{"sn.closure": "momentum", "sn.f_p": 0.2})
+    cfg = cfg_with(**{"sn.wind_model": "momentum", "sn.f_p": 0.2})
     Mh, Mdot, z = history(1e8, 5e8, n=20)
     smooth = run_events(Mh, Mdot, z, config=cfg)["stars_mass"][0, -1]
     runs = np.array([run_events(Mh, Mdot, z, config=cfg, sampler="stochastic", seed=s)["stars_mass"][0, -1]
@@ -117,8 +117,8 @@ def test_stochastic_ensemble_mean_matches_the_smooth_control_in_a_gas_rich_halo(
     assert abs(runs.mean() - smooth) < 4 * sem + 0.01 * smooth
 
 
-def test_smooth_events_agree_with_the_grid_stepper_with_the_imf_kernel():
-    cfg = cfg_with(**{"sn.closure": "momentum", "sn.f_p": 0.7646})
+def test_smooth_events_agree_with_the_grid_integrator_with_the_imf_delays():
+    cfg = cfg_with(**{"sn.wind_model": "momentum", "sn.f_p": 0.7646})
     z = np.linspace(20, 6, 120)
     Mh = 1e9 * np.exp(-0.5 * (z - 6))[None, :]
     Mdot = np.gradient(Mh, utils.time_at_z(z), axis=1)

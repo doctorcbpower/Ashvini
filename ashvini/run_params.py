@@ -72,16 +72,16 @@ class SupernovaParams:
     imf: str = "salpeter"
     m_sn_min: float = 8.0
     m_sn_max: float = 40.0
-    # When the stars explode. "delta": every star explodes delay_time after it forms (the Ashvini model).
-    # "imf": each progenitor explodes after its own main-sequence lifetime (stellar_lifetimes, grid metallicity
+    # How long after forming the stars explode. "single_delay": every star explodes delay_time after it forms (the Ashvini model).
+    # "stellar_lifetimes": each progenitor explodes after its own main-sequence lifetime (stellar_lifetimes, grid metallicity
     # lifetime_Z as a mass fraction), with the progenitor masses spread over the IMF in n_progenitor_masses
     # equal-probability bins. Only used when type is "delayed".
-    kernel: str = "delta"
+    delay_distribution: str = "single_delay"
     lifetime_Z: float = 0.002
     n_progenitor_masses: int = 400
     # How much gas the explosions remove. "ashvini": the calibrated mass loading epsilon_p, pi_fid above.
     # "momentum": each supernova removes f_p * p_SN / v_esc. "energy": each removes 2 eps_fb E_SN / v_esc^2.
-    closure: str = "ashvini"
+    wind_model: str = "ashvini"
     f_p: float = 1.0
     p_SN_msun_kms: float = 3.0e5   # momentum per supernova, Msun km/s
     eps_fb: float = 0.1            # fraction of the supernova energy that unbinds gas
@@ -213,7 +213,7 @@ class BlackHoleParams:
 @dataclass
 class EventParams:
     """
-    events -- options of the event integrator (steppers/events.py) only; the grid integrator ignores them. Every option is
+    events -- options of the event integrator (integrators/events.py) only; the grid integrator ignores them. Every option is
     off by default, so an event run without this section is the plain model. See MODELS.md, "Event integrator".
     """
     # cooling threshold: gas cannot form stars until the halo is massive and hot enough for its gas to cool
@@ -221,26 +221,26 @@ class EventParams:
     cooling_mass: float = None           # or: halo mass in Msun (a molecular-hydrogen cooling mass; replaces the temperature condition)
     reionised_below_z: float = None       # below this redshift (after reionisation) the halo must also reach cooling_T_vir_reionised_K (None = off)
     cooling_T_vir_reionised_K: float = 1.0e4
-    # inflow lag: gas takes inflow_kappa * r_vir / v_esc to reach the galaxy (a first-order store); 0 = at once
-    inflow_kappa: float = 0.0
-    # recycling: this fraction of the gas each explosion removes falls back into the reservoir recycling_kappa * r_vir / v_esc
+    # inflow lag: gas takes inflow_delay_in_crossing_times * r_vir / v_esc to reach the galaxy (a first-order store); 0 = at once
+    inflow_delay_in_crossing_times: float = 0.0
+    # recycling: this fraction of the gas each explosion removes falls back into the reservoir recycling_delay_in_crossing_times * r_vir / v_esc
     # later; recycling_fraction_Z is the fraction of the removed metals and dust that fall back (None = same as the gas)
     recycling_fraction: float = 0.0
-    recycling_kappa: float = 1.0
+    recycling_delay_in_crossing_times: float = 1.0
     recycling_fraction_Z: float = None
     # stored explosion energy: the energy of an explosion that finds less gas than it could unbind is kept (it decays over
-    # bank_tau_myr; .inf = never) and spent unbinding gas as it arrives, before it reaches the reservoir. None = off.
-    # Needs supernova.closure "energy".
-    bank_tau_myr: float = None
+    # stored_energy_loss_time_myr; .inf = never) and spent unbinding gas as it arrives, before it reaches the reservoir. None = off.
+    # Needs supernova.wind_model "energy".
+    stored_energy_loss_time_myr: float = None
     # reachable gas fraction: one explosion can reach at most this fraction of the gas in the reservoir
-    access_fraction: float = 1.0
-    # change of coupling above a halo mass: in a halo of at least eps_cut_mass (Msun) at the time of the explosion the energy-driven wind uses
-    # eps_fb_above_cut instead of supernova.eps_fb (SNe confined in massive minihaloes). None = off. Needs wind model "energy".
-    eps_cut_mass: float = None
-    eps_fb_above_cut: float = 0.0
+    reachable_gas_fraction: float = 1.0
+    # change of coupling above a halo mass: in a halo of at least coupling_change_mass (Msun) at the time of the explosion the energy-driven wind uses
+    # eps_fb_above_change_mass instead of supernova.eps_fb (SNe confined in massive minihaloes). None = off. Needs wind model "energy".
+    coupling_change_mass: float = None
+    eps_fb_above_change_mass: float = 0.0
     # wind travel time: the gas an explosion will remove is fixed at the explosion, but leaves the reservoir
-    # wind_kappa * r_vir / v_esc later (gas stays available for star formation meanwhile); 0 = at once
-    wind_kappa: float = 0.0
+    # wind_delay_in_crossing_times * r_vir / v_esc later (gas stays available for star formation meanwhile); 0 = at once
+    wind_delay_in_crossing_times: float = 0.0
 
 
 @dataclass
@@ -337,7 +337,7 @@ def print_config(params: Params):
     section("Metals", asdict(params.metals))
     section("Dust", asdict(params.dust))
     section("Black Holes", asdict(params.bh))
-    section("Event stepper", asdict(params.events))
+    section("Event integrator", asdict(params.events))
 
     from .constants import Z_SUN
     from .imf import nu_SN

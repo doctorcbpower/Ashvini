@@ -5,14 +5,14 @@ from ..config import resolve
 from ..state import State
 from ..components.blackholes import make_black_hole
 from ..components.chemistry import MetalsAndDust
-from ..components.closure import make_closure
+from ..components.wind_model import make_wind_model
 from ..components.delay import make_delay
 from ..components.gas import gas_and_stars_step
 from ..components.inflow import CosmicInflow
 from ..components.star_formation import FreeFallStarFormation
 
 
-class GridStepper:
+class GridIntegrator:
     """
     Integrates N haloes at once over the shared redshift grid of a merger tree, one step at a time. In
     each step the components act in this order: black hole (seed, grow, wind), supernova delay (which
@@ -22,8 +22,8 @@ class GridStepper:
     Every component is an attribute and can be replaced before `run` with any object that has the same
     methods, e.g.
 
-        stepper = GridStepper(cfg)
-        stepper.star_formation = MyStarFormation(cfg)
+        integrator = GridIntegrator(cfg)
+        integrator.star_formation = MyStarFormation(cfg)
 
     Components that need the time grid (the supernova delay and the black hole) are built in `run`, once
     the redshift grid is known; pass `black_hole_factory` or `delay_factory` to replace those.
@@ -36,7 +36,7 @@ class GridStepper:
         self.slimdisk_overrides = slimdisk_overrides
         self.star_formation = FreeFallStarFormation(self.cfg)
         self.inflow = CosmicInflow(config)
-        self.closure = make_closure(self.cfg)
+        self.wind_model = make_wind_model(self.cfg)
         self.chemistry = MetalsAndDust(self.cfg)
         self.delay_factory = lambda cosmic_time: make_delay(self.cfg, cosmic_time)
         self.black_hole_factory = lambda cosmic_time, n_halos: make_black_hole(
@@ -75,7 +75,7 @@ class GridStepper:
 
             A_acc = gas_accretion_rate[:, j - 1]
             B_sf = self.star_formation.rate_coefficient(z_mid)  # scalar, shared across haloes
-            ML = self.closure.mass_loading(z_mid, hm_prev, stellar_metallicity[:, j - 1])  # shape (N,)
+            ML = self.wind_model.mass_loading(z_mid, hm_prev, stellar_metallicity[:, j - 1])  # shape (N,)
 
             # --- black hole first: the gas equation needs this step's accretion and wind ---
             gas_metallicity_prev = np.where(has_gas, gas_metals[:, j - 1] / gm_prev_safe, 0.0)

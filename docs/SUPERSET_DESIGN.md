@@ -10,9 +10,9 @@ Direction (decided by the user): Ashvini is the main codebase. Stochastic_Occupa
 |---|---|---|---|---|
 | 1 | Star formation law | eps_ff M_g / (0.141 / H) | eps_ff M_g / t_dyn, t_dyn = 0.2047 / H | One `SFLaw` component. Same law up to eps_ff x 0.2047/0.141 = 1.452. Keep both as named presets. |
 | 2 | Feedback timing | one lag, 15 Myr, fixed | per-progenitor lifetimes (Georgy+13) | `DelayKernel`: delta function (Ashvini) or IMF-weighted lifetime distribution (stochocc smooth limit). |
-| 3 | Feedback amplitude | momentum mass loading, eta(M_h, z, Z*) | energy wind model min(M_g, 2 eps E / v_esc^2), or momentum | `Closure` component with three members: `momentum_ml`, `momentum_event`, `energy`. Parity note shows `momentum_ml` equals `momentum_event` with f_p = 0.7625 for 8-100 Msun. |
+| 3 | Feedback amplitude | momentum mass loading, eta(M_h, z, Z*) | energy wind model min(M_g, 2 eps E / v_esc^2), or momentum | `WindModel` component with three members: `momentum_ml`, `momentum_event`, `energy`. Parity note shows `momentum_ml` equals `momentum_event` with f_p = 0.7625 for 8-100 Msun. |
 | 4 | Discreteness | none (smooth) | Poisson-sampled supernovae, smooth control | `Sampler` option on the event integrator: `smooth`, `stochastic`. |
-| 5 | Star formation cooling threshold | none | T_vir >= 1e4 K, or H2 mass cooling threshold, plus post-reionisation switch | `Gate` component, default `always_on` to keep Ashvini's results unchanged. |
+| 5 | Star formation cooling threshold | none | T_vir >= 1e4 K, or H2 mass cooling threshold, plus post-reionisation switch | `CoolingThreshold` component, default `always_on` to keep Ashvini's results unchanged. |
 | 6 | UV suppression | rate-dependent Okamoto form (own audit flags it) | equilibrium form | `Inflow` takes a `UVSuppression` object. Both forms are available and named; equilibrium form is the shared base in `reionization_physics.py`. |
 | 7 | Chemistry | gas and stellar metals, dust, with known issues | metals and dust per event | One `Chemistry` component after the known dust and Z_IGM issues are fixed. |
 | 8 | Black holes, seeding, AGN | several growth laws, three seeding channels | none | Unchanged, each behind a `BlackHole` interface. |
@@ -43,9 +43,9 @@ Effect on the 1e10 Msun fixture halo at the last step: gas +1.4%, stars +0.5%, g
 - `Config`: one dataclass tree, passed explicitly. No module-level reads of `PARAMS`; `set_params` is replaced by building a `Config`. `run_params.yaml` becomes one way to build a `Config`.
 - `State`: a dataclass of arrays (gas, stars, metals, dust, BH, plus the event queue for the event integrator).
 - Components, each a small class with one documented method and a one-paragraph physics docstring:
-  `SFLaw`, `Inflow`, `UVSuppression`, `Gate`, `DelayKernel`, `Closure`, `Chemistry`, `BlackHole`, `Seeding`, `AGNFeedback`.
-- Registry: `Config` names components as strings (`closure: "energy"`). A student adds a component by writing a class and registering it in one place.
-- Steppers: `GridStepper` (today's `run_forest`, vectorised) and `EventStepper` (ported from `stochocc.engine`). Both call the same components.
+  `SFLaw`, `Inflow`, `UVSuppression`, `CoolingThreshold`, `DelayDistribution`, `WindModel`, `Chemistry`, `BlackHole`, `Seeding`, `AGNFeedback`.
+- Registry: `Config` names components as strings (`wind_model: "energy"`). A student adds a component by writing a class and registering it in one place.
+- Time integrators: `GridIntegrator` (today's `run_forest`, vectorised) and `EventIntegrator` (ported from `stochocc.engine`). Both call the same components.
 - Cosmology and constants: one place (`utils.py`, `constants.py`). The Planck15 use in `reionization.py` goes away or is made an explicit option.
 
 ## 4. Student-facing pieces
@@ -60,8 +60,8 @@ Effect on the 1e10 Msun fixture halo at the last step: gas +1.4%, stars +0.5%, g
 2. Fix bugs in section 2, one commit each, each with a regression test.
 3. Introduce `Config` and `State`, with no behaviour change.
 4. Extract components from `run_forest`; the reference-output tests must still pass.
-5. Add the `DelayKernel` and `Closure` options and reproduce the stochocc smooth control through `GridStepper` (agreement target: the existing A1, B1, E1 results in `ashvini_relation.md`).
-6. Port `EventStepper`; target: stored stochocc results from its test suite.
+5. Add the `DelayDistribution` and `WindModel` options and reproduce the stochocc smooth control through `GridIntegrator` (agreement target: the existing A1, B1, E1 results in `ashvini_relation.md`).
+6. Port `EventIntegrator`; target: stored stochocc results from its test suite.
 7. Port the optional stochocc features one at a time.
 8. Guide and notebook.
 
@@ -78,21 +78,21 @@ Effect on the 1e10 Msun fixture halo at the last step: gas +1.4%, stars +0.5%, g
 ```
 ashvini/
   config.py            Config dataclass tree + loaders (yaml, dict); replaces PARAMS/configure.set_params
-  state.py             State dataclass (arrays), event queue for the event stepper
+  state.py             State dataclass (arrays), event queue for the event integrator
   constants.py  utils.py  imf.py  reionization_physics.py     (shared, already exist)
   components/
     star_formation.py  SFLaw: rate(state, t) -> dM*/dt per halo; presets "ashvini" (0.141/H), "dyn200" (0.2047/H)
     inflow.py          Inflow: mass supply per step; wraps a UVSuppression
     uv.py              UVSuppression: "none", "okamoto_eq", "ashvini_rate"
-    gate.py            Gate: "always", "tvir", "mass", plus post-reionisation switch
+    cooling_threshold.py  CoolingThreshold: "always", "tvir", "mass", plus post-reionisation temperature
     delay.py           DelayKernel: "fixed" (Ashvini), "lifetimes" (IMF-weighted), "none"
-    closure.py         Closure: "momentum_ml", "momentum_event", "energy"; clip and f_access options
+    wind_model.py         WindModel: "momentum_ml", "momentum_event", "energy"; limit at the gas present and reachable fraction options
     chemistry.py       Chemistry: metals and dust (the corrected equations)
     blackholes.py      BlackHole: "pznk11", "slimdisk"; Seeding; AGNFeedback
     optional.py        inflow lag, recycling, energy bank, wind travel time (off by default)
-  steppers/
-    grid.py            GridStepper: today's run_forest, vectorised over haloes
-    events.py          EventStepper: ported from stochocc.engine (v2 only)
+  integrators/
+    grid.py            GridIntegrator: today's run_forest, vectorised over haloes
+    events.py          EventIntegrator: ported from stochocc.engine (v2 only)
   reservoirs/          (frozen, unchanged) reservoir_stock.py, reservoir_stock_premvm.py, paper_reservoir.py
   main.py              thin: run(), run_forest() and run1_scalar() kept as compatibility wrappers
 ```
@@ -103,9 +103,9 @@ Milestones, each ending with the full test suite green and the stored outputs un
 
 - M0. Reference outputs: store general-chain outputs (several halos, all three feedback types, BH on and off, UV on and off) and the MVM output hash, as tests.
 - M1. `Config` and `State` introduced; `PARAMS`-based modules read from a `Config` passed explicitly; `configure.set_params` kept as a thin wrapper. No behaviour change.
-- M2. Extract components from `run_forest` (SFLaw, Inflow, UV, Wind model, Chemistry, BlackHole) behind the GridStepper. No behaviour change; M0 stored reference numbers hold to round-off.
-- M3. `DelayKernel` and `Closure` options; reproduce the Stochastic_Occupation smooth control through the GridStepper. Acceptance: A1, B1, E1 of `ashvini_relation.md` (stars within 1-4%, metals within 2%).
-- M4. EventStepper (v2 only). Acceptance: stochocc's stored results for the smooth sampler to round-off, and ensemble statistics for the stochastic sampler within sampling error.
+- M2. Extract components from `run_forest` (SFLaw, Inflow, UV, Wind model, Chemistry, BlackHole) behind the GridIntegrator. No behaviour change; M0 stored reference numbers hold to round-off.
+- M3. `DelayDistribution` and `WindModel` options; reproduce the Stochastic_Occupation smooth control through the GridIntegrator. Acceptance: A1, B1, E1 of `ashvini_relation.md` (stars within 1-4%, metals within 2%).
+- M4. EventIntegrator (v2 only). Acceptance: stochocc's stored results for the smooth sampler to round-off, and ensemble statistics for the stochastic sampler within sampling error.
 - M5. Optional stochocc features, one commit each: cooling threshold, inflow lag, recycling, stored explosion energy, f_access, M_eps_cut, wind travel time.
 - M6. Student guide and notebook; archive the superseded paths in a `reservoirs/` note.
 
@@ -113,16 +113,16 @@ Not done in this plan: new physics, new figures, changes to the MVM, a decision 
 
 ## 8. Status of milestones (2026-11-02)
 
-- M0 done and committed (`f73cb35`): `tests/test_characterisation.py` stores 16 parameter cases x 3 mass bins, the scalar reference integrator, the MVM outputs and the SHA-256 of `reservoir_stock.py`; stored reference outputs in `tests/golden/`.
+- M0 done and committed (`f73cb35`): `tests/test_reference_outputs.py` stores 16 parameter cases x 3 mass bins, the scalar reference integrator, the MVM outputs and the SHA-256 of `reservoir_stock.py`; stored reference outputs in `tests/reference_outputs/`.
 - M1 done in the working tree (not committed): `ashvini/config.py` (`Config` = the existing `Params` tree, `DEFAULT`, `override`, `validate`, `load_config`), `ashvini/state.py` (`State`), and every general-chain module takes `cfg=None` (explicit Config, else `config.DEFAULT`). The import-time copies (`main.e_ff`, `main.t_d`, `agn.eta_agn`, `bh_growth.e_bh`, `reion.z_rei`, ...) are gone; assigning to a retired name raises an error naming the Config path. `main.run_forest/run1/run1_scalar/run` accept `config=`. `configure.set_params` now changes `config.DEFAULT` and gained `m_sn_max` and `agn_delay_time`. `critical_seed` works on a private copy of the Config instead of mutating and restoring. The M0 stored reference outputs are unchanged by M1 (only `apply_case` was rewritten), which is the no-behaviour-change check.
 - Left as they were on purpose (kept unchanged, D3): `reservoir_stock.py`, `reservoir_stock_premvm.py`, `paper_reservoir.py` and `black_holes_growth_slimdisk.py` keep their import-time defaults (`PAPER_PARAMS`, `bh.slimdisk`); the general chain passes the slim-disc parameters explicitly from the Config.
 
 - M1 committed (`2c77c5c`).
-- M2 done in the working tree (not committed): `ashvini/components/` (`ode`, `star_formation.FreeFallStarFormation`, `inflow.CosmicInflow`, `closure.MomentumLoading`, `delay.SupernovaDelay`, `gas.gas_and_stars_step`, `chemistry.MetalsAndDust`, `blackholes.PZNK11BlackHole` / `SlimDiscBlackHole`) and `ashvini/steppers/grid.GridStepper`, which holds the components as replaceable attributes. `main.run_forest` is now a thin call into `GridStepper.run`; `run1_scalar` remains the reference integrator. Check: on 40 random haloes x 6 cases (both growth models x three feedback types) all 42 output arrays are identical in every digit to the M1 code, and the M0 stored reference outputs are unchanged. `tests/test_components.py` swaps a component. Notes: the UV suppression lives inside the inflow component (as in `gas_evolve.gas_inflow_rate`), so there is no separate `uv.py` yet; the gas/star step is its own module (`gas.py`), which the layout above did not list. `tests/test_run1.py` now patches the ODE step in `components.gas`/`components.chemistry` instead of `main`.
+- M2 done in the working tree (not committed): `ashvini/components/` (`ode`, `star_formation.FreeFallStarFormation`, `inflow.CosmicInflow`, `wind_model.MomentumLoading`, `delay.SupernovaDelay`, `gas.gas_and_stars_step`, `chemistry.MetalsAndDust`, `blackholes.PZNK11BlackHole` / `SlimDiscBlackHole`) and `ashvini/integrators/grid.GridIntegrator`, which holds the components as replaceable attributes. `main.run_forest` is now a thin call into `GridIntegrator.run`; `run1_scalar` remains the reference integrator. Check: on 40 random haloes x 6 cases (both growth models x three feedback types) all 42 output arrays are identical in every digit to the M1 code, and the M0 stored reference outputs are unchanged. `tests/test_components.py` swaps a component. Notes: the UV suppression lives inside the inflow component (as in `gas_evolve.gas_inflow_rate`), so there is no separate `uv.py` yet; the gas/star step is its own module (`gas.py`), which the layout above did not list. `tests/test_run1.py` now patches the ODE step in `components.gas`/`components.chemistry` instead of `main`.
 - M2 committed (`a1711a1`).
-- M3 done in the working tree (not committed), audit in `docs/M3_M4_AUDIT.md`. New: `config` keys `supernova.kernel` ("delta" default | "imf"), `lifetime_Z`, `n_progenitor_masses`, `closure` ("ashvini" default | "momentum" | "energy"), `f_p`, `p_SN_msun_kms`, `eps_fb`, `E_SN_erg`; `stellar_lifetimes.py` (Ekstrom+12 and Georgy+13 grids as 600-byte files in `ashvini/data/`, extracted once from Stochastic_Occupation's tables, nothing downloaded), `imf.py` quantile and sampling functions, `halo.py` (v_esc), `components/delay.LifetimeDistributionDelay` and `explosion_kernel`, `components/closure.{MomentumClosure,EnergyClosure}`, `presets.stochocc_smooth_control`. Defaults reproduce the M2 output identical in every digit (checked on 42 arrays, both growth models, three feedback types; M0 stored reference outputs unchanged).
-- M4 done in the working tree (not committed): `steppers/events.py` (`EventStepper`, `main.run_events`), `samplers.py` (`SmoothSampler`, `StochasticSampler`), `trajectory.py`. Chemistry is in; black holes, the cooling threshold and the M5 options are not.
-- Acceptance against Stochastic_Occupation's smooth control (stored reference numbers in `tests/golden/stochocc_smooth.json`, regenerated by `python -m tests.stochocc_parity`, re-checked live with `pytest --parity`), z = 15, 10, 7, 5, dz = 0.005 for the grid:
+- M3 done in the working tree (not committed), audit in `docs/M3_M4_AUDIT.md`. New: `config` keys `supernova.delay_distribution` ("single_delay" default | "stellar_lifetimes"), `lifetime_Z`, `n_progenitor_masses`, `wind_model` ("ashvini" default | "momentum" | "energy"), `f_p`, `p_SN_msun_kms`, `eps_fb`, `E_SN_erg`; `stellar_lifetimes.py` (Ekstrom+12 and Georgy+13 grids as 600-byte files in `ashvini/data/`, extracted once from Stochastic_Occupation's tables, nothing downloaded), `imf.py` quantile and sampling functions, `halo.py` (v_esc), `components/delay.LifetimeDistributionDelay` and `explosion_time_fractions`, `components/wind_model.{MomentumDrivenWind,EnergyDrivenWind}`, `presets.stochocc_smooth_control`. Defaults reproduce the M2 output identical in every digit (checked on 42 arrays, both growth models, three feedback types; M0 stored reference outputs unchanged).
+- M4 done in the working tree (not committed): `integrators/events.py` (`EventIntegrator`, `main.run_events`), `samplers.py` (`SmoothSampler`, `StochasticSampler`), `trajectory.py`. Chemistry is in; black holes, the cooling threshold and the M5 options are not.
+- Acceptance against Stochastic_Occupation's smooth control (stored reference numbers in `tests/reference_outputs/stochocc_smooth.json`, regenerated by `python -m tests.stochocc_comparison`, re-checked live with `pytest --stochocc`), z = 15, 10, 7, 5, dz = 0.005 for the grid:
   - A1 feedback off: stars within 3e-5. B1 chemistry: stellar and gas metallicity within 7e-5 and 8e-5 (grid), 5e-4 (events). E1 IMF delay distribution + momentum wind model: stars within 6e-4, gas within 6e-4 (grid); stars 8e-4, gas 1e-3 (events). The targets were 1-4 % and 2 %.
   - Not to round-off, as the M4 target said: the event integrator differs from Stochastic_Occupation at 1e-3 or below. The sources are small: Ashvini's tabulated Hubble time against an exact one, Ashvini's constants (`Msun_g`, `Gyr_s`) against Stochastic_Occupation's, the substep cap (min of 0.1 t_ff and 1 Myr against 0.1 t_dyn and 1 Myr). I did not remove them, since they are properties of the two codes' conventions, not errors.
   - Stochastic ensembles (200 per code, a minihalo growing 4e5 -> 2e7 Msun where explosions reach the gas limit; energy and momentum wind models): the mean stars formed and gas removed agree within four standard errors, the scatter within 35 %.
@@ -134,7 +134,7 @@ Not done in this plan: new physics, new figures, changes to the MVM, a decision 
 - Test time: the full suite went from 20 s to about 105 s (the dz = 0.005 grid runs, and 400 stochastic runs per ensemble test).
 - Next: M5 (cooling threshold, inflow lag, recycling, stored explosion energy, reachable gas fraction, M_eps_cut, wind travel time, one commit each), then M6.
 - M3, M4 committed (`85b26fb`, `84010cc`).
-- M5 done in the working tree (not committed): the seven optional event-integrator features, as Config section `events` (`run_params.EventParams`), each off by default: cooling threshold for star formation, inflow lag, recycling, stored explosion energy, reachable gas fraction, change of coupling above a halo mass (`eps_cut_mass`), wind travel time. The M4 stored reference numbers are unchanged, so with the options off the time integrator is the M4 time integrator. Each option has a case on a minihalo growing 4e5 -> 2e7 Msun (z = 20 -> 10) stored from Stochastic_Occupation's smooth control; agreement with the stored reference numbers in stars formed / gas removed: plain minihalo 0.22 % / 0.02 %, cooling threshold 0.06 % / 0.05 %, inflow lag 0.4 % / 0.17 %, recycling 0.3 % / 0.001 %, stored explosion energy (eps_fb = 1) 0.02 % / 0, change of coupling above a halo mass 0.14 % / 0.04 %, wind travel time 1.1 % / 0.005 %, reachable gas fraction 2.2 % / 0.007 % (see below). Each case is checked to differ visibly from its control, so the agreement is not trivial.
+- M5 done in the working tree (not committed): the seven optional event-integrator features, as Config section `events` (`run_params.EventParams`), each off by default: cooling threshold for star formation, inflow lag, recycling, stored explosion energy, reachable gas fraction, change of coupling above a halo mass (`coupling_change_mass`), wind travel time. The M4 stored reference numbers are unchanged, so with the options off the time integrator is the M4 time integrator. Each option has a case on a minihalo growing 4e5 -> 2e7 Msun (z = 20 -> 10) stored from Stochastic_Occupation's smooth control; agreement with the stored reference numbers in stars formed / gas removed: plain minihalo 0.22 % / 0.02 %, cooling threshold 0.06 % / 0.05 %, inflow lag 0.4 % / 0.17 %, recycling 0.3 % / 0.001 %, stored explosion energy (eps_fb = 1) 0.02 % / 0, change of coupling above a halo mass 0.14 % / 0.04 %, wind travel time 1.1 % / 0.005 %, reachable gas fraction 2.2 % / 0.007 % (see below). Each case is checked to differ visibly from its control, so the agreement is not trivial.
   - Access fraction: a cap on each explosion's removal acts per explosion, so the answer depends on how the expected supernovae are split into events. With K = 200 representative masses as in the stored reference numbers the codes agree to 2.2 % in stars; with the Ashvini default K = 100 they differ by 26 %. The agreement uses K = 200. This applies to Stochastic_Occupation's smooth control as well and is not specific to the port.
   - Recycling, bank, wind travel and lag with chemistry: Stochastic_Occupation does not define these combinations; the event integrator does (metals and dust follow the gas). They are tested for conservation only.
   - Test time is now about 4 minutes.

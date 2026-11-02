@@ -1,7 +1,7 @@
 """
 How much gas the supernovae remove, per unit mass of stars formed (the mass loading eta_w), as a function of
 redshift, halo mass and stellar metallicity. Three wind models; each has `mass_loading(z, halo_mass,
-stellar_metallicity)` returning eta_w (shape of halo_mass). Choose with `supernova.closure`.
+stellar_metallicity)` returning eta_w (shape of halo_mass). Choose with `supernova.wind_model`.
 
   ashvini    eta_w = epsilon_p * pi_fid * (1e11.5/M_h)^(1/3) * (9/(1+z))^(1/2) * f(Z_star): the calibrated
              prescription of Menon et al. It follows V_esc^-1, which is a momentum-conserving wind
@@ -36,7 +36,7 @@ class AshviniLoading:
         return sn.mass_loading_factor(redshift, halo_mass, stellar_metallicity, self.cfg)
 
 
-class _SupernovaClosure:
+class _SupernovaWind:
     def __init__(self, cfg):
         self.cfg = cfg
         self.nu_SN = nu_SN(cfg.sn.imf, cfg.sn.m_sn_min, cfg.sn.m_sn_max)
@@ -55,25 +55,25 @@ class _SupernovaClosure:
         return self.mass_per_supernova(redshift, halo_mass)
 
 
-class MomentumClosure(_SupernovaClosure):
+class MomentumDrivenWind(_SupernovaWind):
     def _per_supernova(self, v_esc):
         sn_ = self.cfg.sn
         return sn_.f_p * sn_.p_SN_msun_kms / (v_esc / 1.0e5)
 
 
-class EnergyClosure(_SupernovaClosure):
+class EnergyDrivenWind(_SupernovaWind):
     def _per_supernova(self, v_esc, eps_fb=None):
         sn_ = self.cfg.sn
         return 2.0 * (sn_.eps_fb if eps_fb is None else eps_fb) * sn_.E_SN_erg / v_esc ** 2 / Msun_g
 
     def per_supernova(self, redshift, halo_mass, stellar_metallicity=None, eps_fb=None):
-        """As the other wind models, with the coupling eps_fb optionally given for this call (event integrator's eps_cut_mass)."""
+        """As the other wind models, with the coupling eps_fb optionally given for this call (event integrator's coupling_change_mass)."""
         halo_mass = np.asarray(halo_mass, dtype=float)
         resolved = halo_mass > 0
         v_esc = halo.v_esc_cms(np.where(resolved, halo_mass, 1.0), redshift)
         return np.where(resolved, self._per_supernova(v_esc, eps_fb), 0.0)
 
 
-def make_closure(cfg):
-    """The wind model selected by cfg.sn.closure."""
-    return {"ashvini": AshviniLoading, "momentum": MomentumClosure, "energy": EnergyClosure}[cfg.sn.closure](cfg)
+def make_wind_model(cfg):
+    """The wind model selected by cfg.sn.wind_model."""
+    return {"ashvini": AshviniLoading, "momentum": MomentumDrivenWind, "energy": EnergyDrivenWind}[cfg.sn.wind_model](cfg)

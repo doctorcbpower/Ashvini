@@ -1,7 +1,7 @@
 """
 Physics components of the general chain (milestone M2 of docs/SUPERSET_DESIGN.md). Each module holds one
 piece of the model, with the equation it implements in its docstring, so it can be read, replaced or
-extended on its own. `steppers.grid.GridStepper` composes them into the step-by-step integration of
+extended on its own. `integrators.grid.GridIntegrator` composes them into the step-by-step integration of
 `main.run_forest`.
 
     ode            closed-form update of dy/dt = forcing - decay * y

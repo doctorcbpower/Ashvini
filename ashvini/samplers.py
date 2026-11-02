@@ -1,5 +1,5 @@
 """
-Where and when the supernovae of a newly formed stellar population go off, for the event stepper.
+Where and when the supernovae of a newly formed stellar population go off, for the event integrator.
 
 A sampler turns "stars_formed Msun appeared at time t_form (Gyr)" into a list of Explosions: each has a time, a
 progenitor mass (Msun) and a weight (1 for a whole supernova). Choose with `samplers.make_sampler(cfg, kind)`.
@@ -11,7 +11,7 @@ progenitor mass (Msun) and a weight (1 for a whole supernova). Choose with `samp
                      masses (equal-probability quantiles of the IMF): the expected number of each mass, none
                      of the randomness. The star formation of each 1 Myr is released together, at its
                      mass-weighted mean time, so the number of events stays manageable. This is the control
-                     for the stochastic runs: the 'continuous IMF' limit with the same lifetimes and closure.
+                     for the stochastic runs: the 'continuous IMF' limit with the same lifetimes and wind_model.
 """
 from dataclasses import dataclass
 

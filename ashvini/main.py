@@ -19,8 +19,8 @@ from .dust import update_dust_reservoir
 
 from .run_params import print_config
 from .config import resolve
-from .steppers.grid import GridStepper
-from .steppers.events import EventStepper
+from .integrators.grid import GridIntegrator
+from .integrators.events import EventIntegrator
 from .components.ode import linear_ode_step as _linear_ode_step
 from .components.delay import (
     effective_sn_type as _effective_sn_type,
@@ -319,11 +319,11 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
     halo_mass = np.atleast_2d(halo_mass)
     halo_mass_rate = np.atleast_2d(halo_mass_rate)
 
-    stepper = GridStepper(
+    integrator = GridIntegrator(
         config, growth_model=growth_model,
         a_star=a_star, epsilon=epsilon, r_crit=r_crit, epsilon_f=epsilon_f, eta_acc=eta_acc,
     )
-    state, cosmic_time = stepper.run(
+    state, cosmic_time = integrator.run(
         halo_mass, halo_mass_rate, redshift, gas_mass0=gas_mass0, stars_mass0=stars_mass0
     )
 
@@ -337,26 +337,26 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
 
 
 def run_events(halo_mass, halo_mass_rate, redshift, config=None, sampler="smooth", seed=None,
-               gas_mass0=0.0, stars_mass0=0.0, **stepper_kwargs):
+               gas_mass0=0.0, stars_mass0=0.0, **integrator_kwargs):
     """
-    The same haloes as run_forest, followed by the event integrator (steppers/events.py): individual supernovae at their own
+    The same haloes as run_forest, followed by the event integrator (integrators/events.py): individual supernovae at their own
     times. sampler is "smooth" (the expected supernovae, no randomness) or "stochastic" (seeded by `seed`).
     Returns the run_forest dictionary plus "ejected_mass" (cumulative gas removed), "returned_mass" (cumulative
     gas that fell back, zero unless events.recycling_fraction > 0) and "n_explosions" (per halo).
     """
     halo_mass = np.atleast_2d(halo_mass)
     halo_mass_rate = np.atleast_2d(halo_mass_rate)
-    stepper = EventStepper(config, sampler=sampler, seed=seed, **stepper_kwargs)
-    state, cosmic_time = stepper.run(halo_mass, halo_mass_rate, redshift, gas_mass0=gas_mass0, stars_mass0=stars_mass0)
+    integrator = EventIntegrator(config, sampler=sampler, seed=seed, **integrator_kwargs)
+    state, cosmic_time = integrator.run(halo_mass, halo_mass_rate, redshift, gas_mass0=gas_mass0, stars_mass0=stars_mass0)
     return {
         **state.as_dict(),
         "cosmic_time": cosmic_time,
         "halo_mass": halo_mass,
         "halo_mass_rate": halo_mass_rate,
         "redshift": redshift,
-        "ejected_mass": stepper.ejected,
-        "returned_mass": stepper.returned,
-        "n_explosions": stepper.explosions,
+        "ejected_mass": integrator.ejected,
+        "returned_mass": integrator.returned,
+        "n_explosions": integrator.explosions,
     }
 
 

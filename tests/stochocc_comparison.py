@@ -1,6 +1,6 @@
 """
 Drive Stochastic_Occupation's smooth control and Ashvini on one halo history (the setup of Stochastic_Occupation
-docs/ashvini_relation.md, parity audit): M_h(z) = 1e9 exp(-0.5 (z - 5)) Msun, z = 20 -> 5, Ashvini's clock and
+docs/ashvini_relation.md, agreement audit): M_h(z) = 1e9 exp(-0.5 (z - 5)) Msun, z = 20 -> 5, Ashvini's clock and
 baryon fraction, no cooling threshold for star formation, no UV suppression, no black hole, no gas at z = 20.
 
 Needs Stochastic_Occupation's source on the path: set STOCHOCC_SRC, or keep the repository at
@@ -21,7 +21,7 @@ GYR = 3.15576e16
 ZGRID = (15.0, 10.0, 7.0, 5.0)
 FB = utils.Omega_b / utils.Omega_m
 # Ashvini's e_ff / (0.141 t_H) equals stochocc's eps_ff / (0.2047 t_H) for this eps_ff (the 0.2047 is the value of
-# the stochocc trajectory used in the parity audit)
+# the stochocc trajectory used in the agreement audit)
 EPS_FF_STOCHOCC = 0.015 * 0.2047 / 0.141
 
 
@@ -58,7 +58,7 @@ def ashvini(cfg, dz=0.005, zout=ZGRID):
 
 
 def base_config(**changes):
-    """Ashvini with the features the parity setup switches off: no UV suppression, no black hole seeding."""
+    """Ashvini with the features the comparison setup switches off: no UV suppression, no black hole seeding."""
     c = {"reion.UVB_enabled": False,
          "bh.seeding.pop3.enabled": False, "bh.seeding.direct_collapse.enabled": False,
          "bh.seeding.halo_mass_threshold.enabled": False,
@@ -102,10 +102,10 @@ def stochocc(zout=ZGRID, eps_fb=0.0, chem=False, z_igm=1.0e-3 * Z_SUN, Mh=None, 
 CASES = {
     # feedback off, chemistry on (A1, B1)
     "no_feedback": dict(eps_fb=0.0, chem=True),
-    # momentum closure, f_p = 0.7625 (E1); Stochastic_Occupation does not define the momentum closure with chemistry
+    # momentum-driven wind, f_p = 0.7625 (E1); Stochastic_Occupation does not define the momentum-driven wind with chemistry
     "momentum": dict(eps_fb=0.0, chem=False, closure="momentum", f_p=0.7625),
 }
-GOLDEN = Path(__file__).parent / "golden" / "stochocc_smooth.json"
+GOLDEN = Path(__file__).parent / "reference_outputs" / "stochocc_smooth.json"
 
 
 def _run_one(args):
@@ -125,36 +125,36 @@ def regenerate(processes=8):
     out = {c: {} for c in CASES}
     for case, zz, vals in results:
         out[case][str(zz)] = vals
-    out["_meta"] = {"setup": "see tests/stochocc_parity.py", "stochocc_source": str(_src()),
+    out["_meta"] = {"setup": "see tests/stochocc_comparison.py", "stochocc_source": str(_src()),
                     "sampler": "WeightedQuadratureSampler(K=200, dt_emit=1 Myr)", "lifetime_Z": 0.002}
     GOLDEN.write_text(json.dumps(out, indent=1))
     return out
 
 
-# --- the optional event-stepper features (milestone M5): a minihalo growing from 4e5 to 2e7 Msun between z = 20 and 10 ---
+# --- the optional event-integrator features (milestone M5): a minihalo growing from 4e5 to 2e7 Msun between z = 20 and 10 ---
 MINIHALO = lambda z: 2.0e7 * np.exp(-0.4 * (np.asarray(z) - 10.0))
-OPTION_BASE = {"ash": {"sn.kernel": "imf", "sn.m_sn_max": 100.0, "sn.lifetime_Z": 0.002, "sf.efficiency": 0.015,
-                       "sn.closure": "energy", "sn.eps_fb": 0.1},
+OPTION_BASE = {"ash": {"sn.delay_distribution": "stellar_lifetimes", "sn.m_sn_max": 100.0, "sn.lifetime_Z": 0.002, "sf.efficiency": 0.015,
+                       "sn.wind_model": "energy", "sn.eps_fb": 0.1},
                "sto": {"eps_fb": 0.1}}
 # case name -> the Ashvini Config changes and the Stochastic_Occupation Params that mean the same thing
 OPTION_CASES = {
-    "inflow_lag": {"ash": {"events.inflow_kappa": 3.0}, "sto": {"inflow_kappa": 3.0}},
-    "recycling": {"ash": {"events.recycling_fraction": 0.5, "events.recycling_kappa": 1.0},
+    "inflow_lag": {"ash": {"events.inflow_delay_in_crossing_times": 3.0}, "sto": {"inflow_kappa": 3.0}},
+    "recycling": {"ash": {"events.recycling_fraction": 0.5, "events.recycling_delay_in_crossing_times": 1.0},
                   "sto": {"rec_frac": 0.5, "rec_kappa": 1.0}},
     # strong coupling, so that explosions regularly find less gas than their energy could unbind; the control has no bank
-    "energy_bank_control": {"ash": {"sn.eps_fb": 1.0}, "sto": {"eps_fb": 1.0}},
-    "energy_bank": {"ash": {"sn.eps_fb": 1.0, "events.bank_tau_myr": 100.0}, "sto": {"eps_fb": 1.0, "bank_tau_myr": 100.0}},
-    "access_fraction": {"ash": {"sn.eps_fb": 1.0, "events.access_fraction": 0.05}, "sto": {"eps_fb": 1.0, "f_access": 0.05}},
-    "coupling_switch": {"ash": {"sn.eps_fb": 1.0, "events.eps_cut_mass": 1.0e7, "events.eps_fb_above_cut": 0.05},
+    "stored_energy_control": {"ash": {"sn.eps_fb": 1.0}, "sto": {"eps_fb": 1.0}},
+    "stored_energy": {"ash": {"sn.eps_fb": 1.0, "events.stored_energy_loss_time_myr": 100.0}, "sto": {"eps_fb": 1.0, "bank_tau_myr": 100.0}},
+    "reachable_gas_fraction": {"ash": {"sn.eps_fb": 1.0, "events.reachable_gas_fraction": 0.05}, "sto": {"eps_fb": 1.0, "f_access": 0.05}},
+    "coupling_change": {"ash": {"sn.eps_fb": 1.0, "events.coupling_change_mass": 1.0e7, "events.eps_fb_above_change_mass": 0.05},
                         "sto": {"eps_fb": 1.0, "M_eps_cut": 1.0e7, "eps_fb_hi": 0.05}},
-    "wind_travel": {"ash": {"sn.eps_fb": 1.0, "events.wind_kappa": 2.0}, "sto": {"eps_fb": 1.0, "wind_kappa": 2.0}},
+    "wind_travel": {"ash": {"sn.eps_fb": 1.0, "events.wind_delay_in_crossing_times": 2.0}, "sto": {"eps_fb": 1.0, "wind_kappa": 2.0}},
     "cooling_threshold": {"ash": {"events.cooling_T_vir_K": 5.0e3}, "sto": {"T_vir_thresh": 5.0e3}},
 }
-OPTION_GOLDEN = Path(__file__).parent / "golden" / "stochocc_options.json"
+OPTION_GOLDEN = Path(__file__).parent / "reference_outputs" / "stochocc_options.json"
 
 
 def ashvini_option(case, sampler="smooth", seed=None):
-    """Event stepper on the minihalo with the case's options; returns the final-state masses."""
+    """Event integrator on the minihalo with the case's options; returns the final-state masses."""
     from ashvini.main import run_events
     z = np.arange(20.0, 10.0 - 1e-9, -0.1)
     M = MINIHALO(z)[None, :]

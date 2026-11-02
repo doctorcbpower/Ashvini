@@ -52,56 +52,56 @@ dM_gas/dt = Mdot_acc - SFR(t,M_gas) - eta_w(z,M_halo,Z_star)*SFR_wind - Mdot_BH 
 
 ## Metal enrichment ([`metallicity.py`](ashvini/metallicity.py))
 
-Gas-phase metal mass, with a separate branch for halos with no gas (pure inflow + delayed-wind enrichment, no dilution term):
+Gas-phase metal mass. All metallicities are absolute mass fractions inside the code; the config states them in units of Z_sun (`constants.Z_SUN = 0.015`) and the run header prints both:
 
 ```
-M_gas = 0:   dM_Z,gas/dt = Z_IGM*Mdot_acc + Z_yield*SFR_wind
-
-M_gas > 0:   dM_Z,gas/dt = Z_IGM*Mdot_acc - M_Z,gas*SFR(t,M_gas)/M_gas + Z_yield*SFR_wind
-                            - eta_w(z,M_halo,Z_star) * (M_Z,gas/M_gas) * SFR_wind
+dM_Z,gas/dt = Z_IGM*Mdot_acc - (eps_ff/t_ff) * M_Z,gas + Z_yield*SFR_wind
+              - eta_w(z,M_halo,Z_star) * (M_Z,gas/M_gas) * SFR_wind        (last term omitted if M_gas = 0)
 ```
 
-Stellar metal mass (new stars inherit the gas-phase metal fraction at formation):
+Stellar metal mass (new stars inherit the gas-phase metal fraction at formation, `SFR * M_Z,gas / M_gas = (eps_ff/t_ff) * M_Z,gas`):
 
 ```
-dM_Z,star/dt = SFR(t,M_gas) * M_Z,gas/M_gas     (0 if M_gas = 0)
+dM_Z,star/dt = (eps_ff/t_ff) * M_Z,gas
 ```
+
+`SFR_wind` is the same quantity as in the gas equation (zero, present or delayed, set by `supernova.type`). In the vectorised integrator the stellar mass and stellar metals formed in a step are obtained from the exact budget identity of the linear step, so gas + stars + removed mass balance to round-off and a reservoir that is empty at the start of a step forms stars in it.
 
 Stellar metallicity `Z_star = M_Z,star/M_star` (0 if `M_star=0`) feeds back into the mass-loading factor and dust wind-loss below.
 
 | Parameter | Config key | Default | Meaning |
 |---|---|---|---|
-| Z_IGM | `metallicity.Z_IGM` | 1.0e-3 | Metallicity of inflowing IGM gas (Z_solar) |
-| Z_yield | `metallicity.Z_yield` | 0.06 | Metal yield per unit (delayed) SFR returned to the ISM |
+| Z_IGM | `metallicity.Z_IGM_Zsun` | 1.0e-3 | Metallicity of inflowing IGM gas, in units of Z_sun (= 1.5e-5 as a mass fraction) |
+| Z_yield | `metallicity.Z_yield` | 0.06 | Mass of metals returned per unit mass of stars formed (a mass ratio, not in Z_sun) |
 
 ## Dust ([`dust.py`](ashvini/dust.py))
 
 ```
-growth_rate      = Y_d * SFR_past
-SNe_rate         = Gamma * SFR_past / M_star,past          (0 if M_star,past <= 0)
+growth_rate       = Y_d * SFR_wind
+SNe_rate          = nu_SN * SFR_wind                         (supernovae per unit time)
 dust_loading      = 1 - exp(-(M_gas/M_crit)^Alpha)           (saturates to 1 for M_gas >> M_crit)
-destruction_rate  = M_swept * SNe_rate * dust_loading
-wind_loss         = (M_dust/M_gas) * eta_w(z,M_halo,Z_star) * SFR_past    (0 if M_gas <= 0)
+destruction_rate  = M_swept * (M_dust/M_gas) * dust_loading * SNe_rate
+wind_loss         = (M_dust/M_gas) * eta_w(z,M_halo,Z_star) * SFR_wind    (both loss terms 0 if M_gas <= 0)
 
 dM_dust/dt = growth_rate - destruction_rate - wind_loss
 ```
 
-`SFR_past` and `M_star,past` are the SFR and the *stellar mass formed in that single delayed step interval* (not cumulative) from `supernova.delay_time` ago -- this represents the population of young SN progenitors formed at that specific past episode, driving dust destruction now. Both are 0 until enough cosmic time has elapsed to have delay history.
+`SFR_wind` is the same star formation rate that drives the supernova wind in the gas and metal equations: zero for `supernova.type: "no"`, the present rate for `"instantaneous"`, the rate `supernova.delay_time` ago for `"delayed"`. `nu_SN` is the number of core-collapse supernovae per Msun of stars formed, computed from `supernova.imf` over `supernova.m_sn_min`-`m_sn_max` (Salpeter 8-40 Msun: 6.8e-3; 8-100 Msun: 7.4e-3). The swept-up mass `M_swept` carries the dust-to-gas ratio, so each supernova destroys `M_swept * M_dust/M_gas`, not a fixed mass. (Before 2026-11-02 the rate was `Gamma * SFR_past / M_star,past`, which equals `Gamma / dt_step` and depended on the tree grid, and there was no `M_dust/M_gas` factor.)
 
 | Parameter | Config key | Default | Meaning |
 |---|---|---|---|
 | M_swept | `dust.m_swept` | 1.0e3 Msun | ISM mass swept/destroyed per SN (`= epsilon_d * M_ISM`) |
 | Y_d | `dust.dust_yield` | 0.004 | Dust mass produced per unit (delayed) SFR |
-| Gamma | `dust.dust_gamma` | 1.3e-4 | SN rate per unit stellar mass formed in the delayed episode |
+| nu_SN | `supernova.imf`, `m_sn_min`, `m_sn_max` | salpeter, 8, 40 Msun | Sets the supernova rate per Msun formed (the upper limit is a parameter; it does not change the mass-loading factor) |
 | Alpha | `dust.dust_alpha` | 8 | Steepness of the destruction-efficiency saturation curve |
 | M_crit | `dust.m_crit` | 1.0e5 Msun | Gas-mass scale at which destruction efficiency saturates |
 
 ## Supernova feedback ([`supernovae_feedback.py`](ashvini/supernovae_feedback.py))
 
-Metallicity modulation (smooth logistic step from strong feedback at low `Z_star` to weak feedback at high `Z_star`; the step center/width/floor/ceiling below are hard-coded, not exposed in the YAML):
+Metallicity modulation (smooth logistic step from strong feedback at low `Z_star` to weak feedback at high `Z_star`; the step center/width/floor/ceiling below are hard-coded, not exposed in the YAML; Z_star is converted to units of Z_sun first, so the step is centred on 0.1 Z_sun):
 
 ```
-f_Z(Z_star) = sigmoid(-(Z_star - 0.1)/0.01) * (0.25 - 1) + 1
+f_Z(Z_star) = sigmoid((Z_star/Z_sun - 0.1)/0.01) * (0.25 - 1) + 1
 ```
 
 Mass-loading factor (mass of gas ejected per unit SFR):
@@ -148,12 +148,12 @@ Default values:
 | enabled | `black_holes.seeding.pop3.enabled` | True | Pop III channel on/off |
 | z_min | `black_holes.seeding.pop3.z_min` | 15 | Only forms this early in the universe |
 | M_halo_min | `black_holes.seeding.pop3.M_halo_min` | 1.0e6 Msun | Minihalo mass threshold (H2-cooling, Tvir ~ 1e4 K) |
-| Z_gas_max | `black_holes.seeding.pop3.Z_gas_max` | 1.0e-4 | Near-primordial gas required |
+| Z_gas_max | `black_holes.seeding.pop3.Z_gas_max_Zsun` | 1.0e-4 | Near-primordial gas required (units of Z_sun) |
 | M_seed | `black_holes.seeding.pop3.M_seed` | 1.0e2 Msun | Light seed (Pop III remnant) |
 | enabled | `black_holes.seeding.direct_collapse.enabled` | True | Direct-collapse channel on/off |
 | z_min | `black_holes.seeding.direct_collapse.z_min` | 10 | Redshift floor |
 | M_halo_min | `black_holes.seeding.direct_collapse.M_halo_min` | 1.0e7 Msun | Atomic-cooling halo threshold |
-| Z_gas_max | `black_holes.seeding.direct_collapse.Z_gas_max` | 1.0e-5 | Pristine gas required to suppress H2 fragmentation |
+| Z_gas_max | `black_holes.seeding.direct_collapse.Z_gas_max_Zsun` | 1.0e-5 | Pristine gas required to suppress H2 fragmentation (units of Z_sun) |
 | M_seed | `black_holes.seeding.direct_collapse.M_seed` | 1.0e5 Msun | Heavy seed |
 | enabled | `black_holes.seeding.halo_mass_threshold.enabled` | True | Fallback channel on/off |
 | M_halo_min | `black_holes.seeding.halo_mass_threshold.M_halo_min` | 1.0e10 Msun | Generic mass threshold |

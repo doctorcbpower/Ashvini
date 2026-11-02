@@ -98,3 +98,15 @@ def test_uv_suppression_is_bounded_below_at_zero():
     # allowed to go negative.
     result = reion.uv_suppression(np.array([6.0]), np.array([1e6]), np.array([1e6]))
     assert result[0] >= 0.0
+
+
+def test_uv_suppression_is_finite_for_a_late_reionisation_redshift():
+    """z_reion = 6 gave nan for every halo: exp((z/beta)^gamma) overflowed to inf and inf/inf is nan."""
+    import numpy as np
+    from ashvini import reionization as reion
+    from ashvini.config import DEFAULT, override
+    for z_rei in (5.5, 6.0, 6.5, 7.0, 9.0):
+        cfg = override(DEFAULT, **{"reion.z_reion": z_rei})
+        z = np.linspace(0.0, 10.0, 41)
+        out = reion.uv_suppression(z, 1e9 * np.ones_like(z), 1e8 * np.ones_like(z), cfg)
+        assert np.all(np.isfinite(out)) and np.all(out >= 0.0), z_rei

@@ -68,20 +68,14 @@ def X(z, m_halo, cfg=None):
 
 
 def epsilon(z, cfg=None):
-    # (z/beta)**gamma grows huge well within uv_suppression's z<=10 mask
-    # (e.g. ~640 at z=10 for the default z_reion=7, gamma=15) -- exp of
-    # that is still finite, but its square overflows float64, correctly
-    # driving part2 -> 0 in the limit. np.errstate suppresses the resulting
-    # (harmless, verified against a finite/non-nan result) RuntimeWarning
-    # rather than leaving every real run of this function noisy.
+    # u = (z/beta)**gamma grows huge well within uv_suppression's z<=10 mask (about 640 at z=10 for the default
+    # z_reion=7, gamma=15, and above 8000 for z_reion=6). exp(u)/(1+exp(u))**2 is written as exp(-u)/(1+exp(-u))**2, the same
+    # function, which is 0 (not inf/inf = nan) when exp(u) overflows. Before this, z_reion <= 6.5 gave nan for every halo.
     _, gamma, _, beta, _ = _shape(cfg)
     with np.errstate(over="ignore"):
-        part2 = (
-            (gamma * (z ** (gamma - 1)) / (beta**gamma))
-            * (np.exp((z / beta) ** gamma))
-            / ((1 + np.exp((z / beta) ** gamma)) ** 2)
-        )
-        epsilon = (0.63) / (1 + np.exp((z / beta) ** gamma)) + part2
+        u = (z / beta) ** gamma
+        part2 = (gamma * (z ** (gamma - 1)) / (beta**gamma)) * np.exp(-u) / (1 + np.exp(-u)) ** 2
+        epsilon = (0.63) / (1 + np.exp(u)) + part2
     return epsilon
 
 

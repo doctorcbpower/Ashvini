@@ -2,32 +2,14 @@ import numpy as np
 
 from .utils import Hubble_time, z_at_time, h_of_z
 
-from .run_params import PARAMS
-
-e_bh = PARAMS.bh.efficiency  # efficiency of black hole growth
-eddington_multiplier = PARAMS.bh.eddington_multiplier  # f_Edd; >1 allows super-Eddington growth
+from .config import resolve
 from .constants import G, c, m_p, sigma_thomson, Gyr_s, Msun_g, Z_SUN
 
-# black_holes.sigma_feedback -- isothermal-sphere M-sigma self-regulation
-# (King 2003, 2005; Power, Zubovas, Nayakshin & King 2011). Only used by
-# velocity_dispersion()/m_sigma() below, and only when
-# ashvini.agn_feedback's sigma_feedback_enabled is True.
-_sigma_feedback_params = PARAMS.bh.sigma_feedback
-f_g = _sigma_feedback_params.f_g  # baryon fraction relative to dark matter
-# Electron-scattering opacity, cm^2/g. This is a genuinely different
-# quantity from the `kappa_per_s`/`kappa_per_gyr` constants below (the
-# mass-independent Eddington accretion rate per unit BH mass) -- both
-# happen to be conventionally called "kappa" in the AGN feedback
-# literature, but they enter completely different formulas (Eddington rate
-# vs. M-sigma normalisation). Configurable via
-# black_holes.sigma_feedback.kappa_es; None (the default) falls back to
-# the physical value sigma_thomson/m_p.
-kappa_es = (
-    _sigma_feedback_params.kappa_es
-    if _sigma_feedback_params.kappa_es is not None
-    else sigma_thomson / m_p
-)
-growth_cap_enabled = _sigma_feedback_params.growth_cap_enabled
+# Black hole growth parameters (efficiency, Eddington multiplier, sigma-feedback options, seeding) are read
+# from the Config passed as `cfg`, or from config.DEFAULT: black_holes.efficiency is the growth efficiency
+# e_bh, black_holes.eddington_multiplier the Eddington factor f_Edd, and black_holes.sigma_feedback holds
+# f_g, kappa_es (None = the physical sigma_thomson/m_p, an electron-scattering opacity in cm^2/g, a different
+# quantity from the Eddington rate per unit mass below) and growth_cap_enabled.
 
 
 def time_freefall(redshift):
@@ -82,7 +64,7 @@ def velocity_dispersion(halo_mass, redshift):
     return np.where(resolved, sigma, 0.0)
 
 
-def m_sigma(sigma):
+def m_sigma(sigma, cfg=None):
     """
     King (2003, 2005) self-regulated BH mass scale (Power, Zubovas,
     Nayakshin & King 2011, eq. 5), where the wind's Eddington-limited
@@ -94,12 +76,15 @@ def m_sigma(sigma):
     sigma in cm/s (see velocity_dispersion above). Returns M_sigma in
     Msun. sigma = 0 (unformed halo) gives M_sigma = 0.
     """
+    sf = resolve(cfg).bh.sigma_feedback
+    f_g = sf.f_g  # baryon fraction relative to dark matter
+    kappa_es = sf.kappa_es if sf.kappa_es is not None else sigma_thomson / m_p
     sigma = np.asarray(sigma, dtype=float)
     M_sigma_g = (f_g * kappa_es / (np.pi * G**2)) * sigma**4
     return M_sigma_g / Msun_g
 
 
-def growth_ceiling(halo_mass, redshift):
+def growth_ceiling(halo_mass, redshift, cfg=None):
     """
     Hard M_BH growth ceiling at Power, Zubovas, Nayakshin & King (2011;
     PZNK11) eq. 21-22's predicted overshoot bound:
@@ -127,10 +112,10 @@ def growth_ceiling(halo_mass, redshift):
     sigma = velocity_dispersion(halo_mass, redshift)  # cm/s
     sigma_200 = sigma / 200.0e5  # 200 km/s in cm/s
     overshoot_frac = 0.41 * sigma_200 / h_of_z(redshift)
-    return m_sigma(sigma) * (1.0 + overshoot_frac)
+    return m_sigma(sigma, cfg) * (1.0 + overshoot_frac)
 
 
-def black_hole_growth_rate(t, M_BH, gas_mass):
+def black_hole_growth_rate(t, M_BH, gas_mass, cfg=None):
     """
     dM_BH/dt (Msun/Gyr): gas-supply-limited growth capped at
     eddington_multiplier x the Eddington rate (eddington_multiplier=1 by
@@ -140,13 +125,14 @@ def black_hole_growth_rate(t, M_BH, gas_mass):
     this package (update_gas_reservoir, evolve_gas_metals, ...) already
     use for solve_ivp.
     """
+    bh = resolve(cfg).bh
     redshift = z_at_time(t)
-    growth_rate = (e_bh / time_freefall(redshift)) * gas_mass
-    growth_rate = min(growth_rate, eddington_multiplier * eddington_bh_growth(M_BH))
+    growth_rate = (bh.efficiency / time_freefall(redshift)) * gas_mass
+    growth_rate = min(growth_rate, bh.eddington_multiplier * eddington_bh_growth(M_BH))
     return np.asarray(growth_rate)
 
 
-def seeding_mask_and_mass(halo_mass, redshift, gas_metallicity, already_seeded):
+def seeding_mask_and_mass(halo_mass, redshift, gas_metallicity, already_seeded, cfg=None):
     """
     Decide which not-yet-seeded haloes cross a BH seeding threshold this
     step, and what mass to seed them with.
@@ -172,7 +158,7 @@ def seeding_mask_and_mass(halo_mass, redshift, gas_metallicity, already_seeded):
     triggered = np.zeros_like(halo_mass, dtype=bool)
     seed_mass = np.zeros_like(halo_mass, dtype=float)
 
-    seeding = PARAMS.bh.seeding
+    seeding = resolve(cfg).bh.seeding
 
     p3 = seeding.pop3
     if p3.enabled:
@@ -204,3 +190,11 @@ def seeding_mask_and_mass(halo_mass, redshift, gas_metallicity, already_seeded):
         triggered = triggered | mask
 
     return triggered, seed_mass
+
+from .config import retire_module_values as _retire  # noqa: E402
+
+_retire(__name__, {
+    "e_bh": "config.bh.efficiency", "eddington_multiplier": "config.bh.eddington_multiplier",
+    "growth_cap_enabled": "config.bh.sigma_feedback.growth_cap_enabled",
+    "f_g": "config.bh.sigma_feedback.f_g", "kappa_es": "config.bh.sigma_feedback.kappa_es",
+})

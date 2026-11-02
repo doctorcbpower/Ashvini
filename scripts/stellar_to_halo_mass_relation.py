@@ -90,14 +90,10 @@ def run_ensemble(disable_bh_seeding=False, disable_uvb=False):
         PARAMS.bh.seeding.direct_collapse.enabled = False
         PARAMS.bh.seeding.halo_mass_threshold.enabled = False
 
-    # main.UV_background is a module-level snapshot of PARAMS.reion.UVB_enabled
-    # taken at import time (same pattern as main.sn_type -- see
-    # notebooks/pymctrees_ashvini_demo.ipynb's own sn_type toggling), so
-    # PARAMS.reion.UVB_enabled itself must be patched via main.UV_background,
-    # not by assigning to PARAMS.
-    orig_uvb = main.UV_background
+    # The UV background switch is PARAMS.reion.UVB_enabled; it is read at each call.
+    orig_uvb = PARAMS.reion.UVB_enabled
     if disable_uvb:
-        main.UV_background = False
+        PARAMS.reion.UVB_enabled = False
 
     tag = f"bh_seeding={'off' if disable_bh_seeding else 'on'},uvb={'off' if disable_uvb else 'on'}"
     halo_mass_pts, stellar_mass_pts, per_bin_median = [], [], []
@@ -131,7 +127,7 @@ def run_ensemble(disable_bh_seeding=False, disable_uvb=False):
         PARAMS.bh.seeding.pop3.enabled = orig_enabled["pop3"]
         PARAMS.bh.seeding.direct_collapse.enabled = orig_enabled["direct_collapse"]
         PARAMS.bh.seeding.halo_mass_threshold.enabled = orig_enabled["halo_mass_threshold"]
-        main.UV_background = orig_uvb
+        PARAMS.reion.UVB_enabled = orig_uvb
 
     return (
         np.concatenate(halo_mass_pts),

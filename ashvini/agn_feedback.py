@@ -2,23 +2,11 @@
 
 import numpy as np
 
-from .run_params import PARAMS
+from .config import resolve
 from . import black_holes_growth as bh_growth
 
-eta_agn = PARAMS.bh.eta_agn  # AGN wind mass-loading efficiency
 
-# black_holes.sigma_feedback: optional isothermal-sphere M-sigma
-# self-regulation (King 2003, 2005; Power, Zubovas, Nayakshin & King 2011)
-# replacing the constant eta_agn above with a coupling that switches on
-# once M_BH crosses the self-regulation mass M_sigma -- see
-# coupling_switch()/agn_wind_mass_rate() below. Off by default: with
-# sigma_feedback_enabled=False, agn_wind_mass_rate() is exactly the prior
-# constant-eta_agn behaviour.
-sigma_feedback_enabled = PARAMS.bh.sigma_feedback.enabled
-transition_width = PARAMS.bh.sigma_feedback.transition_width  # dex, width of the M_BH/M_sigma switch
-
-
-def coupling_switch(bh_mass, m_sigma_mass):
+def coupling_switch(bh_mass, m_sigma_mass, cfg=None):
     """
     Thrust-vs-weight coupling switch for the AGN wind, King (2003, 2005):
     AGN wind coupling to the ISM is weak (momentum-driven, effectively
@@ -40,6 +28,7 @@ def coupling_switch(bh_mass, m_sigma_mass):
     Returns 0 where bh_mass <= 0 or m_sigma_mass <= 0 (no BH yet, or an
     unformed halo with M_sigma = 0) rather than evaluating the ratio.
     """
+    transition_width = resolve(cfg).bh.sigma_feedback.transition_width  # dex, width of the M_BH/M_sigma switch
     bh_mass = np.asarray(bh_mass, dtype=float)
     m_sigma_mass = np.asarray(m_sigma_mass, dtype=float)
     valid = (bh_mass > 0) & (m_sigma_mass > 0)
@@ -54,7 +43,7 @@ def coupling_switch(bh_mass, m_sigma_mass):
     return np.where(valid, switch, 0.0)
 
 
-def agn_wind_mass_rate(bh_growth_rate, bh_mass=None, halo_mass=None, redshift=None):
+def agn_wind_mass_rate(bh_growth_rate, bh_mass=None, halo_mass=None, redshift=None, cfg=None):
     """
     Mass-loaded AGN wind, mirroring supernovae_feedback's mass-loading
     structure: gas ejected from the ISM proportional to the BH accretion
@@ -76,10 +65,18 @@ def agn_wind_mass_rate(bh_growth_rate, bh_mass=None, halo_mass=None, redshift=No
     bh_mass/halo_mass/redshift are unused -- this preserves the exact
     prior constant-coupling behaviour.
     """
-    if not sigma_feedback_enabled:
-        return eta_agn * bh_growth_rate
+    bh = resolve(cfg).bh
+    if not bh.sigma_feedback.enabled:
+        return bh.eta_agn * bh_growth_rate
 
     sigma = bh_growth.velocity_dispersion(halo_mass, redshift)
-    m_sigma_mass = bh_growth.m_sigma(sigma)
-    eta_agn_eff = eta_agn * coupling_switch(bh_mass, m_sigma_mass)
+    m_sigma_mass = bh_growth.m_sigma(sigma, cfg)
+    eta_agn_eff = bh.eta_agn * coupling_switch(bh_mass, m_sigma_mass, cfg)
     return eta_agn_eff * bh_growth_rate
+
+from .config import retire_module_values as _retire  # noqa: E402
+
+_retire(__name__, {
+    "eta_agn": "config.bh.eta_agn", "sigma_feedback_enabled": "config.bh.sigma_feedback.enabled",
+    "transition_width": "config.bh.sigma_feedback.transition_width",
+})

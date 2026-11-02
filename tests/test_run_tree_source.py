@@ -23,6 +23,7 @@ pymctrees = pytest.importorskip("pymctrees")
 import h5py
 
 from ashvini import main
+from ashvini.run_params import PARAMS
 from ashvini.run_params import PymctreesSourceParams
 
 
@@ -52,20 +53,20 @@ def pymctrees_config(tmp_path):
 def test_run_generates_trees_live_via_pymctrees(pymctrees_config, tmp_path, monkeypatch):
     dir_out = str(tmp_path / "outputs") + "/"
 
-    monkeypatch.setattr(main.PARAMS.io, "mass_bin", 1e10)
-    monkeypatch.setattr(main.PARAMS.io, "dir_out", dir_out)
-    monkeypatch.setattr(main.PARAMS.io, "tree_source", "pymctrees")
-    monkeypatch.setattr(main.PARAMS.io, "tree_file", None)
-    monkeypatch.setattr(main.PARAMS.io, "pymctrees", PymctreesSourceParams(
+    monkeypatch.setattr(PARAMS.io, "mass_bin", 1e10)
+    monkeypatch.setattr(PARAMS.io, "dir_out", dir_out)
+    monkeypatch.setattr(PARAMS.io, "tree_source", "pymctrees")
+    monkeypatch.setattr(PARAMS.io, "tree_file", None)
+    monkeypatch.setattr(PARAMS.io, "pymctrees", PymctreesSourceParams(
         config=str(pymctrees_config), n_halos=5, z0=0.0, z_max=3.0, dz=0.5,
         m_res=1e9, backend="numpy", seed=11,
     ))
 
     main.run()
 
-    output_file = f"{dir_out}mass_bin_{main.PARAMS.io.mass_bin}_{main.sn_type}.hdf5"
+    output_file = f"{dir_out}mass_bin_{PARAMS.io.mass_bin}_{PARAMS.sn.type}.hdf5"
     with h5py.File(output_file, "r") as f:
-        grp = f[f"mass_bin_{main.PARAMS.io.mass_bin}"]
+        grp = f[f"mass_bin_{PARAMS.io.mass_bin}"]
         assert grp["gas_mass"].shape[0] == 5  # n_halos
         for key in ["gas_mass", "stars_mass", "gas_metals", "stars_metals",
                     "dust_mass", "bh_mass", "sfr"]:
@@ -75,15 +76,15 @@ def test_run_generates_trees_live_via_pymctrees(pymctrees_config, tmp_path, monk
 
 
 def test_run_missing_pymctrees_block_raises_clear_error(monkeypatch):
-    monkeypatch.setattr(main.PARAMS.io, "tree_source", "pymctrees")
-    monkeypatch.setattr(main.PARAMS.io, "pymctrees", None)
+    monkeypatch.setattr(PARAMS.io, "tree_source", "pymctrees")
+    monkeypatch.setattr(PARAMS.io, "pymctrees", None)
 
     with pytest.raises(ValueError, match="pymctrees"):
         main.run()
 
 
 def test_run_unknown_tree_source_raises_clear_error(monkeypatch):
-    monkeypatch.setattr(main.PARAMS.io, "tree_source", "not_a_real_source")
+    monkeypatch.setattr(PARAMS.io, "tree_source", "not_a_real_source")
 
     with pytest.raises(ValueError, match="not_a_real_source"):
         main.run()

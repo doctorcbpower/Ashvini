@@ -110,3 +110,10 @@ Milestones, each ending with the full test suite green and the pinned outputs un
 - M6. Student guide and notebook; archive the superseded paths in a `reservoirs/` note.
 
 Not done in this plan: new physics, new figures, changes to the MVM, a decision on rebuilding the MVM from components.
+
+## 8. Status of milestones (2026-11-02)
+
+- M0 done and committed (`f73cb35`): `tests/test_characterisation.py` pins 16 parameter cases x 3 mass bins, the scalar reference integrator, the MVM outputs and the SHA-256 of `reservoir_stock.py`; goldens in `tests/golden/`.
+- M1 done in the working tree (not committed): `ashvini/config.py` (`Config` = the existing `Params` tree, `DEFAULT`, `override`, `validate`, `load_config`), `ashvini/state.py` (`State`), and every general-chain module takes `cfg=None` (explicit Config, else `config.DEFAULT`). The import-time copies (`main.e_ff`, `main.t_d`, `agn.eta_agn`, `bh_growth.e_bh`, `reion.z_rei`, ...) are gone; assigning to a retired name raises an error naming the Config path. `main.run_forest/run1/run1_scalar/run` accept `config=`. `configure.set_params` now changes `config.DEFAULT` and gained `m_sn_max` and `agn_delay_time`. `critical_seed` works on a private copy of the Config instead of mutating and restoring. The M0 goldens are unchanged by M1 (only `apply_case` was rewritten), which is the no-behaviour-change check.
+- Left as they were on purpose (frozen, D3): `reservoir_stock.py`, `reservoir_stock_premvm.py`, `paper_reservoir.py` and `black_holes_growth_slimdisk.py` keep their import-time defaults (`PAPER_PARAMS`, `bh.slimdisk`); the general chain passes the slim-disc parameters explicitly from the Config.
+

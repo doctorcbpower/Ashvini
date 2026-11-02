@@ -16,13 +16,14 @@ import numpy as np
 sys.path.insert(0, "scripts")
 import shmr_mvm_vs_general as S  # noqa: E402
 import uv_suppression_audit as A  # noqa: E402
+from ashvini.run_params import PARAMS  # noqa: E402
 from ashvini import main, pymctrees_adapter as pa, reionization as R  # noqa: E402
 from ashvini.paper_reservoir import cold_hot_mode_suppression  # noqa: E402
 from stellar_to_halo_mass_relation import behroozi2013_mstar  # noqa: E402
 
 N, DZ, PHI = 100, 0.005, 4.0
 MASSES = [1e10, 3.16e10, 1e11, 3.16e11, 1e12, 3.16e12, 1e13, 3.16e13, 1e14]
-main.e_ff = 0.05
+PARAMS.sf.efficiency = 0.05  # config.sf.efficiency (main.e_ff no longer exists)
 h, gen = S.build_trees(N, DZ, 1e-4, S.CONFIG)
 trees = {m: pa.build_forest_for_bin(gen, m, h, N, 0.0, 30.0, 1e-4 * m, DZ, "numba", 42) for m in MASSES}
 beh = np.array([float(behroozi2013_mstar(np.array([m]))[0]) for m in MASSES])

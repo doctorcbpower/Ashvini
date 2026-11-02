@@ -1,17 +1,22 @@
+import functools
+
 import numpy as np
 
 from . import supernovae_feedback as sn
 from . import utils as utils
+from .config import resolve
 from .imf import nu_SN
 
-from .run_params import PARAMS
 
-Y_d = PARAMS.dust.dust_yield
-Alpha = PARAMS.dust.dust_alpha
-M_crit = PARAMS.dust.m_crit
-M_swept = PARAMS.dust.m_swept
-# Core-collapse supernovae per Msun of stars formed, from the IMF and progenitor range in the config.
-SN_per_Msun = nu_SN(PARAMS.sn.imf, PARAMS.sn.m_sn_min, PARAMS.sn.m_sn_max)
+@functools.lru_cache(maxsize=None)
+def _nu_SN(imf, m_sn_min, m_sn_max):
+    return nu_SN(imf, m_sn_min, m_sn_max)
+
+
+def supernovae_per_msun(cfg=None):
+    """Core-collapse supernovae per Msun of stars formed, from cfg.sn.imf, m_sn_min and m_sn_max."""
+    s = resolve(cfg).sn
+    return _nu_SN(s.imf, s.m_sn_min, s.m_sn_max)
 
 
 def update_dust_reservoir(
@@ -21,6 +26,7 @@ def update_dust_reservoir(
     halo_mass,
     wind_sfr,
     stellar_metallicity,
+    cfg=None,
 ):
     """
     Dust mass evolution, driven by wind_sfr: the star formation rate that drives supernova feedback
@@ -35,14 +41,16 @@ def update_dust_reservoir(
     carries the dust-to-gas ratio M_d/M_gas, so the dust destroyed per supernova is M_swept * M_d/M_gas, not a
     fixed mass; f_gas = 1 - exp(-(M_gas/M_crit)^alpha) switches destruction off in gas-poor haloes.
     """
-    growth_rate = Y_d * wind_sfr
+    cfg = resolve(cfg)
+    d = cfg.dust
+    growth_rate = d.dust_yield * wind_sfr
 
     if gas_mass <= 0:
         return np.asarray(growth_rate)
 
-    dust_loading = 1 - np.exp(-((gas_mass / M_crit) ** Alpha))
+    dust_loading = 1 - np.exp(-((gas_mass / d.m_crit) ** d.dust_alpha))
     redshift = utils.z_at_time(t)
-    ml = sn.mass_loading_factor(redshift, halo_mass, stellar_metallicity)
-    loss_per_dust = (SN_per_Msun * M_swept * dust_loading + ml) * wind_sfr / gas_mass
+    ml = sn.mass_loading_factor(redshift, halo_mass, stellar_metallicity, cfg)
+    loss_per_dust = (supernovae_per_msun(cfg) * d.m_swept * dust_loading + ml) * wind_sfr / gas_mass
 
     return np.asarray(growth_rate - loss_per_dust * dust_mass)

@@ -11,42 +11,30 @@ from . import black_holes_growth as bh_growth
 from . import black_holes_growth_slimdisk as bh_slimdisk
 from . import agn_feedback as agn
 from .spin import epsilon_from_spin
-from .constants import Z_SUN
-from .imf import nu_SN
 
 from .star_formation import star_formation_rate, time_freefall
 from .gas_evolve import gas_inflow_rate, update_gas_reservoir
 from .metallicity import evolve_gas_metals, evolve_stars_metals
 from .dust import update_dust_reservoir
 
-from .run_params import PARAMS, print_config
-
-UV_background = PARAMS.reion.UVB_enabled
-t_d = PARAMS.sn.delay_time  # delay time for SNe feedback, in Gyr
-sn_type = PARAMS.sn.type  # type of supernova feedback
-agn_delay_time = PARAMS.bh.feedback_delay_time  # Gyr; 0.0 = instantaneous AGN wind
-_DEFAULT_GROWTH_MODEL = PARAMS.bh.growth_model  # "pznk11_freefall" (default) or "hobbs_slimdisk" -- see MODELS.md
-e_ff = PARAMS.sf.efficiency
-IGM_metallicity = PARAMS.metals.Z_IGM_Zsun * Z_SUN  # absolute mass fraction
-metallicity_yield = PARAMS.metals.Z_yield
-Y_d = PARAMS.dust.dust_yield
-SN_per_Msun = nu_SN(PARAMS.sn.imf, PARAMS.sn.m_sn_min, PARAMS.sn.m_sn_max)  # supernovae per Msun formed
-Alpha = PARAMS.dust.dust_alpha
-M_crit = PARAMS.dust.m_crit
-M_swept = PARAMS.dust.m_swept
-
+from .run_params import print_config
+from .config import resolve
+from .state import State
+from .dust import supernovae_per_msun
+from .metallicity import igm_metallicity
 
 tiny = 1e-15  # small number for numerical gymnastics...
 
 method = "LSODA"
 
 
-def _effective_sn_type():
+def _effective_sn_type(cfg):
     """
     Supernova feedback type actually applied. A "delayed" wind with a zero delay is instantaneous
     feedback: the delayed lookback would otherwise point at the current step, whose star formation
     rate is not yet known, and silently switch feedback off.
     """
+    sn_type, t_d = cfg.sn.type, cfg.sn.delay_time
     return "instantaneous" if (sn_type == "delayed" and t_d <= 0.0) else sn_type
 
 
@@ -57,7 +45,7 @@ def _step_feedback_type(eff_type, has_delay_history):
     return eff_type
 
 
-def run1_scalar(halo_mass, halo_mass_rate, redshift):
+def run1_scalar(halo_mass, halo_mass_rate, redshift, config=None):
     """
     Original per-halo, per-timestep solve_ivp integrator.
 
@@ -66,6 +54,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
     -- the same role pymctrees' build_tree() plays alongside its vectorised
     build_forest_numpy()/build_forest_numba() backends. Not used by run().
     """
+    cfg = resolve(config)
     cosmic_time = utils.time_at_z(redshift)  # Gyr
 
     n = len(cosmic_time)
@@ -79,12 +68,13 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
     bh_mass = np.zeros(n)
 
     gas_accretion_rate = gas_inflow_rate(
-        redshift, halo_mass, halo_mass_rate, UV_background
+        redshift, halo_mass, halo_mass_rate, cfg=config
     )
 
-    eff_sn_type = _effective_sn_type()
-    delay_idx = _delay_lookback_index(cosmic_time, t_d)
-    agn_delay_idx = _delay_lookback_index(cosmic_time, agn_delay_time)
+    eff_sn_type = _effective_sn_type(cfg)
+    growth_cap = cfg.bh.sigma_feedback.growth_cap_enabled
+    delay_idx = _delay_lookback_index(cosmic_time, cfg.sn.delay_time)
+    agn_delay_idx = _delay_lookback_index(cosmic_time, cfg.bh.feedback_delay_time)
     bh_growth_rate_history = np.zeros(n)
 
     for j in range(1, n):
@@ -98,7 +88,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         if feedback_type == "delayed":
             sfr_feedback = sfr[delay_idx[j]]
         elif feedback_type == "instantaneous":
-            sfr_feedback = star_formation_rate(t_span[0], gas_mass[j - 1])
+            sfr_feedback = star_formation_rate(t_span[0], gas_mass[j - 1], cfg=cfg)
         else:
             sfr_feedback = 0.0
 
@@ -112,6 +102,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
             redshift[j - 1],
             gas_metallicity_prev,
             bh_mass[j - 1] > 0,
+            cfg=cfg,
         )
         bh_mass_y0 = float(seed_mass) if bool(newly_seeded) else bh_mass[j - 1]
 
@@ -120,7 +111,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
             t_span,
             [bh_mass_y0],
             method=method,
-            args=(gas_mass[j - 1],),
+            args=(gas_mass[j - 1], cfg),
         )
         bh_mass[j] = max(sol.y[0, -1], 0.0)
         # Optional hard cap at PZNK11's predicted ceiling (see run_forest's
@@ -128,8 +119,8 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         # clipping solve_ivp's endpoint result is exactly equivalent to a
         # "freeze once M_BH reaches the ceiling" ODE, without needing to
         # thread the cap into black_hole_growth_rate's own RHS.
-        if bh_growth.growth_cap_enabled:
-            ceiling = bh_growth.growth_ceiling(halo_mass[j - 1], redshift[j - 1])
+        if growth_cap:
+            ceiling = bh_growth.growth_ceiling(halo_mass[j - 1], redshift[j - 1], cfg)
             bh_mass[j] = min(bh_mass[j], float(ceiling))
         agn_growth_rate = (bh_mass[j] - bh_mass_y0) / (t_span[1] - t_span[0])
         bh_growth_rate_history[j] = agn_growth_rate
@@ -147,13 +138,13 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         # step's own not-yet-known end state. Cheap and unused when
         # sigma_feedback is disabled (the default).
         z_mid = utils.z_at_time(0.5 * (t_span[0] + t_span[1]))
-        A_bh_mid = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gas_mass[j - 1]
-        kappa_edd = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * bh_growth.eddington_multiplier
+        A_bh_mid = (cfg.bh.efficiency / bh_growth.time_freefall(z_mid)) * gas_mass[j - 1]
+        kappa_edd = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * cfg.bh.eddington_multiplier
         bh_mass_mid = float(
             _bh_growth_step(bh_mass_y0, A_bh_mid, kappa_edd, 0.5 * (t_span[1] - t_span[0]))
         )
-        if bh_growth.growth_cap_enabled:
-            bh_mass_mid = min(bh_mass_mid, float(bh_growth.growth_ceiling(halo_mass[j - 1], z_mid)))
+        if growth_cap:
+            bh_mass_mid = min(bh_mass_mid, float(bh_growth.growth_ceiling(halo_mass[j - 1], z_mid, cfg)))
 
         # Update gas mass and stellar mass together: the stars formed in the step are the integral of
         # the star formation rate of the evolving gas, not of the gas mass at the start of the step.
@@ -166,11 +157,12 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
             agn_growth_rate,       # instantaneous: BH's own accretion, a gas-mass sink
             agn_wind_growth_rate,  # possibly delayed: drives the AGN wind term
             bh_mass_mid,           # step-midpoint M_BH, for the AGN coupling switch
+            config,
         )
         sol = solve_ivp(
             lambda t, y: [
                 float(update_gas_reservoir(t, y[0], *gas_args)),
-                float(star_formation_rate(t, y[0])),
+                float(star_formation_rate(t, y[0], cfg=cfg)),
             ],
             t_span,
             [gas_mass[j - 1], stars_mass[j - 1]],
@@ -186,11 +178,12 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
             stellar_metallicity[j - 1],
             sfr_feedback,
             feedback_type,
+            cfg,
         )
         sol = solve_ivp(
             lambda t, y: [
                 float(evolve_gas_metals(t, y[0], *metal_args)),
-                float(evolve_stars_metals(t, y[0])),
+                float(evolve_stars_metals(t, y[0], cfg=cfg)),
             ],
             t_span,
             [gas_metals[j - 1], stars_metals[j - 1]],
@@ -209,6 +202,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
                 halo_mass[j - 1],
                 sfr_feedback,
                 stellar_metallicity[j - 1],
+                cfg,
             ),
         )
         dust_mass[j] = sol.y[0, -1]
@@ -219,7 +213,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         gas_mass[j] = max(gas_mass[j], 0.0)
 
         # Star formation rate at current time
-        sfr[j] = star_formation_rate(cosmic_time[j], gas_mass[j])
+        sfr[j] = star_formation_rate(cosmic_time[j], gas_mass[j], cfg=cfg)
 
         gas_metals[j] = max(gas_metals[j], 0.0)
         stars_mass[j] = max(stars_mass[j], 0.0)
@@ -374,7 +368,7 @@ def _bh_growth_step(y0, A_bh, kappa_edd, dt):
 
 def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
                a_star=None, epsilon=None, r_crit=None, epsilon_f=None, eta_acc=None,
-               gas_mass0=0.0, stars_mass0=0.0):
+               gas_mass0=0.0, stars_mass0=0.0, config=None):
     """
     Vectorised replacement for joblib.Parallel(run1_scalar): integrates all
     N haloes in halo_mass/halo_mass_rate (shape (N, n)) simultaneously,
@@ -383,19 +377,14 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
 
     growth_model, a_star, epsilon, r_crit, epsilon_f, eta_acc : optional
     overrides for the "hobbs_slimdisk" branch's physics parameters, each
-    defaulting to None (= use the module-level value derived from
-    run_params.yaml at import time, i.e. current behaviour, unchanged).
+    defaulting to None (= use the value in the configuration: config.bh.slimdisk).
     black_holes_growth_slimdisk.py's own functions (nuclear_accretion_rate,
     eddington_rate_std_per_unit_mass, king_agn_wind_rate) already accept
     these as call-time kwargs; what was missing is that this function
-    always called them with no override, baking in whatever run_params.yaml
-    said at import -- these are exactly the parameters the 2026 paper's
-    sensitivity scans (spin/epsilon, r_crit, epsilon_f, eta_acc/f_am) need
-    to vary run-to-run, without reloading run_params.yaml and re-importing
-    the module per parameter point. growth_model overrides the
-    module-level PARAMS.bh.growth_model choice frozen at import (see the
-    module-level `_DEFAULT_GROWTH_MODEL = PARAMS.bh.growth_model` line
-    above); a_star/epsilon/r_crit/epsilon_f/eta_acc are only read when the
+    always called them with no override -- these are exactly the parameters
+    the 2026 paper's sensitivity scans (spin/epsilon, r_crit, epsilon_f,
+    eta_acc/f_am) need to vary run-to-run. growth_model overrides
+    config.bh.growth_model; a_star/epsilon/r_crit/epsilon_f/eta_acc are only read when the
     effective growth_model is "hobbs_slimdisk" (silently unused otherwise,
     same as the existing bh.slimdisk config block).
 
@@ -408,6 +397,10 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
     5.5) -- these are two different, both legitimate, uses of the same
     kappa_edd normalisation, not a bug in either. Passing both a_star and
     epsilon raises ValueError (ambiguous which should win).
+
+    config : Config, optional
+    All other parameters come from this configuration (default: config.DEFAULT, the one loaded from
+    run_params.yaml). See config.py; nothing is read from module-level copies.
 
     gas_mass0, stars_mass0 : initial gas/stellar reservoir masses (Msun)
     at redshift[0] (z_seed), each defaulting to 0.0 (this function's prior,
@@ -423,43 +416,52 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
     halo_mass = np.atleast_2d(halo_mass)
     halo_mass_rate = np.atleast_2d(halo_mass_rate)
 
-    growth_model = growth_model if growth_model is not None else _DEFAULT_GROWTH_MODEL
+    cfg = resolve(config)
+    growth_model = growth_model if growth_model is not None else cfg.bh.growth_model
+    slim = cfg.bh.slimdisk
+    growth_cap = cfg.bh.sigma_feedback.growth_cap_enabled
 
     # Resolved once per call (not per step): these are run-level constants,
     # only actually used below when growth_model == "hobbs_slimdisk".
-    _r_crit = r_crit if r_crit is not None else bh_slimdisk.r_crit
-    _epsilon_f = epsilon_f if epsilon_f is not None else bh_slimdisk.epsilon_f
-    _eta_acc = eta_acc if eta_acc is not None else bh_slimdisk.eta_acc
+    _r_crit = r_crit if r_crit is not None else slim.r_crit
+    _epsilon_f = epsilon_f if epsilon_f is not None else slim.epsilon_f
+    _eta_acc = eta_acc if eta_acc is not None else slim.eta_acc
     if epsilon is not None:
         _kappa_edd_slimdisk = bh_slimdisk.eddington_rate_std_per_unit_mass(epsilon)
-    elif a_star is not None:
-        _kappa_edd_slimdisk = bh_slimdisk.eddington_rate_std_per_unit_mass(epsilon_from_spin(a_star))
     else:
-        _kappa_edd_slimdisk = bh_slimdisk.EDDINGTON_RATE_PER_UNIT_MASS_FIDUCIAL
+        _kappa_edd_slimdisk = bh_slimdisk.eddington_rate_std_per_unit_mass(
+            epsilon_from_spin(a_star if a_star is not None else slim.a_star)
+        )
 
     cosmic_time = utils.time_at_z(redshift)  # Gyr
     n = len(cosmic_time)
     N = halo_mass.shape[0]
 
-    gas_mass = np.zeros((N, n))
+    state = State.empty(N, n)
+    gas_mass, gas_metals = state.gas_mass, state.gas_metals
+    stars_mass, stars_metals = state.stars_mass, state.stars_metals
+    sfr, stellar_metallicity = state.sfr, state.stellar_metallicity
+    dust_mass, bh_mass = state.dust_mass, state.bh_mass
     gas_mass[:, 0] = gas_mass0
-    gas_metals = np.zeros((N, n))
-    stars_mass = np.zeros((N, n))
     stars_mass[:, 0] = stars_mass0
-    stars_metals = np.zeros((N, n))
-    sfr = np.zeros((N, n))
-    stellar_metallicity = np.zeros((N, n))
-    dust_mass = np.zeros((N, n))
-    bh_mass = np.zeros((N, n))
+
+    IGM_metallicity = igm_metallicity(cfg)
+    metallicity_yield = cfg.metals.Z_yield
+    Y_d = cfg.dust.dust_yield
+    Alpha, M_crit, M_swept = cfg.dust.dust_alpha, cfg.dust.m_crit, cfg.dust.m_swept
+    SN_per_Msun = supernovae_per_msun(cfg)
+    e_ff = cfg.sf.efficiency
+    e_bh = cfg.bh.efficiency
+    kappa_edd_pznk11 = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * cfg.bh.eddington_multiplier
 
     redshift_bcast = np.broadcast_to(redshift, (N, n))
     gas_accretion_rate = gas_inflow_rate(
-        redshift_bcast, halo_mass, halo_mass_rate, UV_background
+        redshift_bcast, halo_mass, halo_mass_rate, cfg=config
     )
 
-    eff_sn_type = _effective_sn_type()
-    delay_idx = _delay_lookback_index(cosmic_time, t_d)
-    agn_delay_idx = _delay_lookback_index(cosmic_time, agn_delay_time)
+    eff_sn_type = _effective_sn_type(cfg)
+    delay_idx = _delay_lookback_index(cosmic_time, cfg.sn.delay_time)
+    agn_delay_idx = _delay_lookback_index(cosmic_time, cfg.bh.feedback_delay_time)
     bh_growth_rate_history = np.zeros((N, n))
 
     for j in range(1, n):
@@ -477,7 +479,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
 
         A_acc = gas_accretion_rate[:, j - 1]
         B_sf = e_ff / time_freefall(z_mid)  # scalar, shared across haloes
-        ML = sn.mass_loading_factor(z_mid, hm_prev, sz_prev)  # shape (N,)
+        ML = sn.mass_loading_factor(z_mid, hm_prev, sz_prev, cfg)  # shape (N,)
 
         # --- black hole seeding + growth (computed before gas mass, since
         # gas mass's AGN wind term needs this step's BH growth rate) ---
@@ -485,7 +487,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
             has_gas, gas_metals[:, j - 1] / gm_prev_safe, 0.0
         )
         newly_seeded, seed_mass = bh_growth.seeding_mask_and_mass(
-            hm_prev, redshift[j - 1], gas_metallicity_prev, bh_mass[:, j - 1] > 0
+            hm_prev, redshift[j - 1], gas_metallicity_prev, bh_mass[:, j - 1] > 0, cfg=cfg
         )
         bh_mass_prev = np.where(newly_seeded, seed_mass, bh_mass[:, j - 1])
 
@@ -495,7 +497,10 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
             # feedback -- see black_holes_growth_slimdisk.py. No PZNK11
             # growth-ceiling analogue exists for this model.
             sm_prev = stars_mass[:, j - 1]
-            A_bh = bh_slimdisk.nuclear_accretion_rate(gm_prev, bh_mass_prev, sm_prev, eta_acc=_eta_acc)
+            A_bh = bh_slimdisk.nuclear_accretion_rate(
+                gm_prev, bh_mass_prev, sm_prev, eta_acc=_eta_acc,
+                R_nuc_pc=slim.R_nuc_pc, compaction_boost=slim.compaction_boost,
+            )
             kappa_edd = _kappa_edd_slimdisk
             bh_mass_uncapped = bh_slimdisk.bh_growth_step_slimdisk(
                 bh_mass_prev, A_bh, kappa_edd, _r_crit, dt
@@ -512,8 +517,8 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
                 agn_wind_growth_rate, halo_mass=hm_prev, redshift=z_mid, epsilon_f=_epsilon_f
             )
         else:
-            A_bh = (bh_growth.e_bh / bh_growth.time_freefall(z_mid)) * gm_prev
-            kappa_edd = bh_growth.EDDINGTON_RATE_PER_UNIT_MASS * bh_growth.eddington_multiplier
+            A_bh = (e_bh / bh_growth.time_freefall(z_mid)) * gm_prev
+            kappa_edd = kappa_edd_pznk11
             bh_mass_uncapped = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, dt)
             # Optional hard cap at PZNK11's predicted M_sigma-relation ceiling
             # (black_holes.sigma_feedback.growth_cap_enabled, off by default --
@@ -524,8 +529,8 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
             # separate crossing-time solve needed -- and correctly lets a
             # previously-capped BH resume growing if the ceiling itself rises
             # (M_sigma grows with the halo), rather than freezing permanently.
-            if bh_growth.growth_cap_enabled:
-                ceiling = bh_growth.growth_ceiling(hm_prev, z_mid)
+            if growth_cap:
+                ceiling = bh_growth.growth_ceiling(hm_prev, z_mid, cfg)
                 bh_mass_uncapped = np.minimum(bh_mass_uncapped, ceiling)
             bh_mass[:, j] = np.maximum(bh_mass_uncapped, 0.0)
             # Instantaneous: this step's own accretion, always -- the mass
@@ -549,10 +554,11 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
             # why this must be frozen mid-step rather than left to vary with
             # the gas ODE's own state.
             bh_mass_mid = _bh_growth_step(bh_mass_prev, A_bh, kappa_edd, 0.5 * dt)
-            if bh_growth.growth_cap_enabled:
-                bh_mass_mid = np.minimum(bh_mass_mid, bh_growth.growth_ceiling(hm_prev, z_mid))
+            if growth_cap:
+                bh_mass_mid = np.minimum(bh_mass_mid, bh_growth.growth_ceiling(hm_prev, z_mid, cfg))
             agn_forcing = agn.agn_wind_mass_rate(
-                agn_wind_growth_rate, bh_mass=bh_mass_mid, halo_mass=hm_prev, redshift=z_mid
+                agn_wind_growth_rate, bh_mass=bh_mass_mid, halo_mass=hm_prev, redshift=z_mid,
+                **({} if config is None else {"cfg": config}),
             )
 
         # --- the star formation rate that drives supernova feedback, for gas, metals and dust alike:
@@ -649,13 +655,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
         stars_metals[:, j] = np.where(has_stars_mass, stars_metals[:, j], 0.0)
 
     return {
-        "gas_mass": gas_mass,
-        "stars_mass": stars_mass,
-        "gas_metals": gas_metals,
-        "stars_metals": stars_metals,
-        "dust_mass": dust_mass,
-        "bh_mass": bh_mass,
-        "sfr": sfr,
+        **state.as_dict(),
         "cosmic_time": cosmic_time,
         "halo_mass": halo_mass,
         "halo_mass_rate": halo_mass_rate,
@@ -663,14 +663,14 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
     }
 
 
-def run1(halo_mass, halo_mass_rate, redshift):
+def run1(halo_mass, halo_mass_rate, redshift, config=None):
     """
     Vectorised single-halo integrator (fast path, replaces the old
     solve_ivp-based implementation -- see run1_scalar() for the reference
     version and the module comment above for the numerical scheme).
     """
     result = run_forest(
-        np.atleast_2d(halo_mass), np.atleast_2d(halo_mass_rate), redshift
+        np.atleast_2d(halo_mass), np.atleast_2d(halo_mass_rate), redshift, config=config
     )
     return {
         key: (val[0] if key not in ("cosmic_time", "redshift") else val)
@@ -678,13 +678,14 @@ def run1(halo_mass, halo_mass_rate, redshift):
     }
 
 
-def run():
-    print_config(PARAMS)
+def run(config=None):
+    cfg = resolve(config)
+    print_config(cfg)
 
-    if PARAMS.io.tree_source == "pymctrees":
+    if cfg.io.tree_source == "pymctrees":
         from . import pymctrees_adapter
 
-        p = PARAMS.io.pymctrees
+        p = cfg.io.pymctrees
         if p is None:
             raise ValueError(
                 "basics.tree_source is 'pymctrees' but basics.pymctrees is "
@@ -694,7 +695,7 @@ def run():
             )
         print(f"\nGenerating trees live via pymctrees ({p.config}) instead of reading a file...")
         halo_masses, halo_mass_rates, redshifts, _merger_mass = pymctrees_adapter.build_forest_live(
-            pymctrees_config_path=p.config, mass_bin=PARAMS.io.mass_bin,
+            pymctrees_config_path=p.config, mass_bin=cfg.io.mass_bin,
             n_halos=p.n_halos, z0=p.z0, z_max=p.z_max, dz=p.dz,
             m_res=p.m_res, backend=p.backend, seed=p.seed,
         )
@@ -705,24 +706,24 @@ def run():
         # by run_forest() yet. Available here for callers that want it
         # directly via pymctrees_adapter.build_forest_live() instead of
         # run().
-    elif PARAMS.io.tree_source == "file":
+    elif cfg.io.tree_source == "file":
         halo_masses, halo_mass_rates, redshifts = utils.read_trees(
-            file_path=PARAMS.io.tree_file, mass_bin=PARAMS.io.mass_bin
+            file_path=cfg.io.tree_file, mass_bin=cfg.io.mass_bin
         )
     else:
         raise ValueError(
-            f"Unknown basics.tree_source '{PARAMS.io.tree_source}' -- must be "
+            f"Unknown basics.tree_source '{cfg.io.tree_source}' -- must be "
             "'file' or 'pymctrees'."
         )
 
     N_halos = np.shape(halo_masses)[0]
     print(f"Running {N_halos} halos (vectorised across all haloes at once)...")
     t0 = time.perf_counter()
-    combined = run_forest(halo_masses, halo_mass_rates, redshifts)
+    combined = run_forest(halo_masses, halo_mass_rates, redshifts, config=cfg)
     print(f"Done in {time.perf_counter() - t0:.2f} s")
 
     # Output file
-    output_file = PARAMS.io.dir_out + f"mass_bin_{PARAMS.io.mass_bin}_{sn_type}.hdf5"
+    output_file = cfg.io.dir_out + f"mass_bin_{cfg.io.mass_bin}_{cfg.sn.type}.hdf5"
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     with h5py.File(output_file, "w") as f:
@@ -731,9 +732,19 @@ def run():
         f.create_dataset("redshift", data=combined["redshift"])
 
         # Group for halo properties
-        grp = f.create_group(f"mass_bin_{PARAMS.io.mass_bin}")
+        grp = f.create_group(f"mass_bin_{cfg.io.mass_bin}")
         for key, val in combined.items():
             if key not in ["cosmic_time", "redshift"]:
                 grp.create_dataset(key, data=val)
 
     print(f"Saved outputs to {output_file}")
+
+from .config import retire_module_values as _retire  # noqa: E402
+
+_retire(__name__, {
+    "t_d": "config.sn.delay_time", "sn_type": "config.sn.type", "UV_background": "config.reion.UVB_enabled",
+    "agn_delay_time": "config.bh.feedback_delay_time", "e_ff": "config.sf.efficiency",
+    "IGM_metallicity": "config.metals.Z_IGM_Zsun", "metallicity_yield": "config.metals.Z_yield",
+    "Y_d": "config.dust.dust_yield", "SN_per_Msun": "config.sn.m_sn_max (or imf, m_sn_min)",
+    "Alpha": "config.dust.dust_alpha", "M_crit": "config.dust.m_crit", "M_swept": "config.dust.m_swept",
+})

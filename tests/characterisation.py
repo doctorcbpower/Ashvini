@@ -4,9 +4,8 @@ and of the frozen MVM whose outputs are pinned in tests/golden/*.json. They were
 as it stood on 2026-11-02 (after the chemistry and units corrections) and must not change during the
 refactor into Config / State / components (M1-M2) except by a deliberate, documented recapture.
 
-`apply_case` is the only place that knows how to set parameters for a case. It uses the mechanisms that
-exist today (module-level values); milestone M1 replaces its body with Config overrides. The golden
-numbers do not move when that happens, which is the point.
+`apply_case` is the only place that knows how to set parameters for a case. Before milestone M1 it patched
+module-level values; it now patches config.DEFAULT. The golden numbers did not move, which is the point.
 """
 import os
 import hashlib
@@ -15,14 +14,6 @@ import json
 import numpy as np
 
 from ashvini import main, utils
-from ashvini import star_formation as sf
-from ashvini import supernovae_feedback as sn
-from ashvini import reionization as reion
-from ashvini import reionization_physics as reion_physics
-from ashvini import agn_feedback as agn
-from ashvini import black_holes_growth as bhg
-from ashvini import dust as dust_mod
-from ashvini.imf import nu_SN
 from ashvini.run_params import PARAMS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -49,27 +40,20 @@ CASES["m_sn_max-100"] = dict(m_sn_max=100.0)
 
 
 def apply_case(mp, case):
-    """Set parameters for one case through `mp` (a pytest MonkeyPatch), so everything is restored after."""
-    if "sn_type" in case: mp.setattr(main, "sn_type", case["sn_type"])
-    if "t_d" in case: mp.setattr(main, "t_d", case["t_d"])
-    if "uv" in case: mp.setattr(main, "UV_background", case["uv"])
-    if "agn_delay" in case: mp.setattr(main, "agn_delay_time", case["agn_delay"])
-    if "eps_sf" in case:
-        mp.setattr(sf, "e_ff", case["eps_sf"]); mp.setattr(main, "e_ff", case["eps_sf"])
-    if "eps_p" in case: mp.setattr(sn, "epsilon_p", case["eps_p"])
-    if "eta_agn" in case: mp.setattr(agn, "eta_agn", case["eta_agn"])
-    if "e_bh" in case: mp.setattr(bhg, "e_bh", case["e_bh"])
-    if "edd" in case: mp.setattr(bhg, "eddington_multiplier", case["edd"])
-    if case.get("sigma"): mp.setattr(agn, "sigma_feedback_enabled", True)
-    if case.get("cap"): mp.setattr(bhg, "growth_cap_enabled", True)
-    if "z_rei" in case:
-        z = case["z_rei"]
-        mp.setattr(reion, "z_rei", z)
-        mp.setattr(reion, "beta", reion_physics.beta(z, reion.gamma))
-        mp.setattr(reion, "c_omega", reion_physics.c_omega(reion.omega))
-    if "m_sn_max" in case:
-        nu = nu_SN(PARAMS.sn.imf, PARAMS.sn.m_sn_min, case["m_sn_max"])
-        mp.setattr(main, "SN_per_Msun", nu); mp.setattr(dust_mod, "SN_per_Msun", nu)
+    """Set parameters for one case on config.DEFAULT through `mp` (a pytest MonkeyPatch), so everything is restored after."""
+    if "sn_type" in case: mp.setattr(PARAMS.sn, "type", case["sn_type"])
+    if "t_d" in case: mp.setattr(PARAMS.sn, "delay_time", case["t_d"])
+    if "uv" in case: mp.setattr(PARAMS.reion, "UVB_enabled", case["uv"])
+    if "agn_delay" in case: mp.setattr(PARAMS.bh, "feedback_delay_time", case["agn_delay"])
+    if "eps_sf" in case: mp.setattr(PARAMS.sf, "efficiency", case["eps_sf"])
+    if "eps_p" in case: mp.setattr(PARAMS.sn, "epsilon_p", case["eps_p"])
+    if "eta_agn" in case: mp.setattr(PARAMS.bh, "eta_agn", case["eta_agn"])
+    if "e_bh" in case: mp.setattr(PARAMS.bh, "efficiency", case["e_bh"])
+    if "edd" in case: mp.setattr(PARAMS.bh, "eddington_multiplier", case["edd"])
+    if case.get("sigma"): mp.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
+    if case.get("cap"): mp.setattr(PARAMS.bh.sigma_feedback, "growth_cap_enabled", True)
+    if "z_rei" in case: mp.setattr(PARAMS.reion, "z_reion", case["z_rei"])
+    if "m_sn_max" in case: mp.setattr(PARAMS.sn, "m_sn_max", case["m_sn_max"])
     if case.get("bh") is False:
         for ch in (PARAMS.bh.seeding.pop3, PARAMS.bh.seeding.direct_collapse, PARAMS.bh.seeding.halo_mass_threshold):
             mp.setattr(ch, "enabled", False)

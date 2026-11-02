@@ -13,11 +13,8 @@ the effect outright.
 gamma sets how sharply M_c(z) (the characteristic suppression mass)
 transitions across z_reion; omega sets how sharply the suppression itself
 turns on in halo mass at fixed z (the s(mu, omega) step function in
-uv_suppression). Both, plus the beta/c_omega constants derived from them,
-are captured as ashvini.reionization module-level globals at import time
-(not re-read from PARAMS per call), so they must be patched directly on
-that module, not via PARAMS.reion.gamma/omega -- same pattern as
-main.UV_background/main.sn_type.
+uv_suppression). Both are read from PARAMS.reion at each call (beta and
+c_omega are derived from them), so patching PARAMS.reion.gamma/omega is enough.
 
 Defaults from run_params.yaml: gamma=15, omega=2.
 """
@@ -27,6 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ashvini import main, pymctrees_adapter, reionization as reion
+from ashvini import reionization_physics as reion_physics
 from ashvini.run_params import PARAMS
 
 from stellar_to_halo_mass_relation import moster2013_mstar, behroozi2013_mstar
@@ -43,20 +41,16 @@ Z_REI = PARAMS.reion.z_reion  # fixed at the run_params.yaml value throughout; o
 
 
 def set_reion_shape(gamma, omega):
-    """Patch ashvini.reionization's module-level gamma/omega (and the
-    beta/c_omega constants derived from them) in place, returning the
-    previous values for restoration. See module docstring for why PARAMS
-    alone isn't enough."""
-    old = (reion.gamma, reion.omega, reion.beta, reion.c_omega)
-    reion.gamma = gamma
-    reion.omega = omega
-    reion.beta = Z_REI * ((np.log(1.82 * (10**3) * np.exp(-0.63 * Z_REI) - 1)) ** (-1 / gamma))
-    reion.c_omega = 2 ** (omega / 3) - 1
+    """Set PARAMS.reion.gamma/omega in place (beta and c_omega are derived from them on each
+    call), returning the previous values for restoration."""
+    old = (PARAMS.reion.gamma, PARAMS.reion.omega)
+    PARAMS.reion.gamma = gamma
+    PARAMS.reion.omega = omega
     return old
 
 
 def restore_reion_shape(old):
-    reion.gamma, reion.omega, reion.beta, reion.c_omega = old
+    PARAMS.reion.gamma, PARAMS.reion.omega = old
 
 
 def run_ensemble(gamma, omega):

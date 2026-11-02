@@ -10,6 +10,7 @@ import pytest
 from scipy.integrate import solve_ivp
 
 from ashvini import black_holes_growth_slimdisk as bs
+from ashvini.run_params import PARAMS
 from ashvini import main
 from ashvini.spin import epsilon_from_spin, isco_radius
 
@@ -213,7 +214,7 @@ def test_run_forest_default_growth_model_unaffected_by_slimdisk_module_import():
     # Importing black_holes_growth_slimdisk (done at main.py's module
     # level now) must not change anything about the default
     # "pznk11_freefall" path's behaviour.
-    assert main._DEFAULT_GROWTH_MODEL == "pznk11_freefall"
+    assert PARAMS.bh.growth_model == "pznk11_freefall"
 
     n = 40
     z = np.linspace(5.0, 15.0, n)[::-1]

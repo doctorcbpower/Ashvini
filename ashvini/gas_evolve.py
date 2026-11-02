@@ -6,10 +6,11 @@ from . import agn_feedback as agn
 from . import utils as utils
 
 from .utils import Omega_b, Omega_m
+from .config import resolve
 from .star_formation import star_formation_rate
 
 
-def gas_inflow_rate(redshift, halo_mass, halo_mass_dot, UV_background=True):
+def gas_inflow_rate(redshift, halo_mass, halo_mass_dot, UV_background=None, cfg=None):
     """
     Cosmological baryonic accretion rate, modulated by UV suppression.
 
@@ -17,14 +18,20 @@ def gas_inflow_rate(redshift, halo_mass, halo_mass_dot, UV_background=True):
         redshift (float): Redshift.
         halo_mass (float): Halo mass.
         halo_mass_dot (float): Halo mass accretion rate.
-        uv_suppresion (bool ?): UVB on or off.
+        UV_background (bool): UVB on or off; None takes cfg.reion.UVB_enabled.
+        cfg: Config (default config.DEFAULT).
 
     Returns:
         Float: The baryonic cosmological accretion rate.
     """
+    if UV_background is None:
+        UV_background = resolve(cfg).reion.UVB_enabled
     gas_accretion_rate = (Omega_b / Omega_m) * halo_mass_dot
     if UV_background:
-        gas_accretion_rate *= reion.uv_suppression(redshift, halo_mass, halo_mass_dot)
+        if cfg is None:
+            gas_accretion_rate *= reion.uv_suppression(redshift, halo_mass, halo_mass_dot)
+        else:
+            gas_accretion_rate *= reion.uv_suppression(redshift, halo_mass, halo_mass_dot, cfg)
 
     return np.asarray(gas_accretion_rate)
 
@@ -40,6 +47,7 @@ def update_gas_reservoir(
     bh_accretion_rate=0.0,
     agn_wind_growth_rate=0.0,
     bh_mass_for_wind=0.0,
+    cfg=None,
 ):
     """
     Eqn 1 in Menon et al 2024 with 2 and 3 substituted, plus two BH-related
@@ -69,7 +77,7 @@ def update_gas_reservoir(
     """
 
     redshift = utils.z_at_time(t)
-    present_sfr = star_formation_rate(t, gas_mass=gas_mass)
+    present_sfr = star_formation_rate(t, gas_mass=gas_mass, cfg=cfg)
     wind_sfr = past_sfr
 
     if kind == "no":
@@ -80,13 +88,14 @@ def update_gas_reservoir(
     gas_mass_evolution_rate = (
         gas_accretion_rate
         - present_sfr
-        - sn.mass_loading_factor(redshift, halo_mass, stellar_metallicity) * wind_sfr
+        - sn.mass_loading_factor(redshift, halo_mass, stellar_metallicity, cfg) * wind_sfr
         - bh_accretion_rate
         - agn.agn_wind_mass_rate(
             agn_wind_growth_rate,
             bh_mass=bh_mass_for_wind,
             halo_mass=halo_mass,
             redshift=redshift,
+            **({} if cfg is None else {"cfg": cfg}),
         )
     )
     return np.asarray(gas_mass_evolution_rate)

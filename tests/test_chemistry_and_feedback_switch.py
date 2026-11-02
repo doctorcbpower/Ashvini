@@ -13,13 +13,14 @@ from ashvini.constants import Z_SUN
 from ashvini.imf import nu_SN
 from ashvini.run_params import PARAMS, load_params
 from ashvini import supernovae_feedback as sn
+from ashvini.metallicity import igm_metallicity
 
 warnings.filterwarnings("ignore")
 
 
 @pytest.fixture(autouse=True)
 def restore_params():
-    saved = dict(t_d=main.t_d, sn_type=main.sn_type, uv=main.UV_background)
+    saved = dict(t_d=PARAMS.sn.delay_time, sn_type=PARAMS.sn.type, uv=PARAMS.reion.UVB_enabled)
     yield
     configure.set_params(t_d=saved["t_d"], sn_type=saved["sn_type"], uv_background=saved["uv"], bh_enabled=True)
 
@@ -78,7 +79,7 @@ def test_stellar_mass_step_dependence_is_only_the_inflow_rule():
 def test_stellar_metals_conserve_metals_without_feedback():
     res = _run("no")
     A = main.gas_inflow_rate(res["redshift"], res["halo_mass"], res["halo_mass_rate"], False)[0]
-    inflow_metals = main.IGM_metallicity * np.sum(A[:-1] * np.diff(res["cosmic_time"]))
+    inflow_metals = igm_metallicity() * np.sum(A[:-1] * np.diff(res["cosmic_time"]))
     total = res["gas_metals"][0, -1] + res["stars_metals"][0, -1]
     assert total == pytest.approx(inflow_metals, rel=1e-9)
 
@@ -113,7 +114,7 @@ def test_metallicity_function_is_centred_on_a_tenth_of_solar():
 
 
 def test_igm_metallicity_is_in_solar_units():
-    assert main.IGM_metallicity == pytest.approx(PARAMS.metals.Z_IGM_Zsun * Z_SUN)
+    assert igm_metallicity() == pytest.approx(PARAMS.metals.Z_IGM_Zsun * Z_SUN)
 
 
 def test_seeding_threshold_is_in_solar_units():

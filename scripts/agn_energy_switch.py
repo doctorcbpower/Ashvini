@@ -15,6 +15,7 @@ import contextlib
 import numpy as np
 
 from ashvini import agn_feedback as agn, black_holes_growth as bg, black_holes_growth_slimdisk as sd
+from ashvini.run_params import PARAMS  # noqa: E402
 from ashvini.paper_reservoir_params import PAPER_PARAMS
 from ashvini.reservoir_stock import momentum_agn_wind_rate
 
@@ -37,10 +38,10 @@ def make_wind(epsilon_f=5e-4, f_mom=1.0, eps_rad=None, energy=True, momentum=Tru
 
 @contextlib.contextmanager
 def installed(epsilon_f=5e-4, f_mom=1.0, cap=True, energy=True, momentum=True):
-    saved = (agn.agn_wind_mass_rate, bg.growth_cap_enabled)
+    saved = (agn.agn_wind_mass_rate, PARAMS.bh.sigma_feedback.growth_cap_enabled)
     agn.agn_wind_mass_rate = make_wind(epsilon_f, f_mom, energy=energy, momentum=momentum)
-    bg.growth_cap_enabled = cap
+    PARAMS.bh.sigma_feedback.growth_cap_enabled = cap
     try:
         yield
     finally:
-        agn.agn_wind_mass_rate, bg.growth_cap_enabled = saved
+        agn.agn_wind_mass_rate, PARAMS.bh.sigma_feedback.growth_cap_enabled = saved

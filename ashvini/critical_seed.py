@@ -34,10 +34,12 @@ the duration so the scanned seed mass is the only channel that can fire.
 The original seeding config is restored afterward unconditionally.
 """
 
+import copy
+
 import numpy as np
 
 from . import main
-from .run_params import PARAMS
+from .config import resolve
 
 STRICT_EDDINGTON_R_CRIT = 1e12
 # r_crit=1.0 does NOT give strict Eddington-limited growth, despite an
@@ -61,29 +63,15 @@ STRICT_EDDINGTON_R_CRIT = 1e12
 
 
 def _seed_all_and_run(halo_mass, halo_mass_rate, redshift, seed_mass, m_halo_min, **run_forest_kwargs):
-    seeding = PARAMS.bh.seeding
-    saved = (
-        seeding.pop3.enabled,
-        seeding.direct_collapse.enabled,
-        seeding.halo_mass_threshold.enabled,
-        seeding.halo_mass_threshold.M_halo_min,
-        seeding.halo_mass_threshold.M_seed,
-    )
-    try:
-        seeding.pop3.enabled = False
-        seeding.direct_collapse.enabled = False
-        seeding.halo_mass_threshold.enabled = True
-        seeding.halo_mass_threshold.M_halo_min = m_halo_min
-        seeding.halo_mass_threshold.M_seed = np.asarray(seed_mass, dtype=float)
-        return main.run_forest(halo_mass, halo_mass_rate, redshift, **run_forest_kwargs)
-    finally:
-        (
-            seeding.pop3.enabled,
-            seeding.direct_collapse.enabled,
-            seeding.halo_mass_threshold.enabled,
-            seeding.halo_mass_threshold.M_halo_min,
-            seeding.halo_mass_threshold.M_seed,
-        ) = saved
+    """Run the chain on a private copy of the configuration with only the halo-mass-threshold channel enabled."""
+    cfg = copy.deepcopy(resolve(run_forest_kwargs.pop("config", None)))
+    seeding = cfg.bh.seeding
+    seeding.pop3.enabled = False
+    seeding.direct_collapse.enabled = False
+    seeding.halo_mass_threshold.enabled = True
+    seeding.halo_mass_threshold.M_halo_min = m_halo_min
+    seeding.halo_mass_threshold.M_seed = np.asarray(seed_mass, dtype=float)
+    return main.run_forest(halo_mass, halo_mass_rate, redshift, config=cfg, **run_forest_kwargs)
 
 
 def critical_seed(

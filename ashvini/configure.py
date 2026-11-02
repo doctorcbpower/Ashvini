@@ -1,29 +1,18 @@
 """
 Runtime parameter overrides for parameter-sweep notebooks/scripts.
 
-star_formation.e_ff, supernovae_feedback.epsilon_p/pi_fid, reionization's
-z_rei/gamma/omega (plus beta/c_omega, derived from them), and main.py's own
-UV_background/t_d/sn_type/agn_delay_time/e_ff are all read from PARAMS once,
-at import time, into module-level globals -- run_params.yaml is meant to be
-edited and the process restarted, not reconfigured mid-session. A parameter
-sweep (e.g. reproducing Menon & Power 2024's Figures 4-7, which vary
-epsilon_sf/epsilon_fb/t_d/z_rei one at a time against a fixed fiducial) needs
-to change these live. set_params() does that, patching every module-level
-copy of a given quantity together -- notably main.py duplicates
-star_formation.e_ff as its own module-level e_ff (used directly in
-run_forest's inlined closed-form star-formation update, not via
-star_formation.star_formation_rate), so patching only one of the two would
-silently desync the fast (run_forest) and reference (run1_scalar) paths.
-"""
-import numpy as np
+The parameters live in one place, `config.DEFAULT` (the Config loaded from run_params.yaml); nothing is
+copied into module-level variables, so changing a value here is seen by every module on its next call.
+`set_params` changes values of `config.DEFAULT` in place, for the remainder of the process (until the next
+call); it is the interactive wrapper around what a script should do instead when it can: build a Config with
+`config.override(...)` and pass it to `main.run_forest(..., config=cfg)`, which leaves `DEFAULT` untouched
+and allows several parameter sets in one process.
 
-from . import main as _main
-from . import star_formation as _sf
-from . import supernovae_feedback as _sn
-from . import reionization as _reion
-from . import agn_feedback as _agn
-from . import black_holes_growth as _bh
-from .run_params import PARAMS
+A parameter sweep (e.g. reproducing Menon & Power 2024's Figures 4-7, which vary
+epsilon_sf/epsilon_fb/t_d/z_rei one at a time against a fixed fiducial) is the typical use.
+"""
+from .config import DEFAULT
+from .imf import nu_SN
 
 
 def set_params(
@@ -40,6 +29,7 @@ def set_params(
     e_bh=None,
     eddington_multiplier=None,
     m_sn_max=None,
+    agn_delay_time=None,
 ):
     """
     Override one or more fiducial parameters in place, for the remainder of
@@ -47,20 +37,17 @@ def set_params(
     None keeps its current value. Returns nothing; call print_current() to
     inspect the resulting state.
 
+    eps_sf / eps_fb are star_formation.efficiency and supernova.epsilon_p; t_d is supernova.delay_time (Gyr);
+    z_rei is reionization.z_reion; m_sn_max is the upper progenitor mass for supernovae (it changes only the
+    supernova rate in the dust destruction term); agn_delay_time is black_holes.feedback_delay_time (Gyr).
+
     bh_enabled/eta_agn/sigma_feedback_enabled/growth_cap_enabled/e_bh
     control black hole growth and AGN feedback (see MODELS.md's "Black hole
     growth"/"AGN feedback" sections). growth_cap_enabled is only
     physically meaningful with sigma_feedback_enabled=True too (see
     black_holes_growth.growth_ceiling) but isn't validated against it
     here -- set both explicitly if you want the hard-cap self-regulation
-    variant. Unlike eps_sf etc., PARAMS.bh.seeding.*.enabled is read
-    fresh from PARAMS on every seeding_mask_and_mass() call (not cached
-    into a module-level global at import time -- black_holes_growth.py
-    keeps a live reference to PARAMS.bh.seeding, it never copies its
-    fields out), so bh_enabled can toggle it by mutating PARAMS directly;
-    eta_agn and agn_feedback.sigma_feedback_enabled *are* cached at import
-    time (same pattern as eps_sf/eps_fb elsewhere in this module) and are
-    patched accordingly.
+    variant.
 
     bh_enabled=False sets every seeding channel's `enabled` to False (no
     new BH is ever seeded, so growth/feedback are moot regardless of
@@ -68,76 +55,55 @@ def set_params(
     "no BH" baseline, since run_forest()/run1_scalar() always compute BH
     seeding/growth/AGN terms unconditionally). bh_enabled=True restores
     all three channels to enabled -- if you'd previously disabled only
-    some channels by hand via PARAMS.bh.seeding directly, this will
+    some channels by hand via the seeding config directly, this will
     re-enable all of them, not just the ones you disabled.
     """
+    cfg = DEFAULT
     if eps_sf is not None:
-        _sf.e_ff = eps_sf
-        _main.e_ff = eps_sf  # see module docstring: duplicated in main.py
-
+        cfg.sf.efficiency = eps_sf
     if eps_fb is not None:
-        _sn.epsilon_p = eps_fb
-
+        cfg.sn.epsilon_p = eps_fb
     if t_d is not None:
-        _main.t_d = t_d
-
+        cfg.sn.delay_time = t_d
     if sn_type is not None:
-        _main.sn_type = sn_type
-
+        cfg.sn.type = sn_type
     if uv_background is not None:
-        _main.UV_background = uv_background
-
+        cfg.reion.UVB_enabled = uv_background
     if z_rei is not None:
-        _reion.z_rei = z_rei
-        # beta and c_omega are derived from z_rei/gamma/omega once at
-        # import time (reionization.py module level) -- re-derive them
-        # here with the same formulas rather than leaving them stale.
-        gamma, omega = _reion.gamma, _reion.omega
-        _reion.beta = z_rei * (
-            (np.log(1.82 * (10**3) * np.exp(-0.63 * z_rei) - 1)) ** (-1 / gamma)
-        )
-        _reion.c_omega = 2 ** (omega / 3) - 1
-
+        cfg.reion.z_reion = z_rei
     if bh_enabled is not None:
-        seeding = PARAMS.bh.seeding
+        seeding = cfg.bh.seeding
         seeding.pop3.enabled = bh_enabled
         seeding.direct_collapse.enabled = bh_enabled
         seeding.halo_mass_threshold.enabled = bh_enabled
-
     if eta_agn is not None:
-        _agn.eta_agn = eta_agn
-
+        cfg.bh.eta_agn = eta_agn
     if sigma_feedback_enabled is not None:
-        _agn.sigma_feedback_enabled = sigma_feedback_enabled
-
+        cfg.bh.sigma_feedback.enabled = sigma_feedback_enabled
     if growth_cap_enabled is not None:
-        _bh.growth_cap_enabled = growth_cap_enabled
-
+        cfg.bh.sigma_feedback.growth_cap_enabled = growth_cap_enabled
     if e_bh is not None:
-        _bh.e_bh = e_bh
-
-    if m_sn_max is not None:
-        # upper progenitor mass for supernovae; changes only the supernova rate in the dust destruction term
-        from . import dust as _dust
-        from .imf import nu_SN
-        nu = nu_SN(PARAMS.sn.imf, PARAMS.sn.m_sn_min, m_sn_max)
-        _main.SN_per_Msun = nu
-        _dust.SN_per_Msun = nu
-
+        cfg.bh.efficiency = e_bh
     if eddington_multiplier is not None:
-        _bh.eddington_multiplier = eddington_multiplier
+        cfg.bh.eddington_multiplier = eddington_multiplier
+    if m_sn_max is not None:
+        nu_SN(cfg.sn.imf, cfg.sn.m_sn_min, m_sn_max)  # validates the range
+        cfg.sn.m_sn_max = m_sn_max
+    if agn_delay_time is not None:
+        cfg.bh.feedback_delay_time = agn_delay_time
 
 
 def print_current():
-    seeding = PARAMS.bh.seeding
+    cfg = DEFAULT
+    seeding = cfg.bh.seeding
     print(
-        f"eps_sf={_sf.e_ff} (main copy: {_main.e_ff}), eps_fb={_sn.epsilon_p}, "
-        f"t_d={_main.t_d} Gyr, sn_type={_main.sn_type!r}, "
-        f"UV_background={_main.UV_background}, z_rei={_reion.z_rei}\n"
+        f"eps_sf={cfg.sf.efficiency}, eps_fb={cfg.sn.epsilon_p}, "
+        f"t_d={cfg.sn.delay_time} Gyr, sn_type={cfg.sn.type!r}, "
+        f"UV_background={cfg.reion.UVB_enabled}, z_rei={cfg.reion.z_reion}, m_sn_max={cfg.sn.m_sn_max}\n"
         f"BH seeding enabled: pop3={seeding.pop3.enabled}, "
         f"direct_collapse={seeding.direct_collapse.enabled}, "
         f"halo_mass_threshold={seeding.halo_mass_threshold.enabled}; "
-        f"eta_agn={_agn.eta_agn}, sigma_feedback_enabled={_agn.sigma_feedback_enabled}, "
-        f"growth_cap_enabled={_bh.growth_cap_enabled}, e_bh={_bh.e_bh}, "
-        f"eddington_multiplier={_bh.eddington_multiplier}"
+        f"eta_agn={cfg.bh.eta_agn}, sigma_feedback_enabled={cfg.bh.sigma_feedback.enabled}, "
+        f"growth_cap_enabled={cfg.bh.sigma_feedback.growth_cap_enabled}, e_bh={cfg.bh.efficiency}, "
+        f"eddington_multiplier={cfg.bh.eddington_multiplier}, agn_delay_time={cfg.bh.feedback_delay_time}"
     )

@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 
 from ashvini import agn_feedback as agn
+from ashvini.run_params import PARAMS
 from ashvini import black_holes_growth as bh_growth
 from ashvini import main
 from ashvini import utils
@@ -85,7 +86,7 @@ def test_coupling_switch_zero_bh_or_sigma_mass_gives_zero():
 
 
 def test_agn_wind_mass_rate_eff_coupling_approaches_eta_agn(monkeypatch):
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
     bh_growth_rate = 1e5
 
     # M_BH >> M_sigma: coupling switch -> 1, so eta_agn_eff -> eta_agn
@@ -94,11 +95,11 @@ def test_agn_wind_mass_rate_eff_coupling_approaches_eta_agn(monkeypatch):
     )
     m_sig = bh_growth.m_sigma(bh_growth.velocity_dispersion(1e12, 6.0))
     assert 1e20 / m_sig > 1e6  # sanity: genuinely deep in the saturated regime
-    assert rate_saturated == pytest.approx(agn.eta_agn * bh_growth_rate, rel=1e-6)
+    assert rate_saturated == pytest.approx(PARAMS.bh.eta_agn * bh_growth_rate, rel=1e-6)
 
 
 def test_agn_wind_mass_rate_eff_coupling_approaches_zero_below_m_sigma(monkeypatch):
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
     bh_growth_rate = 1e5
 
     # M_BH << M_sigma: coupling switch -> 0
@@ -113,11 +114,11 @@ def test_agn_wind_mass_rate_eff_coupling_approaches_zero_below_m_sigma(monkeypat
 # ---------------------------------------------------------------------------
 
 def test_disabled_sigma_feedback_matches_constant_eta_agn_function(monkeypatch):
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", False)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", False)
     bh_growth_rate = 1e5
     # Passing bh_mass/halo_mass/redshift must be harmless (ignored) when disabled.
     rate = agn.agn_wind_mass_rate(bh_growth_rate, bh_mass=1.0, halo_mass=1e6, redshift=20.0)
-    assert rate == pytest.approx(agn.eta_agn * bh_growth_rate)
+    assert rate == pytest.approx(PARAMS.bh.eta_agn * bh_growth_rate)
 
 
 def test_disabled_sigma_feedback_reproduces_pinned_run1_baseline():
@@ -171,7 +172,7 @@ def test_sigma_feedback_mostly_dormant_at_group_scale_under_realistic_defaults(m
     # >=~5x below M_sigma throughout every halo's history under real
     # parameters -- the mechanism is a no-op there in practice, not because
     # it's disabled but because BH growth genuinely never gets close.
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
     # bh_growth.e_bh / eddington_multiplier intentionally left at their
     # real PARAMS defaults (unlike the other tests here) -- this is
     # specifically checking realistic, not stress-tested, behaviour.
@@ -205,7 +206,7 @@ def test_sigma_feedback_can_engage_at_low_mass_scale_under_realistic_defaults(mo
     # cross M_sigma for at least one halo under real parameters -- this
     # pins that real (if narrow) behaviour rather than assuming dormancy
     # everywhere.
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
 
     fixture_path = os.path.join(os.path.dirname(__file__), "fixtures", "merger_trees_fixture.h5")
     halo_masses, halo_mass_rates, redshift = utils.read_trees(fixture_path, 1e8)
@@ -277,11 +278,11 @@ def test_sigma_feedback_wind_alone_does_not_cap_bh_growth_near_m_sigma(monkeypat
         "camb:\n"
     )
 
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
-    monkeypatch.setattr(agn, "eta_agn", 1.0)  # maximal possible wind coupling
-    monkeypatch.setattr(bh_growth, "e_bh", 0.05)
-    monkeypatch.setattr(bh_growth, "eddington_multiplier", 50.0)
-    monkeypatch.setattr(main, "sn_type", "delayed")
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
+    monkeypatch.setattr(PARAMS.bh, "eta_agn", 1.0)  # maximal possible wind coupling
+    monkeypatch.setattr(PARAMS.bh, "efficiency", 0.05)
+    monkeypatch.setattr(PARAMS.bh, "eddington_multiplier", 50.0)
+    monkeypatch.setattr(PARAMS.sn, "type", "delayed")
 
     halo_masses, halo_growth_rates, redshifts, _merger_mass = pymctrees_adapter.build_forest_live(
         pymctrees_config_path=str(config_path), mass_bin=1e12,
@@ -319,9 +320,9 @@ def test_run_forest_matches_scalar_reference_with_sigma_feedback_enabled(monkeyp
     # so the M-sigma coupling switch actually has room to matter within the
     # synthetic halo's growth history, rather than being pinned at one
     # extreme throughout.
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
-    monkeypatch.setattr(bh_growth, "e_bh", 0.3)
-    monkeypatch.setattr(bh_growth, "eddington_multiplier", 500.0)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
+    monkeypatch.setattr(PARAMS.bh, "efficiency", 0.3)
+    monkeypatch.setattr(PARAMS.bh, "eddington_multiplier", 500.0)
 
     n = 60
     z = np.linspace(5.0, 15.0, n)[::-1]
@@ -416,12 +417,12 @@ def test_growth_cap_enabled_actually_holds_bh_mass_near_ceiling(monkeypatch, tmp
         "camb:\n"
     )
 
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
-    monkeypatch.setattr(agn, "eta_agn", 1.0)
-    monkeypatch.setattr(bh_growth, "e_bh", 0.05)
-    monkeypatch.setattr(bh_growth, "eddington_multiplier", 50.0)
-    monkeypatch.setattr(bh_growth, "growth_cap_enabled", True)
-    monkeypatch.setattr(main, "sn_type", "delayed")
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
+    monkeypatch.setattr(PARAMS.bh, "eta_agn", 1.0)
+    monkeypatch.setattr(PARAMS.bh, "efficiency", 0.05)
+    monkeypatch.setattr(PARAMS.bh, "eddington_multiplier", 50.0)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "growth_cap_enabled", True)
+    monkeypatch.setattr(PARAMS.sn, "type", "delayed")
 
     halo_masses, halo_growth_rates, redshifts, _merger_mass = pymctrees_adapter.build_forest_live(
         pymctrees_config_path=str(config_path), mass_bin=1e12,
@@ -453,10 +454,10 @@ def test_run_forest_matches_scalar_reference_with_growth_cap_enabled(monkeypatch
     # (run_forest's closed-form _bh_growth_step clip, run1_scalar's
     # solve_ivp-endpoint clip) must agree, not just each independently
     # produce a capped result.
-    monkeypatch.setattr(agn, "sigma_feedback_enabled", True)
-    monkeypatch.setattr(bh_growth, "e_bh", 0.3)
-    monkeypatch.setattr(bh_growth, "eddington_multiplier", 500.0)
-    monkeypatch.setattr(bh_growth, "growth_cap_enabled", True)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "enabled", True)
+    monkeypatch.setattr(PARAMS.bh, "efficiency", 0.3)
+    monkeypatch.setattr(PARAMS.bh, "eddington_multiplier", 500.0)
+    monkeypatch.setattr(PARAMS.bh.sigma_feedback, "growth_cap_enabled", True)
 
     n = 60
     z = np.linspace(5.0, 15.0, n)[::-1]

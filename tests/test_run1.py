@@ -68,13 +68,23 @@ REFERENCE_FINAL_VALUES = {
     # here is tiny (~0.003%) -- the effect is much larger for haloes where
     # BH growth is a significant fraction of the gas budget (see the BH
     # on/off comparison notebook).
-    "gas_mass": 16773599.010262107,
-    "stars_mass": 1328598.9040095299,
-    "gas_metals": 60997.94576822442,
-    "stars_metals": 2858.1035534377115,
-    "dust_mass": 3008.9971514939098,
+    #
+    # Recaptured 2026-11-02 after the chemistry/units corrections (docs/SUPERSET_DESIGN.md, section 2):
+    # (1) stars_mass/stars_metals integrate the evolving gas within a step (no first-order lag);
+    # (2) Z_IGM is 1e-3 Z_sun (mass fraction 1.5e-5), not 1e-3 as a mass fraction;
+    # (3) the stellar-metallicity step in the mass loading is centred on 0.1 Z_sun, not on a mass
+    #     fraction of 0.1, so it now operates;
+    # (4) dust production, destruction and wind removal follow the supernova feedback switch, and
+    #     destruction uses nu_SN * SFR (IMF, 8-40 Msun) times the dust-to-gas ratio.
+    # Previous values, for the record: gas_mass 16773599.01, stars_mass 1328598.90, gas_metals 60997.95,
+    # stars_metals 2858.104, dust_mass 3008.997, sfr 1018092.47 (bh_mass unchanged).
+    "gas_mass": 17004104.153841224,
+    "stars_mass": 1335784.89,
+    "gas_metals": 45057.18271,
+    "stars_metals": 1579.855933,
+    "dust_mass": 2617.960831,
     "bh_mass": 998.4929263552812,
-    "sfr": 1018092.4660432874,
+    "sfr": 1032083.235,
 }
 
 

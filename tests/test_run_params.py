@@ -37,13 +37,12 @@ def _write_config(tmp_path, basics_yaml):
           omega: 2
 
         metallicity:
-          Z_IGM: 1.0e-3
+          Z_IGM_Zsun: 1.0e-3
           Z_yield: 0.06
 
         dust:
           m_swept: 1.0e+3
           dust_yield: 0.004
-          dust_gamma: 1.3e-4
           dust_alpha: 8
           m_crit: 1.0e+5
 
@@ -55,13 +54,13 @@ def _write_config(tmp_path, basics_yaml):
               enabled: True
               z_min: 15
               M_halo_min: 1.0e+6
-              Z_gas_max: 1.0e-4
+              Z_gas_max_Zsun: 1.0e-4
               M_seed: 1.0e+2
             direct_collapse:
               enabled: True
               z_min: 10
               M_halo_min: 1.0e+7
-              Z_gas_max: 1.0e-5
+              Z_gas_max_Zsun: 1.0e-5
               M_seed: 1.0e+5
             halo_mass_threshold:
               enabled: True

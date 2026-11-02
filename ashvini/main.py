@@ -11,6 +11,8 @@ from . import black_holes_growth as bh_growth
 from . import black_holes_growth_slimdisk as bh_slimdisk
 from . import agn_feedback as agn
 from .spin import epsilon_from_spin
+from .constants import Z_SUN
+from .imf import nu_SN
 
 from .star_formation import star_formation_rate, time_freefall
 from .gas_evolve import gas_inflow_rate, update_gas_reservoir
@@ -25,10 +27,10 @@ sn_type = PARAMS.sn.type  # type of supernova feedback
 agn_delay_time = PARAMS.bh.feedback_delay_time  # Gyr; 0.0 = instantaneous AGN wind
 _DEFAULT_GROWTH_MODEL = PARAMS.bh.growth_model  # "pznk11_freefall" (default) or "hobbs_slimdisk" -- see MODELS.md
 e_ff = PARAMS.sf.efficiency
-IGM_metallicity = PARAMS.metals.Z_IGM
+IGM_metallicity = PARAMS.metals.Z_IGM_Zsun * Z_SUN  # absolute mass fraction
 metallicity_yield = PARAMS.metals.Z_yield
 Y_d = PARAMS.dust.dust_yield
-Gamma = PARAMS.dust.dust_gamma
+SN_per_Msun = nu_SN(PARAMS.sn.imf, PARAMS.sn.m_sn_min, PARAMS.sn.m_sn_max)  # supernovae per Msun formed
 Alpha = PARAMS.dust.dust_alpha
 M_crit = PARAMS.dust.m_crit
 M_swept = PARAMS.dust.m_swept
@@ -37,6 +39,22 @@ M_swept = PARAMS.dust.m_swept
 tiny = 1e-15  # small number for numerical gymnastics...
 
 method = "LSODA"
+
+
+def _effective_sn_type():
+    """
+    Supernova feedback type actually applied. A "delayed" wind with a zero delay is instantaneous
+    feedback: the delayed lookback would otherwise point at the current step, whose star formation
+    rate is not yet known, and silently switch feedback off.
+    """
+    return "instantaneous" if (sn_type == "delayed" and t_d <= 0.0) else sn_type
+
+
+def _step_feedback_type(eff_type, has_delay_history):
+    """Feedback type for one step: "instantaneous" and "no" apply at every step; "delayed" only once a delay has elapsed."""
+    if eff_type == "delayed" and not has_delay_history:
+        return "no"
+    return eff_type
 
 
 def run1_scalar(halo_mass, halo_mass_rate, redshift):
@@ -64,6 +82,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         redshift, halo_mass, halo_mass_rate, UV_background
     )
 
+    eff_sn_type = _effective_sn_type()
     delay_idx = _delay_lookback_index(cosmic_time, t_d)
     agn_delay_idx = _delay_lookback_index(cosmic_time, agn_delay_time)
     bh_growth_rate_history = np.zeros(n)
@@ -72,12 +91,16 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         t_span = [cosmic_time[j - 1], cosmic_time[j]]
 
         has_delay_history = delay_idx[j] >= 0
-        if not has_delay_history:
-            feedback_type = "no"
-            sfr_feedback = 0.0
-        else:
-            feedback_type = sn_type
+        feedback_type = _step_feedback_type(eff_sn_type, has_delay_history)
+        # The star formation rate that drives supernova feedback, for gas, metals and dust alike:
+        # zero ("no"), the delayed rate ("delayed"), or the present rate ("instantaneous", frozen at the
+        # start of the step for the metals and dust, as in the vectorised path).
+        if feedback_type == "delayed":
             sfr_feedback = sfr[delay_idx[j]]
+        elif feedback_type == "instantaneous":
+            sfr_feedback = star_formation_rate(t_span[0], gas_mass[j - 1])
+        else:
+            sfr_feedback = 0.0
 
         # Black hole seeding + growth (computed before gas mass, since gas
         # mass's AGN wind term needs this step's BH growth rate)
@@ -132,74 +155,50 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
         if bh_growth.growth_cap_enabled:
             bh_mass_mid = min(bh_mass_mid, float(bh_growth.growth_ceiling(halo_mass[j - 1], z_mid)))
 
-        # Update gas mass
-        sol = solve_ivp(
-            update_gas_reservoir,
-            t_span,
-            [gas_mass[j - 1]],
-            method=method,
-            args=(
-                gas_accretion_rate[j - 1],
-                halo_mass[j - 1],
-                stellar_metallicity[j - 1],
-                sfr_feedback,
-                feedback_type,
-                agn_growth_rate,       # instantaneous: BH's own accretion, a gas-mass sink
-                agn_wind_growth_rate,  # possibly delayed: drives the AGN wind term
-                bh_mass_mid,           # step-midpoint M_BH, for the AGN coupling switch
-            ),
+        # Update gas mass and stellar mass together: the stars formed in the step are the integral of
+        # the star formation rate of the evolving gas, not of the gas mass at the start of the step.
+        gas_args = (
+            gas_accretion_rate[j - 1],
+            halo_mass[j - 1],
+            stellar_metallicity[j - 1],
+            sfr_feedback,
+            feedback_type,
+            agn_growth_rate,       # instantaneous: BH's own accretion, a gas-mass sink
+            agn_wind_growth_rate,  # possibly delayed: drives the AGN wind term
+            bh_mass_mid,           # step-midpoint M_BH, for the AGN coupling switch
         )
-        gas_mass[j] = sol.y[0, -1]
-
-        # Update stellar mass
         sol = solve_ivp(
-            lambda t, y: [star_formation_rate(t, gas_mass[j - 1])],
+            lambda t, y: [
+                float(update_gas_reservoir(t, y[0], *gas_args)),
+                float(star_formation_rate(t, y[0])),
+            ],
             t_span,
-            [stars_mass[j - 1]],
+            [gas_mass[j - 1], stars_mass[j - 1]],
             method=method,
         )
-        stars_mass[j] = sol.y[0, -1]
+        gas_mass[j], stars_mass[j] = sol.y[0, -1], sol.y[1, -1]
 
-        # Update gas metals
-        if not has_delay_history:
-            sfr_input = sfr[j - 1]
-        else:
-            sfr_input = sfr[delay_idx[j]]
-        sol = solve_ivp(
-            evolve_gas_metals,
-            t_span,
-            [gas_metals[j - 1]],
-            method=method,
-            args=(
-                gas_mass[j - 1],
-                gas_accretion_rate[j - 1],
-                halo_mass[j - 1],
-                stellar_metallicity[j - 1],
-                sfr_input,
-                feedback_type,
-            ),
+        # Update gas metals and stellar metals together (metals are locked into stars at e_ff/t_ff * M_Z)
+        metal_args = (
+            gas_mass[j - 1],
+            gas_accretion_rate[j - 1],
+            halo_mass[j - 1],
+            stellar_metallicity[j - 1],
+            sfr_feedback,
+            feedback_type,
         )
-        gas_metals[j] = sol.y[0, -1]
-
-        # Update stellar metals
         sol = solve_ivp(
-            lambda t, y: [evolve_stars_metals(t, gas_metals[j - 1], gas_mass[j - 1])],
+            lambda t, y: [
+                float(evolve_gas_metals(t, y[0], *metal_args)),
+                float(evolve_stars_metals(t, y[0])),
+            ],
             t_span,
-            [stars_metals[j - 1]],
+            [gas_metals[j - 1], stars_metals[j - 1]],
             method=method,
         )
-        stars_metals[j] = sol.y[0, -1]
+        gas_metals[j], stars_metals[j] = sol.y[0, -1], sol.y[1, -1]
 
-        # Update dust mass
-        if has_delay_history and delay_idx[j] >= 1:
-            idx1 = delay_idx[j]
-            idx2 = idx1 - 1
-            past_sfr_dust = sfr[idx1]
-            past_stars_mass_dust = stars_mass[idx1] - stars_mass[idx2]
-        else:
-            past_sfr_dust = 0.0
-            past_stars_mass_dust = 0.0
-
+        # Update dust mass (driven by the same star formation rate as the supernova wind)
         sol = solve_ivp(
             update_dust_reservoir,
             t_span,
@@ -208,8 +207,7 @@ def run1_scalar(halo_mass, halo_mass_rate, redshift):
             args=(
                 gas_mass[j - 1],
                 halo_mass[j - 1],
-                past_sfr_dust,
-                past_stars_mass_dust,
+                sfr_feedback,
                 stellar_metallicity[j - 1],
             ),
         )
@@ -299,24 +297,6 @@ def _linear_ode_step(y0, forcing, decay, dt):
         (1.0 - exp_term) / np.where(x == 0, 1.0, decay),
     )
     return y0 * exp_term + forcing * phi
-
-
-def _sf_time_integral(cosmic_time, redshift):
-    """
-    I[j-1] = integral_{t[j-1]}^{t[j]} dt / t_ff(z(t)), for j = 1..n-1.
-
-    Identical for every halo in a forest -- it depends only on the shared
-    cosmic_time/redshift grid, not on halo mass -- so it's computed once via
-    5-point Gauss-Legendre quadrature per step and reused by every halo,
-    instead of being re-integrated per halo per step as an ODE.
-    """
-    nodes, weights = np.polynomial.legendre.leggauss(5)
-    t0, t1 = cosmic_time[:-1], cosmic_time[1:]
-    dt = t1 - t0
-    t_sub = 0.5 * dt[:, None] * nodes[None, :] + 0.5 * (t0 + t1)[:, None]
-    z_sub = utils.z_at_time(t_sub)
-    integrand = 1.0 / time_freefall(z_sub)
-    return 0.5 * dt * np.sum(integrand * weights[None, :], axis=1)
 
 
 def _delay_lookback_index(cosmic_time, t_d):
@@ -477,7 +457,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
         redshift_bcast, halo_mass, halo_mass_rate, UV_background
     )
 
-    sf_integral = _sf_time_integral(cosmic_time, redshift)
+    eff_sn_type = _effective_sn_type()
     delay_idx = _delay_lookback_index(cosmic_time, t_d)
     agn_delay_idx = _delay_lookback_index(cosmic_time, agn_delay_time)
     bh_growth_rate_history = np.zeros((N, n))
@@ -493,10 +473,7 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
         gm_prev_safe = np.where(has_gas, gm_prev, 1.0)
 
         has_delay_history = delay_idx[j] >= 0
-        if not has_delay_history:
-            feedback_type = "no"
-        else:
-            feedback_type = sn_type
+        feedback_type = _step_feedback_type(eff_sn_type, has_delay_history)
 
         A_acc = gas_accretion_rate[:, j - 1]
         B_sf = e_ff / time_freefall(z_mid)  # scalar, shared across haloes
@@ -578,68 +555,64 @@ def run_forest(halo_mass, halo_mass_rate, redshift, growth_model=None,
                 agn_wind_growth_rate, bh_mass=bh_mass_mid, halo_mass=hm_prev, redshift=z_mid
             )
 
-        # --- gas mass: dy/dt = A_acc - present_sfr(y) - ML*wind_sfr
-        #                        - bh_accretion - AGN wind ---
-        # (present_sfr is always self-referential -- it's B_sf*y for THIS
-        # ode -- so it's always decay; only "instantaneous" wind_sfr is
-        # also self-referential, the other two branches keep it as forcing;
-        # bh_accretion (this step's own BH growth, a gas-mass sink -- see
-        # gas_evolve.update_gas_reservoir's docstring) and the AGN wind
-        # term are forcing regardless of branch, same as agn_forcing was)
+        # --- the star formation rate that drives supernova feedback, for gas, metals and dust alike:
+        # zero ("no"), the present rate B_sf * M_gas ("instantaneous"), or the rate delay_time ago
+        # ("delayed"). Dust follows exactly the same switch as the gas and metals. ---
         if feedback_type == "no":
             wind_sfr = np.zeros(N)
-            gas_forcing = A_acc - agn_growth_rate - agn_forcing
-            gas_decay = B_sf
         elif feedback_type == "instantaneous":
-            wind_sfr = B_sf * gm_prev  # only used below, in gas_metals forcing
+            wind_sfr = B_sf * gm_prev
+        else:  # "delayed"
+            wind_sfr = sfr[:, delay_idx[j]]
+
+        # --- gas mass: dy/dt = A_acc - B_sf*y - ML*wind_sfr - bh_accretion - AGN wind ---
+        # (B_sf*y, star formation, is always self-referential, so it is always decay; only
+        # "instantaneous" wind_sfr is also self-referential, the other two branches keep it as
+        # forcing; bh_accretion (this step's own BH growth, a gas-mass sink -- see
+        # gas_evolve.update_gas_reservoir's docstring) and the AGN wind term are forcing regardless)
+        if feedback_type == "instantaneous":
             gas_forcing = A_acc - agn_growth_rate - agn_forcing
             gas_decay = B_sf * (1.0 + ML)
-        else:  # "delayed"
-            wind_sfr = sfr[:, delay_idx[j]] if has_delay_history else np.zeros(N)
+        else:
             gas_forcing = A_acc - ML * wind_sfr - agn_growth_rate - agn_forcing
             gas_decay = B_sf
 
-        gas_mass[:, j] = _linear_ode_step(gm_prev, gas_forcing, gas_decay, dt)
+        gas_raw = _linear_ode_step(gm_prev, gas_forcing, gas_decay, dt)
+        gas_mass[:, j] = gas_raw
 
-        # --- gas metals: dy/dt = IGM*A_acc + yield*wind_sfr
-        #                          - y*(B_sf + ML*wind_sfr/gas_mass) ---
-        # (gas_mass here is always the frozen gm_prev, not this ode's own
-        # state, so this decay/forcing split is branch-agnostic once
-        # wind_sfr is known)
+        # --- stars: the gas reservoir is consumed by star formation (B_sf) and, for instantaneous
+        # feedback, by the wind; integrating dy/dt = F - D*y gives D * integral(y dt) = y0 + F*dt - y1
+        # exactly, so the stars formed are (B_sf / D) * (y0 + F*dt - y1): no first-order lag, and
+        # gas + stars + removed mass balance to round-off. A reservoir that is empty at the start
+        # of the step but fills during it forms stars in that step. Where a negative-forcing step
+        # would drive the raw solution below zero, the budget is clamped at zero stars.
+        stars_formed = np.maximum(B_sf / gas_decay * (gm_prev + gas_forcing * dt - gas_raw), 0.0)
+        stars_mass[:, j] = stars_mass[:, j - 1] + stars_formed
+
+        # --- gas metals: dy/dt = IGM*A_acc + yield*wind_sfr - y*(B_sf + ML*wind_sfr/gas_mass) ---
+        # (gas_mass here is always the frozen gm_prev, not this ode's own state; the locking term
+        # B_sf*y needs no gas mass, so it also applies to a reservoir that starts the step empty)
         forcing_gm = IGM_metallicity * A_acc + metallicity_yield * wind_sfr
-        decay_gm = np.where(has_gas, B_sf + ML * wind_sfr / gm_prev_safe, 0.0)
-        gas_metals[:, j] = _linear_ode_step(
-            gas_metals[:, j - 1], forcing_gm, decay_gm, dt
+        decay_gm = B_sf + np.where(has_gas, ML * wind_sfr / gm_prev_safe, 0.0)
+        gas_metals_raw = _linear_ode_step(gas_metals[:, j - 1], forcing_gm, decay_gm, dt)
+        gas_metals[:, j] = gas_metals_raw
+        # --- stellar metals: locked at B_sf * y, so the same budget identity applies ---
+        metals_locked = np.maximum(
+            B_sf / decay_gm * (gas_metals[:, j - 1] + forcing_gm * dt - gas_metals_raw), 0.0
         )
+        stars_metals[:, j] = stars_metals[:, j - 1] + metals_locked
 
-        # --- stars mass / stars metals: pure quadrature, no y-dependence ---
-        I_j = sf_integral[j - 1]
-        stars_mass[:, j] = stars_mass[:, j - 1] + gm_prev * e_ff * I_j
-        stars_metals[:, j] = stars_metals[:, j - 1] + np.where(
-            has_gas, gas_metals[:, j - 1] * e_ff * I_j, 0.0
-        )
-
-        # --- dust mass ---
-        if has_delay_history and delay_idx[j] >= 1:
-            idx1 = delay_idx[j]
-            idx2 = idx1 - 1
-            past_sfr = sfr[:, idx1]
-            past_stars_mass = stars_mass[:, idx1] - stars_mass[:, idx2]
-        else:
-            past_sfr = np.zeros(N)
-            past_stars_mass = np.zeros(N)
-
-        has_stars = past_stars_mass > 0
-        SNe_rate = np.where(
-            has_stars, Gamma * past_sfr / np.where(has_stars, past_stars_mass, 1.0), 0.0
-        )
+        # --- dust mass: dy/dt = Y_d*wind_sfr
+        #        - y * wind_sfr/gas_mass * (nu_SN * M_swept * f_gas + ML) ---
+        # Production, destruction and wind removal are all driven by wind_sfr (see above).
+        # Destruction is the supernova rate nu_SN * wind_sfr times the dust-to-gas ratio y/gas_mass
+        # times the swept-up mass (the dust in the swept-up gas), gated by f_gas.
+        # ML is the same mass_loading_factor(z_mid, hm_prev, sz_prev) computed above.
         dust_loading = 1.0 - np.exp(-((gm_prev / M_crit) ** Alpha))
-        dust_forcing = Y_d * past_sfr - M_swept * SNe_rate * dust_loading
-        # ML here is the same mass_loading_factor(z_mid, hm_prev, sz_prev)
-        # computed above for the gas-mass/gas-metals ODEs -- dust's wind loss
-        # uses the same stellar metallicity, so it's reused rather than
-        # recomputed.
-        dust_decay = np.where(has_gas, ML * past_sfr / gm_prev_safe, 0.0)
+        dust_forcing = Y_d * wind_sfr
+        dust_decay = np.where(
+            has_gas, (SN_per_Msun * M_swept * dust_loading + ML) * wind_sfr / gm_prev_safe, 0.0
+        )
         dust_mass[:, j] = _linear_ode_step(
             dust_mass[:, j - 1], dust_forcing, dust_decay, dt
         )

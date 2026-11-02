@@ -6,7 +6,7 @@ from .run_params import PARAMS
 
 e_bh = PARAMS.bh.efficiency  # efficiency of black hole growth
 eddington_multiplier = PARAMS.bh.eddington_multiplier  # f_Edd; >1 allows super-Eddington growth
-from .constants import G, c, m_p, sigma_thomson, Gyr_s, Msun_g
+from .constants import G, c, m_p, sigma_thomson, Gyr_s, Msun_g, Z_SUN
 
 # black_holes.sigma_feedback -- isothermal-sphere M-sigma self-regulation
 # (King 2003, 2005; Power, Zubovas, Nayakshin & King 2011). Only used by
@@ -180,7 +180,7 @@ def seeding_mask_and_mass(halo_mass, redshift, gas_metallicity, already_seeded):
             candidate
             & (redshift >= p3.z_min)
             & (halo_mass >= p3.M_halo_min)
-            & (gas_metallicity <= p3.Z_gas_max)
+            & (gas_metallicity <= p3.Z_gas_max_Zsun * Z_SUN)
         )
         seed_mass = np.where(mask, p3.M_seed, seed_mass)
         triggered = triggered | mask
@@ -192,7 +192,7 @@ def seeding_mask_and_mass(halo_mass, redshift, gas_metallicity, already_seeded):
             & ~triggered
             & (redshift >= dc.z_min)
             & (halo_mass >= dc.M_halo_min)
-            & (gas_metallicity <= dc.Z_gas_max)
+            & (gas_metallicity <= dc.Z_gas_max_Zsun * Z_SUN)
         )
         seed_mass = np.where(mask, dc.M_seed, seed_mass)
         triggered = triggered | mask

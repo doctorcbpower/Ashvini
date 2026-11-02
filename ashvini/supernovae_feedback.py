@@ -4,14 +4,21 @@ import numpy as np
 from . import utils as utils
 
 from .run_params import PARAMS
+from .constants import Z_SUN
 
 epsilon_p = PARAMS.sn.epsilon_p
 pi_fid = PARAMS.sn.pi_fid
 
 
 def metallicity_function(stellar_metallicity, m=0.1, s=0.01, a=1, b=0.25):
+    """
+    Metallicity dependence of the mass loading: a smooth step from a (low metallicity) to b (high
+    metallicity), centred on m with width s. stellar_metallicity is an absolute mass fraction; m and s
+    are in units of Z_sun (constants.Z_SUN), so the step is centred on 0.1 Z_sun.
+    """
+    x = np.asarray(stellar_metallicity, dtype=float) / Z_SUN
     function_value = (
-        np.exp(-np.logaddexp(0, -(stellar_metallicity - m) / s)) * (b - a) + a
+        np.exp(-np.logaddexp(0, -(x - m) / s)) * (b - a) + a
     )
     return function_value
 

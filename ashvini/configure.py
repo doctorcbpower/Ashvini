@@ -39,6 +39,7 @@ def set_params(
     growth_cap_enabled=None,
     e_bh=None,
     eddington_multiplier=None,
+    m_sn_max=None,
 ):
     """
     Override one or more fiducial parameters in place, for the remainder of
@@ -114,6 +115,14 @@ def set_params(
 
     if e_bh is not None:
         _bh.e_bh = e_bh
+
+    if m_sn_max is not None:
+        # upper progenitor mass for supernovae; changes only the supernova rate in the dust destruction term
+        from . import dust as _dust
+        from .imf import nu_SN
+        nu = nu_SN(PARAMS.sn.imf, PARAMS.sn.m_sn_min, m_sn_max)
+        _main.SN_per_Msun = nu
+        _dust.SN_per_Msun = nu
 
     if eddington_multiplier is not None:
         _bh.eddington_multiplier = eddington_multiplier

@@ -67,6 +67,11 @@ class SupernovaParams:
     delay_time: float
     epsilon_p: float
     pi_fid: float
+    # Supernova progenitor range and IMF: used only for the supernova rate in the dust destruction term
+    # (the mass-loading factor above is a separate calibrated prescription).
+    imf: str = "salpeter"
+    m_sn_min: float = 8.0
+    m_sn_max: float = 40.0
 
 
 @dataclass
@@ -79,15 +84,14 @@ class ReionizationParams:
 
 @dataclass
 class MetalsParams:
-    Z_IGM: float
-    Z_yield: float
+    Z_IGM_Zsun: float  # metallicity of inflowing gas, in units of Z_sun (constants.Z_SUN, a mass fraction)
+    Z_yield: float     # mass of metals returned per unit mass of stars formed (mass ratio, not Z_sun)
 
 
 @dataclass
 class DustParams:
     m_swept: float
     dust_yield: float
-    dust_gamma: float
     dust_alpha: float
     m_crit: float
 
@@ -97,7 +101,7 @@ class Pop3Seeding:
     enabled: bool
     z_min: float
     M_halo_min: float
-    Z_gas_max: float
+    Z_gas_max_Zsun: float  # in units of Z_sun
     M_seed: float
 
 
@@ -106,7 +110,7 @@ class DirectCollapseSeeding:
     enabled: bool
     z_min: float
     M_halo_min: float
-    Z_gas_max: float
+    Z_gas_max_Zsun: float  # in units of Z_sun
     M_seed: float
 
 
@@ -203,6 +207,21 @@ class Params:
     bh: BlackHoleParams
 
 
+def _reject_legacy_keys(raw):
+    """Keys whose meaning or unit changed: fail loudly rather than reinterpret an old file silently."""
+    if "Z_IGM" in raw.get("metallicity", {}):
+        raise ValueError("metallicity.Z_IGM is no longer accepted: it was documented in Z_sun units but used as a mass "
+                         "fraction. Use metallicity.Z_IGM_Zsun (units of Z_sun; mass fraction = value * Z_SUN).")
+    if "dust_gamma" in raw.get("dust", {}):
+        raise ValueError("dust.dust_gamma is no longer accepted: the supernova rate in the dust destruction term is now "
+                         "nu_SN * SFR with nu_SN computed from supernova.imf, m_sn_min and m_sn_max.")
+    seeding = raw.get("black_holes", {}).get("seeding", {})
+    for channel, d in seeding.items():
+        if "Z_gas_max" in d:
+            raise ValueError(f"black_holes.seeding.{channel}.Z_gas_max is no longer accepted: use Z_gas_max_Zsun "
+                             "(units of Z_sun).")
+
+
 def load_params(config_file=None) -> Params:
     """
     config_file : str or Path, optional
@@ -215,6 +234,8 @@ def load_params(config_file=None) -> Params:
         root = Path(__file__).resolve().parents[1]
         config_file = root / "run_params.yaml"
     raw = yaml.safe_load(Path(config_file).read_text())
+
+    _reject_legacy_keys(raw)
 
     basics = dict(raw["basics"])
     pymctrees_raw = basics.pop("pymctrees", None)
@@ -267,6 +288,17 @@ def print_config(params: Params):
     section("Metals", asdict(params.metals))
     section("Dust", asdict(params.dust))
     section("Black Holes", asdict(params.bh))
+
+    from .constants import Z_SUN
+    from .imf import nu_SN
+    print("\n[Resolved units]")
+    print(f"  Z_sun (mass fraction)        : {Z_SUN}")
+    print(f"  Z_IGM                        : {params.metals.Z_IGM_Zsun} Zsun = {params.metals.Z_IGM_Zsun * Z_SUN:.3e} (mass fraction)")
+    s = params.bh.seeding
+    print(f"  pop3 Z_gas_max               : {s.pop3.Z_gas_max_Zsun} Zsun = {s.pop3.Z_gas_max_Zsun * Z_SUN:.3e} (mass fraction)")
+    print(f"  direct_collapse Z_gas_max    : {s.direct_collapse.Z_gas_max_Zsun} Zsun = {s.direct_collapse.Z_gas_max_Zsun * Z_SUN:.3e} (mass fraction)")
+    nu = nu_SN(params.sn.imf, params.sn.m_sn_min, params.sn.m_sn_max)
+    print(f"  nu_SN ({params.sn.imf}, {params.sn.m_sn_min}-{params.sn.m_sn_max} Msun) : {nu:.4e} per Msun formed")
 
 
 PARAMS = load_params()

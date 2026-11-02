@@ -51,6 +51,8 @@ def validate(cfg):
         raise ValueError("supernova.m_sn_max must be <= 100 Msun with kernel 'imf' (the lifetime grids stop there).")
     if cfg.events.bank_tau_myr is not None and cfg.sn.closure != "energy":
         raise ValueError("events.bank_tau_myr needs supernova.closure 'energy' (the bank stores unused explosion energy).")
+    if cfg.events.eps_cut_mass is not None and cfg.sn.closure != "energy":
+        raise ValueError("events.eps_cut_mass switches the energy closure's eps_fb, so it needs supernova.closure 'energy'.")
     if not 0.0 < cfg.events.access_fraction <= 1.0:
         raise ValueError(f"events.access_fraction must be in (0, 1]; got {cfg.events.access_fraction}.")
     if cfg.bh.growth_model not in GROWTH_MODELS:

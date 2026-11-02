@@ -145,6 +145,8 @@ OPTION_CASES = {
     "energy_bank_control": {"ash": {"sn.eps_fb": 1.0}, "sto": {"eps_fb": 1.0}},
     "energy_bank": {"ash": {"sn.eps_fb": 1.0, "events.bank_tau_myr": 100.0}, "sto": {"eps_fb": 1.0, "bank_tau_myr": 100.0}},
     "access_fraction": {"ash": {"sn.eps_fb": 1.0, "events.access_fraction": 0.05}, "sto": {"eps_fb": 1.0, "f_access": 0.05}},
+    "coupling_switch": {"ash": {"sn.eps_fb": 1.0, "events.eps_cut_mass": 1.0e7, "events.eps_fb_above_cut": 0.05},
+                        "sto": {"eps_fb": 1.0, "M_eps_cut": 1.0e7, "eps_fb_hi": 0.05}},
     "gate": {"ash": {"events.gate_T_vir_K": 5.0e3}, "sto": {"T_vir_thresh": 5.0e3}},
 }
 OPTION_GOLDEN = Path(__file__).parent / "golden" / "stochocc_options.json"

@@ -17,7 +17,7 @@ What it does:
               dust (weight * m_swept * M_d/M_g * f_gas, at most the dust present), and carries off metals and
               dust in proportion to the gas it removes
 Not in this stepper: black holes and AGN winds (bh_mass is zero). Optional, all off by default (Config section `events`):
-the star formation gate, inflow lag, recycling, energy bank, access fraction.
+the star formation gate, inflow lag, recycling, energy bank, access fraction, coupling switch.
 
 Times are in Gyr, masses in Msun.
 """
@@ -203,7 +203,10 @@ class EventStepper:
             res.dust -= destroyed
             res.dust_destroyed += destroyed
         Z_star = res.stars_metals / res.stars if res.stars > 0 else 0.0
-        wanted = weight * float(self.closure.per_supernova(z, M_h, Z_star))
+        coupling = {}
+        if cfg.events.eps_cut_mass is not None and M_h >= cfg.events.eps_cut_mass:
+            coupling = {"eps_fb": cfg.events.eps_fb_above_cut}                # evaluated at the explosion time
+        wanted = weight * float(self.closure.per_supernova(z, M_h, Z_star, **coupling))
         removed = min(max(res.gas, 0.0) * cfg.events.access_fraction, wanted)     # an explosion reaches only part of the gas
         lost_Z = lost_d = 0.0
         if removed > 0.0 and res.gas > 0.0:

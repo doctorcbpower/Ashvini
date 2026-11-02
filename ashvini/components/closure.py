@@ -62,9 +62,16 @@ class MomentumClosure(_SupernovaClosure):
 
 
 class EnergyClosure(_SupernovaClosure):
-    def _per_supernova(self, v_esc):
+    def _per_supernova(self, v_esc, eps_fb=None):
         sn_ = self.cfg.sn
-        return 2.0 * sn_.eps_fb * sn_.E_SN_erg / v_esc ** 2 / Msun_g
+        return 2.0 * (sn_.eps_fb if eps_fb is None else eps_fb) * sn_.E_SN_erg / v_esc ** 2 / Msun_g
+
+    def per_supernova(self, redshift, halo_mass, stellar_metallicity=None, eps_fb=None):
+        """As the other closures, with the coupling eps_fb optionally given for this call (event stepper's eps_cut_mass)."""
+        halo_mass = np.asarray(halo_mass, dtype=float)
+        resolved = halo_mass > 0
+        v_esc = halo.v_esc_cms(np.where(resolved, halo_mass, 1.0), redshift)
+        return np.where(resolved, self._per_supernova(v_esc, eps_fb), 0.0)
 
 
 def make_closure(cfg):

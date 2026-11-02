@@ -234,6 +234,10 @@ class EventParams:
     bank_tau_myr: float = None
     # access fraction: one explosion can reach at most this fraction of the gas in the reservoir
     access_fraction: float = 1.0
+    # coupling switch: in a halo of at least eps_cut_mass (Msun) at the time of the explosion the energy closure uses
+    # eps_fb_above_cut instead of supernova.eps_fb (SNe confined in massive minihaloes). None = off. Needs closure "energy".
+    eps_cut_mass: float = None
+    eps_fb_above_cut: float = 0.0
 
 
 @dataclass

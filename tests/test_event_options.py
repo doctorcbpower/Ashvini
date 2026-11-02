@@ -161,3 +161,28 @@ def test_access_fraction_caps_what_one_explosion_can_remove():
 def test_access_fraction_agrees_with_stochocc():
     assert PIN["access_fraction"]["M_g"] < 0.2 * PIN["energy_bank_control"]["M_g"]       # it matters: the gas is left far lower
     _agree("access_fraction", 3e-2, 1.5e-2, 1.5e-1)    # a cap on each explosion: the gas left is a 1e-3 remainder of the supply
+
+
+def test_coupling_switch_uses_the_high_mass_coupling_at_the_explosion_time():
+    from ashvini.config import override
+    from ashvini.steppers.events import EventStepper, _Reservoirs
+    from ashvini.trajectory import HaloHistory
+    z = np.arange(20.0, 10.0 - 1e-9, -0.2)
+    hist = HaloHistory(P.MINIHALO(z), z)
+    base = P.base_config(**{**P.OPTION_BASE["ash"], "sn.eps_fb": 1.0})
+    cfg = override(base, **{"events.eps_cut_mass": 1.0e7, "events.eps_fb_above_cut": 0.05})
+    t_below, t_above = hist.t_min + 0.2 * (hist.t_max - hist.t_min), hist.t_max
+    assert hist.mass_at_t(t_below) < 1.0e7 <= hist.mass_at_t(t_above)
+    for t, eps in ((t_below, 1.0), (t_above, 0.05)):
+        res = _Reservoirs(t, 1.0e12, 0.0)
+        EventStepper(cfg).explode(hist, res, t, 20.0, 1.0)
+        reference = _Reservoirs(t, 1.0e12, 0.0)
+        EventStepper(override(base, **{"sn.eps_fb": eps})).explode(hist, reference, t, 20.0, 1.0)
+        assert res.ejected == pytest.approx(reference.ejected, rel=1e-12)
+    with pytest.raises(ValueError, match="energy"):
+        override(base, **{"sn.closure": "momentum", "events.eps_cut_mass": 1.0e7})
+
+
+def test_coupling_switch_agrees_with_stochocc():
+    assert PIN["coupling_switch"]["M_star"] > 1.5 * PIN["energy_bank_control"]["M_star"]    # it matters: weaker coupling above the cut
+    _agree("coupling_switch", 1.5e-2, 1.5e-2, 5e-2)

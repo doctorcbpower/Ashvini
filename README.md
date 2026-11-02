@@ -59,10 +59,27 @@ See the script's docstring for the unit/ordering conversions it handles (pymctre
 
 Alternatively, `run()` can generate trees live -- no intermediate file -- by setting `basics.tree_source: pymctrees` in `run_params.yaml` instead of `file` (see the commented-out example in `run_params.yaml` for the full `basics.pymctrees` block: config path, halo count, z0/z_max/dz, mass resolution, backend, seed). Tree generation is fast enough that there's no caching -- every run regenerates the forest. For a forest you want to reuse across many `run_params.yaml` sweeps, build one offline instead with the script above and point `tree_file` at it.
 
+## Learning the model
+
+Start with [docs/STUDENT_GUIDE.md](docs/STUDENT_GUIDE.md) and `notebooks/ashvini_tour.ipynb`: how the code is laid out, how to change a parameter, swap a piece of physics, follow individual supernovae, and how to know a change is right. [docs/RESERVOIRS.md](docs/RESERVOIRS.md) says which modules are frozen.
+
+```python
+from ashvini import utils
+from ashvini.config import DEFAULT, override
+from ashvini.main import run_forest, run_events
+
+halo_mass, rate, z = utils.read_trees("tests/fixtures/merger_trees_fixture.h5", 1e10)
+result = run_forest(halo_mass, rate, z, config=override(DEFAULT, **{"sf.efficiency": 0.03}))
+```
+
 ## Package structure
 
 | Module | Responsibility |
 |---|---|
+| `config.py`, `state.py` | `Config` (the parameter tree; `DEFAULT`, `override`, `validate`) and `State` (the evolving arrays) |
+| `components/` | One piece of physics each: `star_formation`, `inflow`, `delay` (when stars explode), `closure` (how much gas explosions remove), `gas`, `chemistry`, `blackholes`, `ode` |
+| `steppers/` | `grid.py` (`GridStepper`: all haloes of a forest, step by step on the tree grid) and `events.py` (`EventStepper`: individual supernovae at their own times, with optional gate, inflow lag, recycling, energy bank, ...) |
+| `imf.py`, `stellar_lifetimes.py`, `halo.py`, `samplers.py`, `trajectory.py`, `presets.py` | IMF and supernova rate; main-sequence lifetimes (Ekstrom 2012, Georgy 2013); halo scales; supernova samplers; the halo history for the event stepper; ready-made parameter sets |
 | `main.py` | Drives the integration: `run1()` (vectorised, fast path), `run1_scalar()` (solve_ivp reference), `run_forest()` (all haloes at once), `run()` (CLI entry point, reads or generates trees, writes HDF5) |
 | `run_params.py` / `run_params.yaml` | Dataclass-based config loader |
 | `pymctrees_adapter.py` | pymctrees <-> Ashvini tree-format conversion (unit/ordering conversions, pre-formation-prefix handling), shared by `scripts/build_trees_from_pymctrees.py` (offline) and `run()`'s live `tree_source: pymctrees` path |
@@ -157,7 +174,8 @@ Open it with `jupyter notebook notebooks/pymctrees_ashvini_demo.ipynb` after `pi
 
 ```
 pip install -r requirements-dev.txt
-pytest tests/
+pytest tests/            # about four minutes
+pytest tests/ --parity   # also reruns Stochastic_Occupation live (needs it next to this repository, or STOCHOCC_SRC)
 ```
 
 The suite runs against a small downsampled merger-tree fixture (`tests/fixtures/merger_trees_fixture.h5`, regenerated with `scripts/downsample_trees.py`) and checks output shapes/validity, a pinned reference baseline, agreement between the vectorised and reference integrators, and BH seeding/growth invariants. `test_run_params.py` and `test_run_tree_source.py` cover the `tree_source: pymctrees` config parsing (including a regression test for `run_params.yaml`'s bare-exponent-number YAML gotcha, e.g. `1e10` parsing as a string) and a full live-generation `run()` smoke test; both are skipped if pymctrees isn't installed. `test_bh_growth_feedback.py` covers BH accretion as a genuine gas-mass sink (competing with star formation for the same budget), the Eddington-growth multiplier, and the (optionally delayed) AGN wind term.

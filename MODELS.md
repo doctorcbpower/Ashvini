@@ -118,6 +118,26 @@ eta_w(z, M_halo, Z_star) = epsilon_p * pi_fid * (10^11.5 / M_halo)^(1/3) * (9/(1
 | delay_time | `supernova.delay_time` | 0.015 Gyr | Lookback time for the delayed-feedback SFR |
 | epsilon_p | `supernova.epsilon_p` | 5 | Mass-loading normalization |
 | pi_fid | `supernova.pi_fid` | 1 | Fiducial mass-loading efficiency multiplier |
+| kernel | `supernova.kernel` | `"delta"` | When stars explode: `"delta"` (all after `delay_time`) or `"imf"` (each progenitor after its own lifetime) |
+| closure | `supernova.closure` | `"ashvini"` | How much gas the explosions remove: `"ashvini"` (the mass loading above), `"momentum"` or `"energy"` |
+
+### Delay kernel and closure options (`components/delay.py`, `components/closure.py`)
+
+**Kernel `"imf"`.** Each core-collapse progenitor, mass `m` drawn from the IMF between `m_sn_min` and `m_sn_max` (`n_progenitor_masses` equal-probability bins), explodes `t_MS(m, Z)` after it forms (`stellar_lifetimes.py`; Georgy et al 2013 at `lifetime_Z` = 0.002, Ekstrom et al 2012 at 0.014, log-Z interpolation between, rotating models, end of hydrogen burning at X_c = 1e-4). With `F(s)` the fraction of progenitors exploded by age `s` and `G = integral F`, the fraction of the stars formed (uniformly) in step `k` that explode in step `j` is `K[j,k] = [G(T_j - T_{k-1}) - G(T_j - T_k) - G(T_{j-1} - T_{k-1}) + G(T_{j-1} - T_k)] / dT_k`, exact for star formation constant within a step. The star formation that drives the wind in step `j` is `sum_k K[j,k] S_k / dt_j` over earlier steps (`S_k` the stars formed in step `k`); explosions inside the step of formation go off at the start of the next. The same rate drives gas, metals and dust. With a single lifetime it is the delta kernel up to one step. Only used when `supernova.type` is `"delayed"`.
+
+**Closures.** Per unit mass of stars formed, `eta_w = nu_SN * (gas removed per supernova)`:
+
+```
+ashvini   eta_w from the calibrated formula above
+momentum  eta_w = nu_SN * f_p * p_SN / v_esc                 (p_SN = 3e5 Msun km/s)
+energy    eta_w = nu_SN * 2 * eps_fb * E_SN / v_esc^2        (E_SN = 1e51 erg)
+```
+
+`v_esc = sqrt(2) V_c` at the virial radius of a halo of mean density 200 times critical (`halo.py`). `nu_SN` is the number of progenitors per Msun of stars for the configured IMF and mass range. The Ashvini mass loading follows `v_esc^-1`: it equals the momentum closure with `f_p` = 0.7646 at zero stellar metallicity to 0.3 percent over 1e6-1e10 Msun, z = 5-15 (8-100 Msun progenitors). `presets.stochocc_smooth_control()` sets this up together with Stochastic_Occupation's star formation rate. The grid stepper applies no limit at the gas present (the gas mass is clamped at zero afterwards); the event stepper limits each explosion at the gas present.
+
+### Event stepper (`steppers/events.py`, `main.run_events`)
+
+Follows individual explosions for one halo at a time. Between events the gas, stars, metals are advanced exactly (`dM/dt = S - kM` in closed form, `k` the star formation rate coefficient at the start of the substep, supply `S = f_b max(dM_h, 0)` reduced by the equilibrium UV suppression of Okamoto et al 2008); the stars formed in a substep are passed to a sampler (`samplers.py`) which returns the explosions they cause; each explosion is processed at its own time with `v_esc` and `M_h` at that time, adds its metal and dust yield (`Z_yield`, `dust_yield` per Msun of stars, divided by `nu_SN` per supernova), destroys dust (`weight * m_swept * M_d/M_g * f_gas`, at most the dust present), and removes `min(M_gas, weight * closure)` of gas, with metals and dust in proportion. Samplers: `"smooth"` (the expected explosions with fractional weights on K = 100 representative masses, released in 1 Myr batches: no randomness) and `"stochastic"` (Poisson counts of whole supernovae, random masses). Not included: black holes, the star formation gate, inflow lag, recycling, energy bank (milestone M5). The supply and the UV suppression use the equilibrium form, unlike the grid stepper's rate-dependent one.
 
 ## Black hole growth ([`black_holes_growth.py`](ashvini/black_holes_growth.py))
 
@@ -458,8 +478,8 @@ Excluded: black-hole mergers, super-Eddington growth, nuclear dark matter, an ev
 
 `run1()`/`run_forest()` (the production path) integrate the same five ODEs as `run1_scalar()` (the `solve_ivp` reference), but using closed-form/quadrature updates chosen per-equation:
 
-- **Stellar mass and stellar metals**: not self-referential within a step (pure integrals of quantities frozen at the step start) -> exact 5-point Gauss-Legendre quadrature of `1/t_ff(z(t))` over the step.
-- **Gas mass, gas metals, dust mass**: each is affine, `dy/dt = forcing - decay*y`, with forcing/decay frozen at the step midpoint redshift -> solved exactly via an exponential integrator (`_linear_ode_step`).
+- **Stellar mass and stellar metals**: from the budget identity of the gas and metals updates: integrating `dy/dt = F - D*y` gives `D * integral(y dt) = y0 + F*dt - y1`, so the stars formed are `(B_sf / D) * (y0 + F*dt - y1)`, exact and conserving to round-off (`components/gas.py`, `components/chemistry.py`).
+- **Gas mass, gas metals, dust mass**: each is affine, `dy/dt = forcing - decay*y`, with forcing/decay frozen at the step midpoint redshift -> solved exactly via an exponential integrator (`components/ode.linear_ode_step`).
 - **Black hole mass**: piecewise (gas-supply-limited vs. Eddington-limited, with a possible regime crossover mid-step) -> solved exactly per-regime rather than approximated.
 
 This lets the integration vectorise across every halo in a forest simultaneously (they share a redshift grid), rather than looping per-halo with `solve_ivp`. `tests/test_run1.py` cross-validates the vectorised path against the scalar reference.

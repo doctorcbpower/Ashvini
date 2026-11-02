@@ -72,6 +72,20 @@ class SupernovaParams:
     imf: str = "salpeter"
     m_sn_min: float = 8.0
     m_sn_max: float = 40.0
+    # When the stars explode. "delta": every star explodes delay_time after it forms (the Ashvini model).
+    # "imf": each progenitor explodes after its own main-sequence lifetime (stellar_lifetimes, grid metallicity
+    # lifetime_Z as a mass fraction), with the progenitor masses spread over the IMF in n_progenitor_masses
+    # equal-probability bins. Only used when type is "delayed".
+    kernel: str = "delta"
+    lifetime_Z: float = 0.002
+    n_progenitor_masses: int = 400
+    # How much gas the explosions remove. "ashvini": the calibrated mass loading epsilon_p, pi_fid above.
+    # "momentum": each supernova removes f_p * p_SN / v_esc. "energy": each removes 2 eps_fb E_SN / v_esc^2.
+    closure: str = "ashvini"
+    f_p: float = 1.0
+    p_SN_msun_kms: float = 3.0e5   # momentum per supernova, Msun km/s
+    eps_fb: float = 0.1            # fraction of the supernova energy that unbinds gas
+    E_SN_erg: float = 1.0e51
 
 
 @dataclass

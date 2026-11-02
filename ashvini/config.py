@@ -21,6 +21,8 @@ DEFAULT = PARAMS  # the same object as run_params.PARAMS
 SN_TYPES = ("delayed", "instantaneous", "no")
 GROWTH_MODELS = ("pznk11_freefall", "hobbs_slimdisk")
 TREE_SOURCES = ("file", "pymctrees")
+KERNELS = ("delta", "imf")
+CLOSURES = ("ashvini", "momentum", "energy")
 
 
 def resolve(cfg=None):
@@ -41,6 +43,12 @@ def validate(cfg):
         raise ValueError(f"supernova.type must be one of {SN_TYPES}; got {cfg.sn.type!r}.")
     if cfg.sn.delay_time < 0:
         raise ValueError(f"supernova.delay_time must be >= 0 Gyr; got {cfg.sn.delay_time}.")
+    if cfg.sn.kernel not in KERNELS:
+        raise ValueError(f"supernova.kernel must be one of {KERNELS}; got {cfg.sn.kernel!r}.")
+    if cfg.sn.closure not in CLOSURES:
+        raise ValueError(f"supernova.closure must be one of {CLOSURES}; got {cfg.sn.closure!r}.")
+    if cfg.sn.kernel == "imf" and cfg.sn.m_sn_max > 100.0:
+        raise ValueError("supernova.m_sn_max must be <= 100 Msun with kernel 'imf' (the lifetime grids stop there).")
     if cfg.bh.growth_model not in GROWTH_MODELS:
         raise ValueError(f"black_holes.growth_model must be one of {GROWTH_MODELS}; got {cfg.bh.growth_model!r}.")
     if cfg.io.tree_source not in TREE_SOURCES:

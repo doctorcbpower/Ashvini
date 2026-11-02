@@ -45,3 +45,41 @@ def nu_SN(imf="salpeter", m_sn_min=8.0, m_sn_max=40.0):
     mass, _ = quad(lambda m: m * f(m), M_IMF_LOW, M_IMF_HIGH, points=breaks, limit=200)
     number, _ = quad(f, m_sn_min, m_sn_max)
     return number / mass
+
+
+# --- the supernova progenitors: their mass distribution and the masses used to sample or integrate it ---
+
+IMF_MASSIVE_SLOPE = {"salpeter": 2.35, "kroupa": 2.3, "chabrier": 2.3}   # slope of dN/dm above 8 Msun
+
+
+def progenitor_slope(imf="salpeter"):
+    return IMF_MASSIVE_SLOPE[imf]
+
+
+def quantile_progenitor_masses(K, m_sn_min=8.0, m_sn_max=100.0, slope=2.35):
+    """
+    K representative masses of equal probability from dN/dm ~ m^-slope on [m_sn_min, m_sn_max]: the inverse
+    cumulative distribution at the middle of each of K equal-probability bins. A fixed quadrature grid, not
+    a random sample.
+    """
+    u = (np.arange(K) + 0.5) / K
+    p = 1.0 - slope
+    lo, hi = m_sn_min ** p, m_sn_max ** p
+    return (lo + u * (hi - lo)) ** (1.0 / p)
+
+
+def sample_progenitor_masses(n, rng, m_sn_min=8.0, m_sn_max=100.0, slope=2.35):
+    """n masses drawn from dN/dm ~ m^-slope on [m_sn_min, m_sn_max] by inverting the cumulative distribution."""
+    if n == 0:
+        return np.empty(0)
+    p = 1.0 - slope
+    lo, hi = m_sn_min ** p, m_sn_max ** p
+    return (lo + rng.random(n) * (hi - lo)) ** (1.0 / p)
+
+
+def progenitor_power_mean(beta, slope=2.35, m_lo=8.0, m_hi=100.0):
+    """<m^beta> over the progenitors, dN/dm ~ m^-slope on [m_lo, m_hi] (closed form)."""
+    def integ(power):
+        q = power + 1.0
+        return np.log(m_hi / m_lo) if abs(q) < 1e-12 else (m_hi ** q - m_lo ** q) / q
+    return integ(beta - slope) / integ(-slope)

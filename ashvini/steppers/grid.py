@@ -5,8 +5,8 @@ from ..config import resolve
 from ..state import State
 from ..components.blackholes import make_black_hole
 from ..components.chemistry import MetalsAndDust
-from ..components.closure import MomentumLoading
-from ..components.delay import SupernovaDelay
+from ..components.closure import make_closure
+from ..components.delay import make_delay
 from ..components.gas import gas_and_stars_step
 from ..components.inflow import CosmicInflow
 from ..components.star_formation import FreeFallStarFormation
@@ -36,9 +36,9 @@ class GridStepper:
         self.slimdisk_overrides = slimdisk_overrides
         self.star_formation = FreeFallStarFormation(self.cfg)
         self.inflow = CosmicInflow(config)
-        self.closure = MomentumLoading(self.cfg)
+        self.closure = make_closure(self.cfg)
         self.chemistry = MetalsAndDust(self.cfg)
-        self.delay_factory = lambda cosmic_time: SupernovaDelay(self.cfg, cosmic_time)
+        self.delay_factory = lambda cosmic_time: make_delay(self.cfg, cosmic_time)
         self.black_hole_factory = lambda cosmic_time, n_halos: make_black_hole(
             self.growth_model, self.cfg, self.config, cosmic_time, n_halos, **self.slimdisk_overrides
         )
@@ -84,7 +84,7 @@ class GridStepper:
                 gas_metallicity_prev, bh_mass[:, j - 1],
             )
 
-            wind_sfr = delay.wind_sfr(j, feedback_type, B_sf, gm_prev, sfr)
+            wind_sfr = delay.wind_sfr(j, feedback_type, B_sf, gm_prev, state)
 
             gas_raw, stars_formed, _, _ = gas_and_stars_step(
                 gm_prev, A_acc, B_sf, ML, wind_sfr, feedback_type, bh_accretion, agn_wind, dt

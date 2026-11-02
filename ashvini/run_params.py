@@ -250,12 +250,21 @@ class DiscParams:
     (components/disc.py). Off by default: the gas is then one bulk reservoir. The disc is exponential, with scale length
     R_d = angular_momentum_ratio * spin_parameter * R_vir / sqrt(2) (Mo, Mao & White 1998 without the corrections for
     the halo concentration and the disc's pull on the halo). Gas inside the radius where its surface density falls to
-    critical_surface_density_Msun_pc2 forms stars at the usual rate; gas outside forms none.
+    critical_surface_density_Msun_pc2 forms stars at the usual rate; gas outside forms none. star_formation_law can instead
+    set the rate from the disc itself (the Schmidt-Kennicutt relation), which has no threshold.
     """
     enabled: bool = False
     spin_parameter: float = 0.035               # halo spin lambda (median about 0.035), constant in time
     angular_momentum_ratio: float = 1.0         # j_d / m_d: the disc's share of the halo's angular momentum over its share of the mass
     critical_surface_density_Msun_pc2: float = 5.0   # gas below this surface density forms no stars; 0 = no threshold
+    # The star formation law used when the disc is enabled:
+    #   "halo_free_fall"        the usual rate (sf.efficiency per halo free-fall time) on the gas above the critical surface density
+    #   "schmidt_kennicutt"     Sigma_SFR = A * Sigma_gas^N over the exponential disc (Kennicutt 1998)
+    # (A rate of efficiency * M_gas / t_disc, with t_disc = R_d / V_c the disc's dynamical time, is not an option: for a disc
+    # whose size is a fixed fraction of the virial radius it is exactly the usual rate with a rescaled efficiency, see MODELS.md.)
+    star_formation_law: str = "halo_free_fall"
+    schmidt_kennicutt_normalisation: float = 2.5e-4     # A in Msun/yr/kpc^2 for Sigma_gas in Msun/pc^2
+    schmidt_kennicutt_slope: float = 1.4                # N
 
 
 @dataclass

@@ -23,6 +23,7 @@ GROWTH_MODELS = ("pznk11_freefall", "hobbs_slimdisk")
 TREE_SOURCES = ("file", "pymctrees")
 DELAY_DISTRIBUTIONS = ("single_delay", "stellar_lifetimes")
 WIND_MODELS = ("ashvini", "momentum", "energy")
+STAR_FORMATION_LAWS = ("halo_free_fall", "schmidt_kennicutt")
 
 
 def resolve(cfg=None):
@@ -55,6 +56,10 @@ def validate(cfg):
         raise ValueError("events.coupling_change_mass switches the energy wind_model's eps_fb, so it needs supernova.wind_model 'energy'.")
     if cfg.disc.spin_parameter <= 0 or cfg.disc.angular_momentum_ratio <= 0 or cfg.disc.critical_surface_density_Msun_pc2 < 0:
         raise ValueError("disc: spin_parameter and angular_momentum_ratio must be > 0 and critical_surface_density_Msun_pc2 >= 0.")
+    if cfg.disc.star_formation_law not in STAR_FORMATION_LAWS:
+        raise ValueError(f"disc.star_formation_law must be one of {STAR_FORMATION_LAWS}; got {cfg.disc.star_formation_law!r}.")
+    if cfg.disc.schmidt_kennicutt_normalisation <= 0 or cfg.disc.schmidt_kennicutt_slope <= 0:
+        raise ValueError("disc: schmidt_kennicutt_normalisation and schmidt_kennicutt_slope must be > 0.")
     if not 0.0 < cfg.events.reachable_gas_fraction <= 1.0:
         raise ValueError(f"events.reachable_gas_fraction must be in (0, 1]; got {cfg.events.reachable_gas_fraction}.")
     if cfg.bh.growth_model not in GROWTH_MODELS:

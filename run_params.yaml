@@ -136,3 +136,4 @@ black_holes:
 #   spin_parameter: 0.035
 #   angular_momentum_ratio: 1.0                    # j_d / m_d
 #   critical_surface_density_Msun_pc2: 5.0         # gas below this surface density forms no stars; 0 = no threshold
+#   star_formation_law: halo_free_fall             # or schmidt_kennicutt (then schmidt_kennicutt_normalisation, schmidt_kennicutt_slope)

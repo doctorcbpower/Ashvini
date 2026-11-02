@@ -55,3 +55,7 @@ E. **Which haloes.** The subset: how many and which masses. Recommendation: five
 ## Not in scope
 
 The disc's effect on the dark matter halo, rotation curves of non-CDM models, a molecular hydrogen model, disc morphology, and stars as a separate disc component.
+
+## Update: star formation laws set by the disc (2026-11-02)
+
+The threshold added little (3 percent or less for thresholds up to 10 Msun/pc^2). The question that matters is whether the rate itself should come from the disc. Implemented as `disc.star_formation_law`: `"halo_free_fall"` (default) and `"schmidt_kennicutt"`. A rate set by the disc's dynamical time was dropped: for a disc whose size is a fixed fraction of the virial radius it is exactly the usual law with efficiency `eps_d * 1.994 / ((j_d/m_d) * spin)` (0.855 for 0.015 and 0.035), so my first comparison of it with the usual law (which showed 5 to 14 times more stars) was a comparison of two different efficiencies, not two laws. The Schmidt-Kennicutt law amounts to an efficiency per halo free-fall time of about 0.06 (1e8) to 0.16 (1e11) that changes by a factor of 4 to 7 within a history, so one constant efficiency cannot reproduce it. See MODELS.md.

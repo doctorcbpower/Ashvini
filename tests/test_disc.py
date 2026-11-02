@@ -5,6 +5,7 @@ import pytest
 from ashvini import halo, utils
 from ashvini import reservoir_stock as reservoir
 from ashvini.components import disc
+from ashvini.components.disc import make_star_formation
 from ashvini.components.star_formation import FreeFallStarFormation
 from ashvini.config import DEFAULT, override
 from ashvini.integrators.grid import GridIntegrator
@@ -128,3 +129,86 @@ def test_a_star_formation_law_written_for_rate_coefficient_still_works_in_the_gr
     integrator.star_formation = Faster(integrator.cfg)
     faster, _ = integrator.run(M, Mdot, z)
     assert faster.stars_mass[0, -1] > plain.stars_mass[0, -1]
+
+
+SK = {"disc.enabled": True, "disc.star_formation_law": "schmidt_kennicutt"}
+
+
+def test_schmidt_kennicutt_rate_is_the_relation_integrated_over_the_exponential_disc():
+    cfg = override(DEFAULT, **SK)
+    M, z, gas = 1e9, 8.0, 3e7
+    R_d = float(disc.scale_length_kpc(M, z, cfg))
+    sigma0 = float(disc.central_surface_density(gas, R_d))               # Msun/pc^2
+    r = np.linspace(0.0, 40.0 * R_d, 400001)
+    sigma_sfr = 2.5e-4 * (sigma0 * np.exp(-r / R_d)) ** 1.4              # Msun/yr/kpc^2, r in kpc
+    sfr_per_gyr = np.trapezoid(2.0 * np.pi * r * sigma_sfr, r) * 1.0e9
+    B = float(make_star_formation(cfg).halo_rate_coefficient(z, M, gas))
+    assert B * gas == pytest.approx(sfr_per_gyr, rel=1e-4)
+    assert float(make_star_formation(cfg).halo_rate_coefficient(z, M, 0.0)) == 0.0
+
+
+def test_schmidt_kennicutt_slope_one_is_a_constant_depletion_time():
+    cfg = override(DEFAULT, **{**SK, "disc.schmidt_kennicutt_slope": 1.0})
+    law = make_star_formation(cfg)
+    a, b = law.halo_rate_coefficient(8.0, 1e9, 1e6), law.halo_rate_coefficient(8.0, 1e9, 1e8)
+    assert float(a) == pytest.approx(float(b), rel=1e-12)
+
+
+def test_a_rate_set_by_the_disc_dynamical_time_is_the_usual_rate_with_a_rescaled_efficiency():
+    """For R_d proportional to R_vir the disc dynamical time is a fixed multiple of 1/H(z): nothing new, only a different efficiency."""
+    class DiscTime(FreeFallStarFormation):
+        def __init__(self, cfg, eps_d):
+            super().__init__(cfg); self.cfg, self.eps_d = cfg, eps_d
+
+        def halo_rate_coefficient(self, redshift, halo_mass, gas_mass):
+            R_d = disc.scale_length_kpc(halo_mass, redshift, self.cfg)
+            V = halo.v_circ_cms(halo_mass, redshift) / 1.0e5
+            return self.eps_d * V / R_d / 0.9778
+    M, Mdot, z = history()
+    spin, jd, eps_d = 0.035, 1.0, 0.015
+    cfg = override(DEFAULT, **{**NO_SEEDS, "disc.enabled": True, "disc.spin_parameter": spin, "disc.angular_momentum_ratio": jd})
+    integrator = GridIntegrator(cfg)
+    integrator.star_formation = DiscTime(cfg, eps_d)
+    disc_state, _ = integrator.run(M, Mdot, z)
+    eps = eps_d * 0.141 * 10.0 * np.sqrt(2.0) / (jd * spin)                    # = 0.855
+    assert eps == pytest.approx(0.855, abs=0.001)
+    usual = run_forest(M, Mdot, z, config=override(DEFAULT, **{**NO_SEEDS, "sf.efficiency": eps}))
+    assert np.allclose(disc_state.stars_mass, usual["stars_mass"], rtol=2e-3)
+    assert np.allclose(disc_state.gas_mass, usual["gas_mass"], rtol=2e-3)
+
+
+def test_implied_efficiency():
+    M, z, gas = 1e9, 8.0, 3e7
+    threshold_free = override(DEFAULT, **{"disc.enabled": True, "disc.critical_surface_density_Msun_pc2": 0.0})
+    assert float(disc.implied_efficiency(threshold_free, z, M, gas)) == pytest.approx(DEFAULT.sf.efficiency, rel=1e-12)
+    sk = override(DEFAULT, **SK)
+    low, high = (float(disc.implied_efficiency(sk, z, M, g)) for g in (1e6, 1e9))
+    assert high > low                                                         # N > 1: denser gas forms stars more efficiently
+
+
+def test_schmidt_kennicutt_grid_result_is_converged_in_the_time_step():
+    M, Mdot, z = history(n=300)                    # about the resolution of the test trees
+    n = 4 * (len(z) - 1) + 1
+    zf = np.interp(np.linspace(0, len(z) - 1, n), np.arange(len(z)), z)
+    Mf = np.exp(np.interp(np.linspace(0, len(z) - 1, n), np.arange(len(z)), np.log(M[0])))[None, :]
+    cfg = override(DEFAULT, **{**NO_SEEDS, **SK})
+    a = run_forest(M, Mdot, z, config=cfg)["stars_mass"][0, -1]
+    b = run_forest(Mf, np.maximum(np.gradient(Mf, utils.time_at_z(zf), axis=1), 0.0), zf, config=cfg)["stars_mass"][0, -1]
+    assert a == pytest.approx(b, rel=0.04)         # first order in the step: about 3 percent at this resolution
+
+
+def test_the_grid_integrator_warns_when_star_formation_outruns_the_step():
+    M, Mdot, z = history()
+    with pytest.warns(UserWarning, match="finer grid"):
+        run_forest(M, Mdot, z, config=override(DEFAULT, **{**NO_SEEDS, "sf.efficiency": 300.0}))
+
+
+def test_events_conserve_baryons_with_the_schmidt_kennicutt_law():
+    M, Mdot, z = history()
+    cfg = override(DEFAULT, **{**NO_SEEDS, **SK, "sn.m_sn_max": 100.0, "sn.delay_distribution": "stellar_lifetimes",
+                               "sn.wind_model": "momentum", "sn.f_p": 0.76})
+    Ms = M[:, ::2]
+    r = run_events(Ms, Mdot[:, ::2], z[::2], config=cfg, gas_mass0=1e3)
+    supplied = 1e3 + (utils.Omega_b / utils.Omega_m) * (Ms[0, -1] - Ms[0, 0])
+    assert r["gas_mass"][0, -1] + r["stars_mass"][0, -1] + r["ejected_mass"][0, -1] == pytest.approx(supplied, rel=1e-9)
+    assert r["stars_mass"][0, -1] > 0

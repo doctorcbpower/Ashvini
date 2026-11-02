@@ -15,6 +15,17 @@ f = 1 - (1 + x) exp(-x) of the gas, with x = ln(Sigma_0 / Sigma_crit) = R_crit /
 usual rate applied to that part of the gas only: SFR = f * eps_ff / t_ff * M_gas. If Sigma_0 <= Sigma_crit no gas forms
 stars (f = 0); with Sigma_crit = 0 all of it does (f = 1). f changes smoothly as the disc grows, so star formation does
 not switch on and off from step to step.
+
+Star formation law from the disc (disc.star_formation_law = "schmidt_kennicutt"): Sigma_SFR = A Sigma_gas^N (Kennicutt
+1998; A = 2.5e-4 Msun/yr/kpc^2 for Sigma_gas in Msun/pc^2, N = 1.4), integrated over the exponential disc:
+SFR = 2 pi A Sigma_0^N R_d^2 / N^2. It has no threshold. `implied_efficiency` gives the efficiency per halo free-fall
+time it amounts to.
+
+A law "SFR = eps_d * M_gas / t_disc" with the disc's dynamical time t_disc = R_d / V_c is not an option, because it adds
+nothing: with R_d = (j_d / m_d) lambda R_vir / sqrt(2) and V_c the halo circular speed, R_vir / V_c = 1 / (10 H(z)), so
+t_disc = (j_d / m_d) lambda / (10 sqrt(2) H) and it is exactly the usual rate with the efficiency
+eps = eps_d * 0.141 * 10 sqrt(2) / ((j_d / m_d) lambda) = 0.855 for eps_d = 0.015 and lambda = 0.035, the same for every halo mass
+and redshift. It would only differ if the spin differed between haloes or the circular speed at R_d differed from the halo's.
 """
 import numpy as np
 
@@ -60,7 +71,7 @@ def diagnostics(halo_mass, gas_mass, redshift, cfg):
 
 
 class DiscStarFormation(FreeFallStarFormation):
-    """The free-fall star formation law, applied to the gas above the critical surface density only."""
+    """The free-fall star formation law (halo free-fall time), applied to the gas above the critical surface density only."""
 
     def __init__(self, cfg):
         super().__init__(cfg)
@@ -70,3 +81,43 @@ class DiscStarFormation(FreeFallStarFormation):
         R_d = scale_length_kpc(halo_mass, redshift, self.cfg)
         f = star_forming_fraction(central_surface_density(gas_mass, R_d), self.cfg.disc.critical_surface_density_Msun_pc2)
         return self.rate_coefficient(redshift) * f
+
+
+class SchmidtKennicuttStarFormation(FreeFallStarFormation):
+    """
+    Sigma_SFR = A * Sigma_gas^N (Kennicutt 1998: A = 2.5e-4 Msun/yr/kpc^2 for Sigma_gas in Msun/pc^2, N = 1.4), integrated over
+    the exponential disc: SFR = 2 pi A Sigma_0^N R_d^2 / N^2. The relation is calibrated on present-day galaxies; here it is
+    applied at all redshifts and halo masses.
+    """
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.cfg = cfg
+
+    def halo_rate_coefficient(self, redshift, halo_mass, gas_mass):
+        d = self.cfg.disc
+        gas_mass = np.asarray(gas_mass, dtype=float)
+        R_d = scale_length_kpc(halo_mass, redshift, self.cfg)
+        sigma0 = central_surface_density(gas_mass, R_d)                                    # Msun/pc^2
+        sfr_per_gyr = 2.0 * np.pi * d.schmidt_kennicutt_normalisation * sigma0 ** d.schmidt_kennicutt_slope \
+            * R_d ** 2 / d.schmidt_kennicutt_slope ** 2 * 1.0e9                            # Msun/Gyr
+        return np.where(gas_mass > 0, sfr_per_gyr / np.where(gas_mass > 0, gas_mass, 1.0), 0.0)
+
+
+LAWS = {"halo_free_fall": DiscStarFormation, "schmidt_kennicutt": SchmidtKennicuttStarFormation}
+
+
+def implied_efficiency(cfg, redshift, halo_mass, gas_mass):
+    """
+    The efficiency per halo free-fall time that the disc star formation law of cfg amounts to for these halo and gas masses:
+    (rate coefficient) * 0.141 / H(z) / (the usual rate coefficient per unit efficiency), i.e. the value of sf.efficiency
+    that would give the same star formation rate right now. Compare it with sf.efficiency (0.015) to see how far the
+    disc law is from the usual one, and how much it changes with mass, redshift and gas content.
+    """
+    from ..star_formation import time_freefall
+    return make_star_formation(cfg).halo_rate_coefficient(redshift, halo_mass, gas_mass) * time_freefall(redshift)
+
+
+def make_star_formation(cfg):
+    """The star formation component for cfg: the free-fall law, or the law named by cfg.disc.star_formation_law if the disc is enabled."""
+    return LAWS[cfg.disc.star_formation_law](cfg) if cfg.disc.enabled else FreeFallStarFormation(cfg)

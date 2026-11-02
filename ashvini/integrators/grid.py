@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 
 from .. import utils
@@ -9,7 +11,7 @@ from ..components.wind_model import make_wind_model
 from ..components.delay import make_delay
 from ..components.gas import gas_and_stars_step
 from ..components.inflow import CosmicInflow
-from ..components.disc import DiscStarFormation
+from ..components.disc import make_star_formation
 from ..components.star_formation import FreeFallStarFormation
 
 
@@ -35,7 +37,7 @@ class GridIntegrator:
         self.cfg = resolve(config)
         self.growth_model = growth_model if growth_model is not None else self.cfg.bh.growth_model
         self.slimdisk_overrides = slimdisk_overrides
-        self.star_formation = (DiscStarFormation if self.cfg.disc.enabled else FreeFallStarFormation)(self.cfg)
+        self.star_formation = make_star_formation(self.cfg)
         self.inflow = CosmicInflow(config)
         self.wind_model = make_wind_model(self.cfg)
         self.chemistry = MetalsAndDust(self.cfg)
@@ -63,6 +65,7 @@ class GridIntegrator:
         delay = self.delay_factory(cosmic_time)
         black_hole = self.black_hole_factory(cosmic_time, N)
 
+        fastest = 0.0
         for j in range(1, n):
             dt = cosmic_time[j] - cosmic_time[j - 1]
             z_mid = utils.z_at_time(0.5 * (cosmic_time[j - 1] + cosmic_time[j]))
@@ -86,6 +89,7 @@ class GridIntegrator:
                 gas_metallicity_prev, bh_mass[:, j - 1],
             )
 
+            fastest = max(fastest, float(np.max(B_sf)) * dt)
             wind_sfr = delay.wind_sfr(j, feedback_type, B_sf, gm_prev, state)
 
             gas_raw, stars_formed, _, _ = gas_and_stars_step(
@@ -125,5 +129,8 @@ class GridIntegrator:
             )
             stars_metals[:, j] = np.where(has_stars_mass, stars_metals[:, j], 0.0)
 
+        if fastest > 0.3:
+            warnings.warn(f"star formation consumes up to {1 - np.exp(-fastest):.0%} of the gas in one step: the result depends on the "
+                          "redshift grid (feedback acts a supernova delay later than the step). Use a finer grid.", stacklevel=2)
         return state, cosmic_time
 

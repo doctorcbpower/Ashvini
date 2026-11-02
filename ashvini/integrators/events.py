@@ -32,7 +32,7 @@ from ..config import resolve
 from ..constants import Gyr_s, Msun_g
 from ..reionization_physics import mu_c, s as uv_shape
 from ..components.wind_model import make_wind_model
-from ..components.disc import DiscStarFormation
+from ..components.disc import make_star_formation
 from ..components.star_formation import FreeFallStarFormation
 from ..imf import nu_SN
 from ..samplers import make_sampler
@@ -92,7 +92,7 @@ class EventIntegrator:
         self.sampler_kwargs = sampler_kwargs or {}
         self.sf_dt_max = sf_dt_max_myr * MYR_GYR
         self.step_cap_factor = step_cap_factor
-        self.star_formation = (DiscStarFormation if cfg.disc.enabled else FreeFallStarFormation)(cfg)
+        self.star_formation = make_star_formation(cfg)
         self.wind_model = make_wind_model(cfg)
         self.nu_SN = nu_SN(cfg.sn.imf, cfg.sn.m_sn_min, cfg.sn.m_sn_max)
         self.f_b = utils.Omega_b / utils.Omega_m
@@ -246,6 +246,10 @@ class EventIntegrator:
         while res.t < t_end - 1.0e-9 * (t_end - history.t_min + 1.0e-30):
             t_ff = 0.141 * utils.Hubble_time(history.z_at_t(res.t))   # Gyr
             step = min(self.step_cap_factor * t_ff, self.sf_dt_max)
+            if self.cfg.disc.enabled:                  # star formation that depends on the disc can be much faster than the free-fall time
+                k = float(self.star_formation.halo_rate_coefficient(history.z_at_t(res.t), history.mass_at_t(res.t), res.gas))
+                if k > 0.0:
+                    step = min(step, self.step_cap_factor / k)
             t_next = min(res.t + step, t_end)
             t_evt = res.next_time()
             if t_evt is not None and t_evt < t_next:

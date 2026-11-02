@@ -232,6 +232,8 @@ class EventParams:
     # bank_tau_myr; .inf = never) and spent unbinding gas as it arrives, before it reaches the reservoir. None = off.
     # Needs supernova.closure "energy".
     bank_tau_myr: float = None
+    # access fraction: one explosion can reach at most this fraction of the gas in the reservoir
+    access_fraction: float = 1.0
 
 
 @dataclass

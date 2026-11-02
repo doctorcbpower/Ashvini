@@ -144,6 +144,7 @@ OPTION_CASES = {
     # strong coupling, so that explosions regularly find less gas than their energy could unbind; the control has no bank
     "energy_bank_control": {"ash": {"sn.eps_fb": 1.0}, "sto": {"eps_fb": 1.0}},
     "energy_bank": {"ash": {"sn.eps_fb": 1.0, "events.bank_tau_myr": 100.0}, "sto": {"eps_fb": 1.0, "bank_tau_myr": 100.0}},
+    "access_fraction": {"ash": {"sn.eps_fb": 1.0, "events.access_fraction": 0.05}, "sto": {"eps_fb": 1.0, "f_access": 0.05}},
     "gate": {"ash": {"events.gate_T_vir_K": 5.0e3}, "sto": {"T_vir_thresh": 5.0e3}},
 }
 OPTION_GOLDEN = Path(__file__).parent / "golden" / "stochocc_options.json"
@@ -155,7 +156,10 @@ def ashvini_option(case, sampler="smooth", seed=None):
     z = np.arange(20.0, 10.0 - 1e-9, -0.1)
     M = MINIHALO(z)[None, :]
     cfg = base_config(**{**OPTION_BASE["ash"], **(OPTION_CASES[case]["ash"] if case else {})})
-    r = run_events(M, np.zeros_like(M), z, config=cfg, sampler=sampler, seed=seed)
+    # K = 200 representative masses, as in the pinned Stochastic_Occupation control: a cap on what one explosion removes
+    # acts per explosion, so the answer depends on how the supernovae are split
+    kw = {"sampler_kwargs": {"K": 200}} if sampler == "smooth" else {}
+    r = run_events(M, np.zeros_like(M), z, config=cfg, sampler=sampler, seed=seed, **kw)
     return {"M_star": r["stars_mass"][0, -1], "M_g": r["gas_mass"][0, -1], "M_ej": r["ejected_mass"][0, -1],
             "M_ret": r["returned_mass"][0, -1]}
 

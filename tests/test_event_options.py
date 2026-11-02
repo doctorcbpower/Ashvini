@@ -139,3 +139,25 @@ def test_energy_bank_agrees_with_stochocc():
     assert PIN["energy_bank"]["M_g"] < 0.01 * PIN["energy_bank_control"]["M_g"]
     _agree("energy_bank", 1.5e-2, 1.5e-2, 1.5e-2)
     _agree("energy_bank_control", 1.5e-2, 1.5e-2, 5e-2)       # the gas is a small remainder of the supply
+
+
+def test_access_fraction_caps_what_one_explosion_can_remove():
+    from ashvini.config import override
+    from ashvini.steppers.events import EventStepper, _Reservoirs
+    from ashvini.trajectory import HaloHistory
+    z = np.arange(20.0, 10.0 - 1e-9, -0.2)
+    base = P.base_config(**{**P.OPTION_BASE["ash"], "sn.eps_fb": 50.0})       # an explosion could unbind far more than exists
+    hist = HaloHistory(P.MINIHALO(z), z)
+    t = 0.5 * (hist.t_min + hist.t_max)
+    for fraction in (1.0, 0.3):
+        stepper = EventStepper(override(base, **{"events.access_fraction": fraction}))
+        res = _Reservoirs(t, 1.0e5, 0.0)
+        stepper.explode(hist, res, t, 20.0, 1.0)
+        assert res.ejected == pytest.approx(fraction * 1.0e5, rel=1e-12)
+    with pytest.raises(ValueError, match="access_fraction"):
+        override(base, **{"events.access_fraction": 0.0})
+
+
+def test_access_fraction_agrees_with_stochocc():
+    assert PIN["access_fraction"]["M_g"] < 0.2 * PIN["energy_bank_control"]["M_g"]       # it matters: the gas is left far lower
+    _agree("access_fraction", 3e-2, 1.5e-2, 1.5e-1)    # a cap on each explosion: the gas left is a 1e-3 remainder of the supply

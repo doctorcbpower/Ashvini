@@ -72,3 +72,28 @@ def test_inflow_lag_delays_the_supply_and_conserves_it():
 
 def test_inflow_lag_agrees_with_stochocc():
     _agree("inflow_lag", 1.5e-2, 1.5e-2, 1.5e-2)
+
+
+def test_recycling_returns_gas_conserves_baryons_and_metals():
+    from ashvini import utils
+    from ashvini.config import override
+    from ashvini.main import run_events
+    z = np.arange(20.0, 10.0 - 1e-9, -0.2)
+    M = P.MINIHALO(z)[None, :]
+    base = P.base_config(**P.OPTION_BASE["ash"])
+    plain = run_events(M, np.zeros_like(M), z, config=base)
+    rec = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.recycling_fraction": 0.5}))
+    assert plain["returned_mass"][0, -1] == 0.0 and rec["returned_mass"][0, -1] > 0.0
+    assert rec["returned_mass"][0, -1] <= 0.5 * rec["ejected_mass"][0, -1] * (1 + 1e-12)
+    assert rec["stars_mass"][0, -1] > plain["stars_mass"][0, -1]                 # the returned gas forms more stars
+    supplied = (utils.Omega_b / utils.Omega_m) * (M[0, -1] - M[0, 0])
+    net_removed = rec["ejected_mass"][0, -1] - rec["returned_mass"][0, -1]
+    assert rec["gas_mass"][0, -1] + rec["stars_mass"][0, -1] + net_removed == pytest.approx(supplied, rel=1e-9)
+    # nothing returns if the fraction is zero, and a return of metals alone does not move the gas
+    only_metals = run_events(M, np.zeros_like(M), z, config=override(base, **{"events.recycling_fraction_Z": 1.0}))
+    assert only_metals["returned_mass"][0, -1] == 0.0
+    assert only_metals["gas_metals"][0, -1] > plain["gas_metals"][0, -1]
+
+
+def test_recycling_agrees_with_stochocc():
+    _agree("recycling", 1.5e-2, 1.5e-2, 1.5e-2)

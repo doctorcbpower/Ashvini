@@ -17,7 +17,7 @@ What it does:
               dust (weight * m_swept * M_d/M_g * f_gas, at most the dust present), and carries off metals and
               dust in proportion to the gas it removes
 Not in this stepper: black holes and AGN winds (bh_mass is zero). Optional, all off by default (Config section `events`):
-the star formation gate, inflow lag.
+the star formation gate, inflow lag, recycling.
 
 Times are in Gyr, masses in Msun.
 """
@@ -73,8 +73,9 @@ class _Reservoirs:
         self.n_explosions = 0
         self.in_transit = 0.0         # gas on its way to the reservoir (events.inflow_kappa)
 
-    def push(self, t, mass, weight):
-        heapq.heappush(self.queue, (t, next(self._count), mass, weight))
+    def push(self, t, mass, weight, ret=None, ret_Z=0.0, ret_d=0.0):
+        """Queue an explosion (mass, weight), or, with `ret`, the return of that much gas (and ret_Z metals, ret_d dust)."""
+        heapq.heappush(self.queue, (t, next(self._count), mass, weight, ret, ret_Z, ret_d))
 
     def next_time(self):
         return self.queue[0][0] if self.queue else None
@@ -167,9 +168,18 @@ class EventStepper:
                 res.push(max(float(t_sn), t_b), float(m), float(w))
         res.t = t_b
 
-    def explode(self, history, res, t_sn, mass, weight):
-        """One explosion at its own time (see module docstring)."""
+    def explode(self, history, res, t_sn, mass, weight, ret=None, ret_Z=0.0, ret_d=0.0):
+        """One explosion at its own time, or, if `ret` is given, the return of recycled gas (see module docstring)."""
         cfg = self.cfg
+        if ret is not None:                      # recycling: gas that was removed falls back
+            res.gas += ret
+            res.returned += ret
+            res.gas_metals += ret_Z
+            res.metals_ejected -= ret_Z
+            res.dust += ret_d
+            res.dust_ejected -= ret_d
+            res.t = t_sn
+            return
         z = history.z_at_t(t_sn)
         M_h = history.mass_at_t(t_sn)
         dZ = weight * self.yield_Z_per_sn
@@ -184,6 +194,7 @@ class EventStepper:
         Z_star = res.stars_metals / res.stars if res.stars > 0 else 0.0
         wanted = weight * float(self.closure.per_supernova(z, M_h, Z_star))
         removed = min(max(res.gas, 0.0), wanted)
+        lost_Z = lost_d = 0.0
         if removed > 0.0 and res.gas > 0.0:
             fraction = min(removed / res.gas, 1.0)
             lost_Z, lost_d = res.gas_metals * fraction, res.dust * fraction
@@ -191,6 +202,11 @@ class EventStepper:
             res.dust -= lost_d
             res.metals_ejected += lost_Z
             res.dust_ejected += lost_d
+        ev = cfg.events
+        fraction_Z = ev.recycling_fraction if ev.recycling_fraction_Z is None else ev.recycling_fraction_Z
+        if (ev.recycling_fraction > 0.0 or fraction_Z > 0.0) and removed > 0.0:
+            tau = ev.recycling_kappa * halo_scales.r_vir_cm(M_h, z) / history.v_esc_at_t(t_sn) / Gyr_s
+            res.push(t_sn + tau, 0.0, 0.0, ev.recycling_fraction * removed, fraction_Z * lost_Z, fraction_Z * lost_d)
         res.gas -= removed
         res.ejected += removed
         res.n_explosions += 1
@@ -205,8 +221,8 @@ class EventStepper:
             t_evt = res.next_time()
             if t_evt is not None and t_evt < t_next:
                 self.advance(history, res, rng_sampler, res.t, t_evt)
-                _, _, mass, weight = heapq.heappop(res.queue)
-                self.explode(history, res, t_evt, mass, weight)
+                _, _, mass, weight, ret, ret_Z, ret_d = heapq.heappop(res.queue)
+                self.explode(history, res, t_evt, mass, weight, ret, ret_Z, ret_d)
             else:
                 self.advance(history, res, rng_sampler, res.t, t_next)
 

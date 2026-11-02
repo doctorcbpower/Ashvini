@@ -223,6 +223,11 @@ class EventParams:
     gate_T_vir_post_K: float = 1.0e4
     # inflow lag: gas takes inflow_kappa * r_vir / v_esc to reach the galaxy (a first-order store); 0 = at once
     inflow_kappa: float = 0.0
+    # recycling: this fraction of the gas each explosion removes falls back into the reservoir recycling_kappa * r_vir / v_esc
+    # later; recycling_fraction_Z is the fraction of the removed metals and dust that fall back (None = same as the gas)
+    recycling_fraction: float = 0.0
+    recycling_kappa: float = 1.0
+    recycling_fraction_Z: float = None
 
 
 @dataclass

@@ -32,6 +32,14 @@ import matplotlib.pyplot as plt
 
 from ashvini import pymctrees_adapter
 
+
+def _figure_path(name):
+    """Figures go in figures/ at the repository root, not the working directory."""
+    import os
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "figures")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, name)
+
 # This script deliberately spans the already-documented unconverged
 # m_res_fraction=1e-3 default (see docs/RESOLUTION_CONVERGENCE.md) as one
 # point on the grid, so build_forest_live's convergence warning would
@@ -101,8 +109,8 @@ def main_():
 
     fig.suptitle("Median halo formation redshift vs. mass resolution (does it plateau or keep climbing?)")
     fig.tight_layout(rect=[0, 0, 1, 0.93])
-    fig.savefig("formation_redshift_vs_resolution.png", dpi=150)
-    print("Wrote formation_redshift_vs_resolution.png")
+    fig.savefig(_figure_path("formation_redshift_vs_resolution.png"), dpi=150)
+    print("Wrote figures/formation_redshift_vs_resolution.png")
 
 
 if __name__ == "__main__":

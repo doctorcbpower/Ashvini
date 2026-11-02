@@ -27,6 +27,14 @@ from ashvini import main, pymctrees_adapter
 
 from stellar_to_halo_mass_relation import moster2013_mstar, behroozi2013_mstar
 
+
+def _figure_path(name):
+    """Figures go in figures/ at the repository root, not the working directory."""
+    import os
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "figures")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, name)
+
 PYMCTREES_CONFIG = "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
 MASS_BINS = np.logspace(8, 12, 9)  # focus on the low-mass/transition region
 N_HALOS = 1000
@@ -97,8 +105,8 @@ def main_():
 
     fig.suptitle("Ashvini low-mass SHMR: sensitivity to timestep (dz) and mass resolution (M_res), reionization ON (default)")
     fig.tight_layout(rect=[0, 0, 1, 0.94])
-    fig.savefig("resolution_timestep_sensitivity.png", dpi=150)
-    print("Wrote resolution_timestep_sensitivity.png")
+    fig.savefig(_figure_path("resolution_timestep_sensitivity.png"), dpi=150)
+    print("Wrote figures/resolution_timestep_sensitivity.png")
 
 
 if __name__ == "__main__":

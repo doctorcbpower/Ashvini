@@ -38,6 +38,14 @@ import matplotlib.pyplot as plt
 from ashvini import main, pymctrees_adapter
 from ashvini.run_params import PARAMS
 
+
+def _figure_path(name):
+    """Figures go in figures/ at the repository root, not the working directory."""
+    import os
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "figures")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, name)
+
 PYMCTREES_CONFIG = "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
 MASS_BINS = np.logspace(8, 14, 13)  # Msun, at z0=0
 N_HALOS = 1000
@@ -173,8 +181,8 @@ def main_():
 
     fig.suptitle(f"Ashvini SHMR, z=0 (n_halos={N_HALOS}/bin, CDM): BH growth and reionization on/off, vs. literature")
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    fig.savefig("stellar_to_halo_mass_relation.png", dpi=150)
-    print("Wrote stellar_to_halo_mass_relation.png")
+    fig.savefig(_figure_path("stellar_to_halo_mass_relation.png"), dpi=150)
+    print("Wrote figures/stellar_to_halo_mass_relation.png")
 
 
 if __name__ == "__main__":

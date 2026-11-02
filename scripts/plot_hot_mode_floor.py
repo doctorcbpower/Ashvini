@@ -6,6 +6,14 @@ import matplotlib.pyplot as plt
 sys.path.insert(0, "scripts")
 from stellar_to_halo_mass_relation import behroozi2013_mstar as B
 
+
+def _figure_path(name):
+    """Figures go in figures/ at the repository root, not the working directory."""
+    import os
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "figures")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, name)
+
 d = json.load(open("scripts/output/hot_mode_floor_scan.json"))
 m = np.array(d["masses"]); grid = np.logspace(9.8, 14.2, 100)
 sel = [("none (baseline)", "tuned baseline (no hot-mode term)", "#1f77b4", "-"),
@@ -27,4 +35,4 @@ b.set_ylabel(r"$M_\star/M_{\rm halo}$", fontsize=14)
 a.legend(fontsize=9, loc="upper left")
 a.text(0.97, 0.03, "ILLUSTRATIVE: UV term, $\\epsilon_{\\rm ff}$ and hot-mode floor tuned\n(CDM, Zhang-Hui trees, 100 halos/bin)",
        transform=a.transAxes, ha="right", fontsize=8.5, bbox=dict(fc="w", ec="0.6", alpha=.85))
-fig.tight_layout(); fig.savefig("shmr_hot_mode_floor.png", dpi=150); print("ok")
+fig.tight_layout(); fig.savefig(_figure_path("shmr_hot_mode_floor.png"), dpi=150); print("ok")

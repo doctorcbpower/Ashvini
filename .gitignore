@@ -147,3 +147,7 @@ notebooks/*.png
 # MVM diagnostics: these logs are the only record of tree ensembles that cannot be regenerated with the same seed (numba sampling)
 !scripts/paper_figures/diagnostics/logs/*.log
 !ashvini/data/
+
+# Figures live in figures/; stray figures written to the repository root are not tracked
+/*.png
+/*.pdf

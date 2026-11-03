@@ -151,3 +151,93 @@ def test_grid_and_problem_are_deterministic():
     assert np.array_equal(a, b)
     p = synthetic_problem(d)
     assert np.array_equal(p.sample_prior(5, seed=4), p.sample_prior(5, seed=4))
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------
+# emcee (docs/FIT_AUDIT.md, tests 4 to 7 on the closed-form model; the real-model recovery is run on OzSTAR)
+
+from ashvini.fit import fit, problem_for_model
+
+
+def test_the_fit_recovers_the_truth_and_reports_its_diagnostics():
+    d = mock(0.3, 0.2, np.random.default_rng(5), n=200)
+    res = fit(synthetic_problem(d), n_steps=3000, seed=3)
+    assert res.converged, res.summary()
+    assert res.chain.shape[2] == 2 and res.chain.shape[1] == 2 * 16 and np.all(np.isfinite(res.tau)) and 0.1 < res.acceptance < 0.9
+    assert np.all(res.r_hat < 1.1)
+    a = res.physical()[:, 0]
+    assert np.quantile(a, 0.025) < 0.3 < np.quantile(a, 0.975)
+    grid = grid_posterior(synthetic_problem(d), n=(161, 81))
+    lo, hi = grid.interval(0, 0.68)
+    assert np.quantile(res.samples()[:, 0], [0.16, 0.84]) == pytest.approx([lo, hi], abs=0.03)       # agrees with the exact posterior
+    lo, hi = grid.interval(1, 0.68)                                                                  # (one mock's s_int can sit outside its own 95% interval)
+    assert np.quantile(res.samples()[:, 1], [0.16, 0.84]) == pytest.approx([lo, hi], abs=0.15)
+    assert "R-hat" in res.summary() and "tau" in res.summary()
+
+
+def test_a_chain_that_is_too_short_is_reported_not_trusted():
+    d = mock(0.3, 0.2, np.random.default_rng(5), n=200)
+    with pytest.warns(UserWarning, match="chain too short"):
+        res = fit(synthetic_problem(d), n_steps=60, seed=3)
+    assert not res.converged and any("too short" in w for w in res.warnings)
+
+
+def test_the_same_input_gives_the_same_chain_and_another_seed_does_not():
+    d = mock(0.1, 0.1, np.random.default_rng(8), n=50)
+    a = fit(synthetic_problem(d), n_steps=120, seed=4).chain
+    b = fit(synthetic_problem(d), n_steps=120, seed=4).chain
+    c = fit(synthetic_problem(d), n_steps=120, seed=5).chain
+    assert np.array_equal(a, b) and not np.array_equal(a, c)
+
+
+def test_a_truth_outside_the_bounds_piles_up_against_the_bound_with_a_warning():
+    d = mock(3.5, 0.1, np.random.default_rng(9), n=150)               # the prior allows -2 to 2
+    with pytest.warns(UserWarning, match="piles up against the upper bound"):
+        res = fit(synthetic_problem(d), n_steps=800, seed=1)
+    assert np.mean(res.chain[..., 0] > 1.9) > 0.5
+
+
+def test_a_model_that_never_reaches_the_data_is_an_error():
+    d = Data([2.0, 3.0], [1.0, 1.0], [0.1, 0.1])
+    with pytest.raises(ValueError, match="starting points"):
+        fit(synthetic_problem(d), n_steps=20)
+
+
+class FakeModel:
+    """A stand-in for ashvini.Model: M_BH = 10^theta * M*^1 times log-normal noise, from a fixed set of 'trees'; counts the bootstrap draws asked for."""
+    names = ["eff"]
+    bounds = np.array([[1e-4, 1e-1]])
+    log = np.array([True])
+
+    def __init__(self, seed=0, n=3000):
+        rng = np.random.default_rng(seed)
+        self.mh = rng.uniform(10.5, 13.0, n)
+        self.x = 10 ** (self.mh - 2.0 + rng.normal(0, 0.2, n))
+        self.noise = rng.normal(0, 0.1, n)
+        self.n_boot_seen = []
+
+    def relation(self, sample, theta=None, y="bh_mass", x="stars_mass", bins=None, n_boot=200, **kw):
+        from ashvini.relation import relation_from_arrays
+        self.n_boot_seen.append(n_boot)
+        eff = 1e-3 if theta is None else float(np.asarray(theta)[0])
+        yy = eff * self.x * 10 ** self.noise
+        return relation_from_arrays(self.x, yy, np.ones(len(yy)), 10 ** self.mh, np.arange(7.5, 11.5, 0.25), n_boot=n_boot, min_ess=20,
+                                    log_mh_range=(10.5, 13.0))
+
+
+def test_the_model_problem_holds_the_reference_errors_fixed_and_recovers_a_known_knob():
+    model = FakeModel()
+    truth = 4e-3
+    rng = np.random.default_rng(21)
+    xs = rng.uniform(8.8, 10.4, 40)
+    ys = np.log10(truth) + xs + rng.normal(0, 0.25, 40)
+    data = Data(xs, ys, np.full(40, 0.15))
+    prob = problem_for_model(model, None, data, n_boot=30)
+    assert model.n_boot_seen == [30]                                   # one bootstrap, at the reference point
+    assert prob.names == ["eff"] and prob.log.tolist() == [True] and prob.lower[0] == pytest.approx(-4.0)
+    lp = [prob.log_prob(np.array([v, -0.8])) for v in np.linspace(-3.5, -1.5, 41)]
+    assert model.n_boot_seen[1:] == [0] * 41                           # no bootstrap inside the likelihood
+    assert np.linspace(-3.5, -1.5, 41)[int(np.argmax(lp))] == pytest.approx(np.log10(truth), abs=0.15)
+    res = fit(prob, n_steps=3000, seed=2)
+    q = np.quantile(res.physical()[:, 0], [0.025, 0.975])
+    assert q[0] < truth < q[1]

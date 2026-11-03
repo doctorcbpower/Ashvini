@@ -147,3 +147,15 @@ Tests (9): the likelihood by hand (interpolation, upper limit, x errors carried 
 A first version of the mock had a detection threshold built from the true offset, so the limits carried information about it. It gave coverage of 0.76 and p = 0.02 for the offset. That was a flaw in the test, not the likelihood; the threshold is now independent of the truth.
 
 Not yet done: `fit()` with emcee and its convergence diagnostics; the binding to the real `Model` (reference errors held fixed, bootstrap off); recovery on the real model (tests 4 to 7, on OzSTAR).
+
+## 13. Implemented: `fit()` with emcee and the Model binding (4 Nov 2026)
+
+`ashvini/fit.py`:
+- `fit(problem, n_steps, n_walkers, n_runs=2, seed, pool)`: `n_runs` independent emcee ensembles (default 2, at least 16 walkers, 4 per dimension), each started from different prior draws with a finite posterior; `pool` takes a `multiprocessing.Pool` or an MPI pool. Returns a `FitResult` (chain, tau, acceptance, R-hat, `summary()`, `physical()`, `corner()`).
+- Convergence (N2): kept steps at least 50 times the integrated autocorrelation time; acceptance fraction between 0.1 and 0.9; split R-hat between the ensembles below 1.1. Any failure is in `FitResult.warnings` and issued as a warning.
+- Bound pile-up (test 7): more than 10 per cent of the posterior within 2 per cent of the prior range at one end (a flat posterior puts 2 per cent there) gives a warning naming the parameter and the side.
+- `problem_for_model(model, sample, data, y, x, bins, x_scale, reference_theta, n_boot)`: parameters are the free knobs; the bootstrap errors of the model medians come from one run at the reference point and are held fixed (interpolated at each bin), so each likelihood evaluation is one model run and no bootstrap (N3).
+
+Tests (tests 5 to 7 and the sampler version of test 3, 15 in the file): recovery of a known offset, with the sampler's 16th to 84th percentiles agreeing with the exact grid posterior; a short chain is reported, not trusted; same seed gives the same chain; a truth outside the bounds piles up with a warning; data the model cannot reach is an error; and a stand-in model confirming one bootstrap in total and recovery of a known knob. A 1500-step chain was flagged as too short (tau 29 to 38 steps); 3000 steps were needed.
+
+Still to do: recovery on the real `Model` (test 4: three mocks, one near a bound; needs OzSTAR and a choice of fixed star-formation set, for which the preset values are the default) and the first real data set.

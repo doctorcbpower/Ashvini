@@ -133,3 +133,17 @@ Findings
 - **The Eddington multiplier is a threshold knob.** At or above 1 it does nothing. Below about 0.5 the Eddington cap binds, the scatter grows, and at 0.1 black holes barely grow from their seeds (slope 0, scatter 1.3 dex), which is not a regime the data would accept. A flat posterior above about 0.5 and a sharp wall below is what to expect.
 - **With the M-sigma cap, M_BH at the cap is proportional to f_g** (0.5 dex per factor 3.2) and independent of the accretion efficiency, as long as the cap is reached. At an efficiency of 1e-5 the cap is not reached and the result is accretion-limited, the same as without the cap. So the cap and the accretion efficiency are two regimes of one relation: M_BH = the smaller of the two. A fit that frees both will have a knee-shaped, non-Gaussian posterior along their trade-off. That is the first place in this problem where an MCMC (rather than a grid) is justified.
 - The cap changes the slope slightly (1.07) and the scatter (0.13).
+
+## 12. Implemented: Data, likelihood, prior, grid posterior (3 Nov 2026): `ashvini/fit.py`, `tests/test_fit.py`
+
+Agreed: I1 to I4, A4 and A5 as proposed (Gaussian in log y with `s_int` free, bootstrap model error in the variance, linear interpolation between unflagged bin centres, intrinsic scatter free and uniform in log between 0.01 and 1 dex). The star-formation fixed set and the first data set are still open; neither is needed yet.
+
+- `Data(log_x, log_y, sigma_y, upper_limit, sigma_x)`, `Curve` (median, scatter and median error at nodes; `Curve.from_relation` keeps unflagged bins and can take fixed reference errors), `log_likelihood(data, curve, s_int)`, `n_excluded`.
+- `Problem`: free parameters with uniform priors in the sampling variable (log10 for log parameters, `s_int` last), `log_prob`, `sample_prior`. `predict(theta)` returns a Curve, so the closed-form model of the tests and the real `Model` use the same code.
+- `grid_posterior`, exact up to the grid, for one or two parameters (section 10: the BH-only problem is one-dimensional). The sampler comes next and reuses `Problem.log_prob`.
+
+Tests (9): the likelihood by hand (interpolation, upper limit, x errors carried by the slope); out-of-range points excluded and counted, never extrapolated; prior mapping and bounds; coverage on the closed-form model; centring on the truth for a large sample; all-outside data is an error; determinism. Coverage test: 150 mocks of 30 points with truths drawn from the prior, half of them upper limits from a detection threshold that does not depend on the truth; the truth lies in the central 68 per cent interval in the right fraction of mocks and the ranks are uniform (Kolmogorov-Smirnov). A 300-mock run gave 0.70 for both the offset and `s_int` (binomial error 0.027), rank-test p = 0.47 and 0.98.
+
+A first version of the mock had a detection threshold built from the true offset, so the limits carried information about it. It gave coverage of 0.76 and p = 0.02 for the offset. That was a flaw in the test, not the likelihood; the threshold is now independent of the truth.
+
+Not yet done: `fit()` with emcee and its convergence diagnostics; the binding to the real `Model` (reference errors held fixed, bootstrap off); recovery on the real model (tests 4 to 7, on OzSTAR).

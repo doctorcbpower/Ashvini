@@ -1,0 +1,106 @@
+Parameter-space exploration; tolerance 0.2 dex around the interval between Moster+13 and Behroozi+13 at 3e+10, 1e+11, 3e+11, 1e+12 Msun
+
+== cur_ash: 1280 of 1280 samples evaluated
+   M_h = 1e+09: eps S1 -0.02+-0.65 ST 0.07+-0.02; epsilon_p S1 +0.64+-2.03 ST 0.67+-0.17; delay S1 -0.03+-0.31 ST 0.01+-0.01; z_rei S1 +0.01+-0.83 ST 0.10+-0.02; gamma S1 -0.00+-0.04 ST 0.00+-0.00; omega S1 -0.01+-0.93 ST 0.12+-0.04; bh_eff S1 -0.00+-0.00 ST 0.00+-0.00; eta_agn S1 -0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+10: eps S1 +0.09+-1.83 ST 0.24+-0.08; epsilon_p S1 +0.73+-3.56 ST 0.88+-0.22; delay S1 +0.07+-0.11 ST 0.00+-0.00; z_rei S1 -0.00+-0.03 ST 0.00+-0.00; gamma S1 -0.00+-0.00 ST 0.00+-0.00; omega S1 +0.02+-0.12 ST 0.00+-0.00; bh_eff S1 +0.00+-0.02 ST 0.00+-0.00; eta_agn S1 +0.00+-0.01 ST 0.00+-0.00
+   M_h = 1e+11: eps S1 +0.21+-3.38 ST 0.47+-0.12; epsilon_p S1 +0.38+-4.00 ST 0.66+-0.21; delay S1 -0.00+-0.11 ST 0.00+-0.00; z_rei S1 -0.00+-0.00 ST 0.00+-0.00; gamma S1 -0.00+-0.00 ST 0.00+-0.00; omega S1 -0.00+-0.12 ST 0.00+-0.00; bh_eff S1 -0.01+-0.04 ST 0.00+-0.00; eta_agn S1 +0.00+-0.02 ST 0.00+-0.00
+   M_h = 1e+12: eps S1 +0.72+-5.58 ST 0.80+-0.14; epsilon_p S1 +0.38+-3.09 ST 0.25+-0.10; delay S1 -0.04+-0.15 ST 0.00+-0.00; z_rei S1 +0.00+-0.00 ST 0.00+-0.00; gamma S1 +0.00+-0.00 ST 0.00+-0.00; omega S1 +0.00+-0.02 ST 0.00+-0.00; bh_eff S1 -0.00+-0.06 ST 0.00+-0.00; eta_agn S1 +0.00+-0.03 ST 0.00+-0.00
+   accepted: 55 of 1280 (4.3 percent)
+   predicted M*/M_halo at 1e+08: 16/50/84 percent 1.1e-05 / 2.4e-05 / 5.3e-05  (published: Moster 8.1e-07, Behroozi 2.7e-04)
+   predicted M*/M_halo at 3e+08: 16/50/84 percent 9.1e-06 / 2.1e-05 / 4.6e-05  (published: Moster 3.9e-06, Behroozi 4.3e-04)
+   predicted M*/M_halo at 1e+09: 16/50/84 percent 1.9e-05 / 3.7e-05 / 7.8e-05  (published: Moster 1.9e-05, Behroozi 7.0e-04)
+   predicted M*/M_halo at 3e+09: 16/50/84 percent 1.5e-04 / 1.8e-04 / 3.1e-04  (published: Moster 9.3e-05, Behroozi 1.1e-03)
+   predicted M*/M_halo at 1e+10: 16/50/84 percent 1.0e-03 / 1.3e-03 / 1.5e-03  (published: Moster 4.6e-04, Behroozi 1.8e-03)
+   accepted eps: 16/50/84 percent 0.0467 / 0.0589 / 0.0909
+   accepted epsilon_p: 16/50/84 percent 7.36 / 8.49 / 10.5
+   accepted delay: 16/50/84 percent 0.0116 / 0.0336 / 0.0422
+   accepted z_rei: 16/50/84 percent 6.74 / 7.32 / 8.58
+   accepted gamma: 16/50/84 percent 11.4 / 14.5 / 18.9
+   accepted omega: 16/50/84 percent 1.36 / 1.98 / 2.31
+   accepted bh_eff: 16/50/84 percent 0.000553 / 0.00196 / 0.00719
+   accepted eta_agn: 16/50/84 percent 0.0681 / 0.219 / 1.16
+
+== cur_en: 1280 of 1280 samples evaluated
+   M_h = 1e+09: eps S1 +0.04+-0.81 ST 0.13+-0.05; eps_fb S1 +0.67+-2.12 ST 0.73+-0.18; delay S1 +0.05+-0.39 ST 0.03+-0.02; z_rei S1 +0.01+-0.54 ST 0.07+-0.02; gamma S1 -0.01+-0.03 ST 0.00+-0.00; omega S1 +0.22+-0.74 ST 0.12+-0.03; bh_eff S1 +0.00+-0.00 ST 0.00+-0.00; eta_agn S1 -0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+10: eps S1 +0.15+-1.22 ST 0.13+-0.06; eps_fb S1 +0.71+-4.10 ST 0.90+-0.17; delay S1 +0.03+-0.11 ST 0.00+-0.00; z_rei S1 +0.01+-0.02 ST 0.00+-0.00; gamma S1 +0.00+-0.01 ST 0.00+-0.00; omega S1 +0.00+-0.12 ST 0.00+-0.00; bh_eff S1 -0.00+-0.01 ST 0.00+-0.00; eta_agn S1 -0.00+-0.01 ST 0.00+-0.00
+   M_h = 1e+11: eps S1 +0.57+-3.66 ST 0.51+-0.16; eps_fb S1 +0.49+-4.73 ST 0.64+-0.19; delay S1 +0.00+-0.01 ST 0.00+-0.00; z_rei S1 +0.00+-0.00 ST 0.00+-0.00; gamma S1 +0.00+-0.00 ST 0.00+-0.00; omega S1 +0.01+-0.14 ST 0.00+-0.00; bh_eff S1 -0.01+-0.07 ST 0.00+-0.00; eta_agn S1 -0.00+-0.04 ST 0.00+-0.00
+   M_h = 1e+12: eps S1 +0.96+-6.01 ST 0.89+-0.18; eps_fb S1 +0.24+-2.76 ST 0.16+-0.06; delay S1 +0.00+-0.01 ST 0.00+-0.00; z_rei S1 +0.00+-0.00 ST 0.00+-0.00; gamma S1 +0.00+-0.00 ST 0.00+-0.00; omega S1 -0.00+-0.02 ST 0.00+-0.00; bh_eff S1 -0.00+-0.08 ST 0.00+-0.00; eta_agn S1 -0.00+-0.04 ST 0.00+-0.00
+   accepted: 64 of 1280 (5.0 percent)
+   predicted M*/M_halo at 1e+08: 16/50/84 percent 8.6e-06 / 2.0e-05 / 4.2e-05  (published: Moster 8.1e-07, Behroozi 2.7e-04)
+   predicted M*/M_halo at 3e+08: 16/50/84 percent 7.8e-06 / 1.8e-05 / 3.3e-05  (published: Moster 3.9e-06, Behroozi 4.3e-04)
+   predicted M*/M_halo at 1e+09: 16/50/84 percent 1.6e-05 / 3.5e-05 / 4.9e-05  (published: Moster 1.9e-05, Behroozi 7.0e-04)
+   predicted M*/M_halo at 3e+09: 16/50/84 percent 9.9e-05 / 1.7e-04 / 2.1e-04  (published: Moster 9.3e-05, Behroozi 1.1e-03)
+   predicted M*/M_halo at 1e+10: 16/50/84 percent 9.9e-04 / 1.1e-03 / 1.4e-03  (published: Moster 4.6e-04, Behroozi 1.8e-03)
+   accepted eps: 16/50/84 percent 0.0405 / 0.0629 / 0.0839
+   accepted eps_fb: 16/50/84 percent 0.176 / 0.215 / 0.281
+   accepted delay: 16/50/84 percent 0.0178 / 0.0269 / 0.0391
+   accepted z_rei: 16/50/84 percent 6.23 / 6.87 / 8.33
+   accepted gamma: 16/50/84 percent 11.2 / 15.7 / 18.8
+   accepted omega: 16/50/84 percent 1.13 / 1.69 / 2.23
+   accepted bh_eff: 16/50/84 percent 0.000581 / 0.00197 / 0.00519
+   accepted eta_agn: 16/50/84 percent 0.131 / 0.398 / 0.868
+
+== sk_ash: 1536 of 1536 samples evaluated
+   M_h = 1e+09: A S1 +0.09+-0.66 ST 0.06+-0.02; N S1 +0.06+-0.39 ST 0.02+-0.01; chi S1 -0.03+-0.34 ST 0.01+-0.01; epsilon_p S1 +0.64+-2.57 ST 0.72+-0.18; delay S1 -0.09+-0.52 ST 0.04+-0.02; z_rei S1 +0.22+-0.88 ST 0.12+-0.04; gamma S1 -0.01+-0.04 ST 0.00+-0.00; omega S1 -0.02+-1.02 ST 0.13+-0.04; bh_eff S1 +0.00+-0.00 ST 0.00+-0.00; eta_agn S1 +0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+10: A S1 -0.07+-0.43 ST 0.02+-0.01; N S1 +0.00+-0.13 ST 0.00+-0.00; chi S1 +0.02+-0.19 ST 0.00+-0.00; epsilon_p S1 +1.01+-3.36 ST 1.04+-0.17; delay S1 -0.01+-0.47 ST 0.02+-0.01; z_rei S1 -0.01+-0.02 ST 0.00+-0.00; gamma S1 -0.00+-0.00 ST 0.00+-0.00; omega S1 -0.00+-0.08 ST 0.00+-0.00; bh_eff S1 +0.00+-0.00 ST 0.00+-0.00; eta_agn S1 +0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+11: A S1 +0.43+-0.45 ST 0.01+-0.01; N S1 +0.19+-0.32 ST 0.01+-0.00; chi S1 -0.11+-0.32 ST 0.01+-0.00; epsilon_p S1 +1.08+-4.04 ST 1.00+-0.15; delay S1 +0.12+-0.58 ST 0.02+-0.01; z_rei S1 -0.00+-0.00 ST 0.00+-0.00; gamma S1 +0.00+-0.00 ST 0.00+-0.00; omega S1 -0.00+-0.07 ST 0.00+-0.00; bh_eff S1 +0.00+-0.01 ST 0.00+-0.00; eta_agn S1 +0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+12: A S1 +0.59+-0.75 ST 0.01+-0.01; N S1 -0.04+-0.81 ST 0.02+-0.01; chi S1 +0.45+-0.47 ST 0.01+-0.00; epsilon_p S1 +1.69+-6.00 ST 0.93+-0.17; delay S1 +0.09+-0.87 ST 0.02+-0.02; z_rei S1 +0.00+-0.00 ST 0.00+-0.00; gamma S1 -0.00+-0.00 ST 0.00+-0.00; omega S1 +0.00+-0.01 ST 0.00+-0.00; bh_eff S1 +0.01+-0.02 ST 0.00+-0.00; eta_agn S1 +0.00+-0.01 ST 0.00+-0.00
+   accepted: 224 of 1536 (14.6 percent)
+   predicted M*/M_halo at 1e+08: 16/50/84 percent 5.8e-06 / 1.4e-05 / 2.6e-05  (published: Moster 8.1e-07, Behroozi 2.7e-04)
+   predicted M*/M_halo at 3e+08: 16/50/84 percent 5.8e-06 / 1.3e-05 / 2.6e-05  (published: Moster 3.9e-06, Behroozi 4.3e-04)
+   predicted M*/M_halo at 1e+09: 16/50/84 percent 1.8e-05 / 3.8e-05 / 6.9e-05  (published: Moster 1.9e-05, Behroozi 7.0e-04)
+   predicted M*/M_halo at 3e+09: 16/50/84 percent 1.2e-04 / 2.2e-04 / 3.1e-04  (published: Moster 9.3e-05, Behroozi 1.1e-03)
+   predicted M*/M_halo at 1e+10: 16/50/84 percent 9.1e-04 / 1.2e-03 / 1.6e-03  (published: Moster 4.6e-04, Behroozi 1.8e-03)
+   accepted A: 16/50/84 percent 9.62e-05 / 0.000196 / 0.000459
+   accepted N: 16/50/84 percent 1.11 / 1.25 / 1.5
+   accepted chi: 16/50/84 percent 0.0401 / 0.0754 / 0.105
+   accepted epsilon_p: 16/50/84 percent 7.45 / 9.19 / 11.5
+   accepted delay: 16/50/84 percent 0.011 / 0.0246 / 0.0371
+   accepted z_rei: 16/50/84 percent 6.5 / 7.43 / 8.42
+   accepted gamma: 16/50/84 percent 10.8 / 14.5 / 18.2
+   accepted omega: 16/50/84 percent 1.16 / 1.7 / 2.66
+   accepted bh_eff: 16/50/84 percent 0.000556 / 0.00168 / 0.00651
+   accepted eta_agn: 16/50/84 percent 0.0882 / 0.271 / 0.948
+
+== sk_en: 1536 of 1536 samples evaluated
+   M_h = 1e+09: A S1 +0.20+-0.89 ST 0.10+-0.04; N S1 -0.04+-0.41 ST 0.02+-0.01; chi S1 -0.02+-0.29 ST 0.01+-0.01; eps_fb S1 +0.74+-2.08 ST 0.61+-0.16; delay S1 +0.06+-0.81 ST 0.09+-0.04; z_rei S1 +0.12+-0.79 ST 0.11+-0.03; gamma S1 +0.01+-0.04 ST 0.00+-0.00; omega S1 +0.12+-0.90 ST 0.12+-0.05; bh_eff S1 +0.00+-0.00 ST 0.00+-0.00; eta_agn S1 -0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+10: A S1 +0.04+-0.50 ST 0.02+-0.01; N S1 -0.10+-0.14 ST 0.00+-0.00; chi S1 -0.00+-0.15 ST 0.00+-0.00; eps_fb S1 +1.11+-3.62 ST 0.94+-0.17; delay S1 +0.02+-0.59 ST 0.03+-0.02; z_rei S1 -0.01+-0.02 ST 0.00+-0.00; gamma S1 -0.00+-0.00 ST 0.00+-0.00; omega S1 +0.00+-0.08 ST 0.00+-0.00; bh_eff S1 -0.00+-0.00 ST 0.00+-0.00; eta_agn S1 +0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+11: A S1 -0.09+-0.36 ST 0.01+-0.00; N S1 -0.09+-0.19 ST 0.00+-0.00; chi S1 +0.04+-0.16 ST 0.00+-0.00; eps_fb S1 +1.01+-4.76 ST 0.96+-0.16; delay S1 -0.06+-0.45 ST 0.01+-0.01; z_rei S1 -0.00+-0.00 ST 0.00+-0.00; gamma S1 -0.00+-0.00 ST 0.00+-0.00; omega S1 +0.00+-0.08 ST 0.00+-0.00; bh_eff S1 -0.00+-0.01 ST 0.00+-0.00; eta_agn S1 +0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+12: A S1 -0.28+-0.63 ST 0.01+-0.00; N S1 -0.14+-0.35 ST 0.00+-0.00; chi S1 +0.09+-0.24 ST 0.00+-0.00; eps_fb S1 +1.12+-7.68 ST 0.99+-0.17; delay S1 -0.16+-0.29 ST 0.00+-0.00; z_rei S1 -0.00+-0.00 ST 0.00+-0.00; gamma S1 +0.00+-0.00 ST 0.00+-0.00; omega S1 -0.00+-0.02 ST 0.00+-0.00; bh_eff S1 -0.00+-0.03 ST 0.00+-0.00; eta_agn S1 +0.00+-0.01 ST 0.00+-0.00
+   accepted: 213 of 1536 (13.9 percent)
+   predicted M*/M_halo at 1e+08: 16/50/84 percent 3.5e-06 / 8.9e-06 / 2.1e-05  (published: Moster 8.1e-07, Behroozi 2.7e-04)
+   predicted M*/M_halo at 3e+08: 16/50/84 percent 3.4e-06 / 8.5e-06 / 2.1e-05  (published: Moster 3.9e-06, Behroozi 4.3e-04)
+   predicted M*/M_halo at 1e+09: 16/50/84 percent 1.1e-05 / 1.9e-05 / 4.0e-05  (published: Moster 1.9e-05, Behroozi 7.0e-04)
+   predicted M*/M_halo at 3e+09: 16/50/84 percent 8.8e-05 / 1.4e-04 / 1.8e-04  (published: Moster 9.3e-05, Behroozi 1.1e-03)
+   predicted M*/M_halo at 1e+10: 16/50/84 percent 8.4e-04 / 1.1e-03 / 1.4e-03  (published: Moster 4.6e-04, Behroozi 1.8e-03)
+   accepted A: 16/50/84 percent 0.00011 / 0.000243 / 0.000581
+   accepted N: 16/50/84 percent 1.11 / 1.31 / 1.5
+   accepted chi: 16/50/84 percent 0.0449 / 0.0775 / 0.108
+   accepted eps_fb: 16/50/84 percent 0.197 / 0.254 / 0.306
+   accepted delay: 16/50/84 percent 0.00928 / 0.0263 / 0.0414
+   accepted z_rei: 16/50/84 percent 6.42 / 7.62 / 8.54
+   accepted gamma: 16/50/84 percent 11.2 / 15 / 18.3
+   accepted omega: 16/50/84 percent 1.35 / 1.98 / 2.65
+   accepted bh_eff: 16/50/84 percent 0.000491 / 0.00147 / 0.00571
+   accepted eta_agn: 16/50/84 percent 0.0852 / 0.331 / 1.08
+
+== cur_ash_rate: 1280 of 1280 samples evaluated
+   M_h = 1e+09: eps S1 +0.08+-0.73 ST 0.08+-0.04; epsilon_p S1 +0.62+-1.74 ST 0.57+-0.15; delay S1 +0.05+-0.39 ST 0.03+-0.01; z_rei S1 +0.44+-1.45 ST 0.38+-0.09; gamma S1 +0.00+-0.08 ST 0.00+-0.00; omega S1 -0.00+-0.05 ST 0.00+-0.00; bh_eff S1 +0.00+-0.00 ST 0.00+-0.00; eta_agn S1 +0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+10: eps S1 -0.13+-0.54 ST 0.04+-0.02; epsilon_p S1 +0.56+-2.08 ST 0.62+-0.15; delay S1 -0.03+-0.32 ST 0.02+-0.01; z_rei S1 +0.31+-1.44 ST 0.33+-0.09; gamma S1 +0.01+-0.05 ST 0.00+-0.00; omega S1 +0.03+-0.14 ST 0.00+-0.00; bh_eff S1 -0.00+-0.01 ST 0.00+-0.00; eta_agn S1 -0.00+-0.00 ST 0.00+-0.00
+   M_h = 1e+11: eps S1 +0.32+-2.75 ST 0.42+-0.12; epsilon_p S1 +0.64+-3.62 ST 0.59+-0.17; delay S1 +0.04+-0.14 ST 0.00+-0.00; z_rei S1 +0.00+-0.07 ST 0.00+-0.00; gamma S1 -0.00+-0.01 ST 0.00+-0.00; omega S1 +0.03+-1.87 ST 0.14+-0.04; bh_eff S1 -0.01+-0.03 ST 0.00+-0.00; eta_agn S1 -0.00+-0.01 ST 0.00+-0.00
+   M_h = 1e+12: eps S1 +0.86+-5.26 ST 0.78+-0.15; epsilon_p S1 +0.34+-3.13 ST 0.24+-0.09; delay S1 +0.00+-0.13 ST 0.00+-0.00; z_rei S1 +0.00+-0.02 ST 0.00+-0.00; gamma S1 +0.00+-0.00 ST 0.00+-0.00; omega S1 +0.12+-1.31 ST 0.04+-0.01; bh_eff S1 -0.00+-0.05 ST 0.00+-0.00; eta_agn S1 +0.00+-0.02 ST 0.00+-0.00
+   accepted: 63 of 1280 (4.9 percent)
+   predicted M*/M_halo at 1e+08: 16/50/84 percent 1.5e-05 / 5.2e-05 / 7.8e-05  (published: Moster 8.1e-07, Behroozi 2.7e-04)
+   predicted M*/M_halo at 3e+08: 16/50/84 percent 1.4e-05 / 4.6e-05 / 7.3e-05  (published: Moster 3.9e-06, Behroozi 4.3e-04)
+   predicted M*/M_halo at 1e+09: 16/50/84 percent 1.9e-05 / 7.2e-05 / 1.2e-04  (published: Moster 1.9e-05, Behroozi 7.0e-04)
+   predicted M*/M_halo at 3e+09: 16/50/84 percent 1.7e-05 / 8.2e-05 / 1.7e-04  (published: Moster 9.3e-05, Behroozi 1.1e-03)
+   predicted M*/M_halo at 1e+10: 16/50/84 percent 2.1e-05 / 1.4e-04 / 3.0e-04  (published: Moster 4.6e-04, Behroozi 1.8e-03)
+   accepted eps: 16/50/84 percent 0.0311 / 0.0392 / 0.066
+   accepted epsilon_p: 16/50/84 percent 1.22 / 2.16 / 3.19
+   accepted delay: 16/50/84 percent 0.00766 / 0.0242 / 0.042
+   accepted z_rei: 16/50/84 percent 6.18 / 6.92 / 8.24
+   accepted gamma: 16/50/84 percent 11.3 / 15.7 / 18.4
+   accepted omega: 16/50/84 percent 1.98 / 2.14 / 2.85
+   accepted bh_eff: 16/50/84 percent 0.000457 / 0.00202 / 0.00576
+   accepted eta_agn: 16/50/84 percent 0.104 / 0.271 / 0.847
+

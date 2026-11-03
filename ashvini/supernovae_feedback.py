@@ -38,7 +38,7 @@ def mass_loading_factor(redshift, halo_mass, stellar_metallicity, cfg=None):
         * sn.pi_fid
         * ((10**11.5 / halo_mass_safe) ** sn.mass_slope)
         * ((9 / (1 + redshift)) ** sn.redshift_slope)
-        * metallicity_function(stellar_metallicity)
+        * (metallicity_function(stellar_metallicity) if sn.metallicity_step else 1.0)
     )
     return np.where(resolved, mass_loading_factor, 0.0)
 

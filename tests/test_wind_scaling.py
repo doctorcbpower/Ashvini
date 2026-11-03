@@ -82,3 +82,13 @@ def test_stellar_mass_wind_is_refused_by_the_event_integrator():
     from ashvini.integrators.events import EventIntegrator
     with pytest.raises(ValueError):
         EventIntegrator(override(DEFAULT, **{"sn.wind_model": "stellar_mass"}))
+
+
+def test_metallicity_step_can_be_removed_and_is_on_by_default():
+    assert DEFAULT.sn.metallicity_step is True
+    off = override(DEFAULT, **{"sn.metallicity_step": False})
+    Mh, z = 1e9, 7.0
+    poor = sn_fb.mass_loading_factor(z, Mh, 0.0, DEFAULT)
+    assert sn_fb.mass_loading_factor(z, Mh, 0.0, off) == pytest.approx(poor, rel=1e-3)             # metal-poor value is the step's upper level (to the width of the step at Z = 0)
+    assert sn_fb.mass_loading_factor(z, Mh, 0.02, off) == pytest.approx(sn_fb.mass_loading_factor(z, Mh, 0.0, off), rel=1e-12)   # no fall with enrichment
+    assert sn_fb.mass_loading_factor(z, Mh, 0.02, DEFAULT) == pytest.approx(0.25 * poor, rel=1e-3)

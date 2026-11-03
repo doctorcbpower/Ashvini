@@ -84,6 +84,9 @@ class SupernovaParams:
     wind_model: str = "ashvini"
     # The "ashvini" loading is proportional to (1e11.5 Msun / M_h)^mass_slope * (9 / (1 + z))^redshift_slope (momentum-driven: 1/3
     # and 1/2; an energy-driven wind has mass_slope 2/3).
+    # The "ashvini" loading also falls by a factor 4 (a smooth step, centred on 0.1 Z_sun) as the stars become enriched; False removes the step
+    # (the factor is then 1, the metal-poor value).
+    metallicity_step: bool = True
     mass_slope: float = 1.0 / 3.0
     redshift_slope: float = 0.5
     # "stellar_mass": eta_w = min(eta_max, max(0, eta_norm * (M_star / 1e10 Msun)^(-eta_p) - eta_c)), the form of Kravtsov & Manwadkar

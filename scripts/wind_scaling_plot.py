@@ -21,14 +21,18 @@ D = os.path.join(C.OUT, "wind_scan")
 runs = {d["name"]: d for d in (json.load(open(f)) for f in sorted(glob.glob(os.path.join(D, "*.json"))))}
 mh = np.logspace(8, 12, 100)
 ref = [(np.array([float(f(m)) for m in mh]) / mh, s, l) for f, s, l in ((moster2013_mstar, "k--", "Moster+13"), (behroozi2013_mstar, "k-", "Behroozi+13"))]
-ash = [n for n in runs if n.startswith("ash")]
+ash = [n for n in runs if n.startswith("ash") and not n.endswith("noZ") and n != "ash_m0.67_z1.00"]
 st = [n for n in runs if n.startswith("stellar")]
 
 
 def label(n):
+    if n == "momentum_wind":
+        return "momentum wind model (1/v_esc)"
+    if n == "energy_wind":
+        return "energy wind model (1/v_esc^2)"
     if n.startswith("ash"):
         m, z = n.split("_")[1:3]
-        return f"mass exp {float(m[1:]):.2f}, z exp {float(z[1:]):.2f}"
+        return f"mass exp {float(m[1:]):.2f}, z exp {float(z[1:]):.2f}" + (", no Z step" if n.endswith("noZ") else "")
     p, c = n.split("_")[1:3]
     return f"stellar-mass, slope {float(p[1:]):.2f}, {'cutoff' if c == 'cut' else 'no cutoff'}"
 
@@ -84,3 +88,36 @@ for m in (1e8, 10 ** 8.5, 1e9, 10 ** 9.5, 1e10):
     k = int(np.argmin(abs(np.log10(C.MASSES) - np.log10(m))))
     inside = [n for n in runs if lo <= runs[n]["mstar_over_mhalo_z0"][k] <= hi]
     print(f"  M = {C.MASSES[k]:.1e}: band {lo:.1e} to {hi:.1e}; forms inside: {len(inside)} of {len(runs)}; range of forms {min(runs[n]['mstar_over_mhalo_z0'][k] for n in runs):.1e} to {max(runs[n]['mstar_over_mhalo_z0'][k] for n in runs):.1e}")
+
+
+# 4. the consistent pairs, with and without the metallicity step, and the two v_esc wind models
+CONS = [("ash_m0.33_z0.50", "C0", "-"), ("ash_m0.33_z0.50_noZ", "C0", "--"), ("ash_m0.67_z1.00", "C3", "-"), ("ash_m0.67_z1.00_noZ", "C3", "--"),
+        ("momentum_wind", "C2", ":"), ("energy_wind", "C1", ":")]
+CONS = [c for c in CONS if c[0] in runs]
+fig, axes = plt.subplots(1, 3, figsize=(18, 5.2))
+ax = axes[0]
+for y, st_, l in ref:
+    ax.loglog(mh, y, st_, label=l)
+ax.fill_between(NADLER_MPEAK, 10 ** NADLER_LOG_MSTAR_LO / NADLER_MPEAK, 10 ** NADLER_LOG_MSTAR_HI / NADLER_MPEAK, color="C3", alpha=0.2, label=NADLER_LABEL)
+for n, c, ls in CONS:
+    ax.loglog(C.MASSES, runs[n]["mstar_over_mhalo_z0"], "o", ls=ls, color=c, ms=4, label=label(n))
+ax.axvspan(3e10, 1.2e12, color="0.92", zorder=0)
+ax.set(xlabel=r"$M_{\rm halo}$ at z = 0 [Msun]", ylabel=r"median $M_\star/M_{\rm halo}$", ylim=(3e-6, 0.1), xlim=(8e7, 1.2e12), title="z = 0 relation"); ax.legend(fontsize=7, loc="upper left")
+ax = axes[1]
+tgt = np.array([0.5 * (np.log10(float(behroozi2013_mstar(m))) + np.log10(float(moster2013_mstar(m)))) for m in C.MASSES])
+spread = np.array([0.5 * abs(np.log10(float(behroozi2013_mstar(m))) - np.log10(float(moster2013_mstar(m)))) for m in C.MASSES])
+ax.fill_between(C.MASSES, -spread, spread, color="0.8", label="half the Moster-Behroozi difference")
+for n, c, ls in CONS:
+    ax.semilogx(C.MASSES, np.log10(np.array(runs[n]["mstar_over_mhalo_z0"]) * C.MASSES) - tgt, "o", ls=ls, color=c, ms=4, label=label(n))
+ax.axhline(0, color="k", lw=0.8); ax.axvspan(3e10, 1.2e12, color="0.92", zorder=0)
+ax.set(xlabel=r"$M_{\rm halo}$ at z = 0 [Msun]", ylabel=r"$\log_{10} M_\star$ - mean of Moster and Behroozi [dex]", ylim=(-2.5, 1.5), title="shape against the published relations")
+ax.legend(fontsize=7, loc="lower right")
+ax = axes[2]
+zs3 = [0, 2, 5]
+for n, c, ls in CONS:
+    y = [runs[n]["mstar_over_mhalo_z0"][2]] + [runs[n]["mstar_over_mhalo_by_z"][f"z{z}"]["1e9-3e9"] for z in zs3[1:]]
+    ax.semilogy(zs3, y, "o", ls=ls, color=c, ms=4, label=label(n))
+ax.set_xticks(zs3); ax.set(xlabel="redshift", ylabel=r"median $M_\star/M_{\rm halo}$", title="evolution at fixed halo mass")
+ax.text(0.02, 0.02, "z = 0: 1e9 Msun; z = 2, 5: 1e9 to 3e9 Msun", transform=ax.transAxes, fontsize=7)
+ax.legend(fontsize=7)
+fig.tight_layout(); fig.savefig(os.path.join(D, "wind_scan_consistent.png"), dpi=130)

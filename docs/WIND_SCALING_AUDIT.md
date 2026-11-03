@@ -81,3 +81,22 @@ The 68 percent band, read off Fig. 6 by eye at 300 dpi (about 0.2 dex; the autho
 Median M*/M_halo at z = 0 of the 13 forms of the scan against that band: 1e8 Msun, 3 inside (forms 8e-6 to 3.1e-5); 3e8, 12 inside; 1e9, all 13 (1.0e-5 to 5.5e-5); 3e9, all 13 (4e-5 to 4.3e-4); 1e10, 5 inside (3.9e-4 to 3.3e-3), the steepest forms, while the current Ashvini loading (1.4e-3) lies above the band. So the floor set by star formation before reionisation is consistent with the satellites, and 1e10 Msun is the one place where the satellite constraint separates the wind forms.
 
 Cautions: satellites by peak halo mass against field haloes by z = 0 mass; the relation follows from the luminosity function slope and the occupation model, and ignores tidal stripping of stars; the band is read by eye.
+
+## The consistent exponent pairs, the wind models and the metallicity step (2026-11-03)
+
+In the first scan the mass and redshift exponents were varied independently. A wind limited by the momentum of the supernovae gives eta proportional to 1/v_esc, which at fixed overdensity is mass exponent 1/3 and redshift exponent 1/2 (the Ashvini default); one limited by their energy gives 1/v_esc^2, exponents 2/3 and 1. (2/3, 1/2) is not consistent with either. The pairs were run with the same amplitude fit at 3e10 to 1e12 Msun, together with the `momentum` and `energy` wind models and the Ashvini loading with the metallicity step switched off (`sn.metallicity_step = False`; the step lowers the loading by a factor 4 as the stars pass 0.1 Z_sun).
+
+| Form | amplitude | scatter of residuals at 3e10 to 1e12 (dex) | M*/M_halo at 3e9 and 1e10 Msun | z = 5, 1e9 to 3e9 Msun |
+|---|---|---|---|---|
+| momentum exponents (1/3, 1/2), with step | epsilon_p 8.1 | 0.15 | 2.3e-4, 1.4e-3 | 2.0e-3 |
+| momentum exponents, no step | 3.65 | 0.28 | 4.8e-4, 2.9e-3 | 3.6e-3 |
+| momentum wind model | f_p 0.647 | 0.28 | 4.8e-4, 2.9e-3 | 3.6e-3 |
+| energy exponents (2/3, 1), with step | epsilon_p 2.03 | 0.07 | 8.9e-5, 7.0e-4 | 1.2e-3 |
+| energy exponents, no step | 1.01 | 0.16 | 1.6e-4, 1.3e-3 | 1.8e-3 |
+| energy wind model | eps_fb 0.192 | 0.16 | 1.6e-4, 1.3e-3 | 1.8e-3 |
+
+- **The exponent form and the wind models are the same model:** with the step off, the Ashvini loading reproduces the `momentum` and `energy` wind models to the digits shown (a check of the implementation).
+- **The metallicity step is the whole difference between the Ashvini forms and the wind models** (scatter 0.15 against 0.28 and 0.07 against 0.16). It is a hard-coded assumption, not wind physics; without it the mass dependence alone gives a worse shape.
+- **The energy exponents with the step fit best and land inside the Nadler band at 1e10 Msun** (7.0e-4 against a band top of 8.3e-4, read by eye); the momentum pair is above it (1.4e-3). The fit difference (0.07 against 0.15 dex) is smaller than the Moster-Behroozi disagreement (about 0.35 dex), and the Nadler comparison is marginal, so neither separates the two winds.
+- **Redshift:** M*/M_halo rises by about 13 times from z = 0 to 5 at 1e9 to 3e9 Msun for the energy exponents against about 9 times for the momentum pair, as the (1+z) against (1+z)^(1/2) argument predicts. The z = 5 level is lower for the energy pair (1.2e-3 against 2.0e-3) and is still about 12 times above Moster extended to z = 5 (1e-4, coefficients not checked).
+- **Scatter of M* from assembly history alone** (accepted sets of the parameter run, half-width of the 16 to 84 percent range of log M*, dex): 0.04 to 0.10 at 3e11 to 1e12, 0.06 to 0.15 at 3e10 to 1e11, 0.20 to 0.24 at 1e10, 0.31 to 0.35 at 3e9, 0.37 to 0.42 at 1e9, 0.43 to 0.50 at 1e8. This is about twice the Kravtsov and Manwadkar value at 1e10 and above Nadler's limit on the scatter in luminosity at fixed peak circular velocity (below 0.19 dex, 95 percent; satellites, two realisations).

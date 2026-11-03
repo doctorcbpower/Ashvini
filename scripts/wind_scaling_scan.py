@@ -30,6 +30,11 @@ def _forms():
     out = {}
     for ms, zs in [(1 / 3, 0.5), (1 / 3, 0.25), (1 / 3, 0.0), (0.5, 0.5), (2 / 3, 0.5), (2 / 3, 0.0), (1.0, 0.5)]:
         out[f"ash_m{ms:.2f}_z{zs:.2f}"] = ({"sn.mass_slope": ms, "sn.redshift_slope": zs}, "sn.epsilon_p", 8.0)
+    out["ash_m0.67_z1.00"] = ({"sn.mass_slope": 2 / 3, "sn.redshift_slope": 1.0}, "sn.epsilon_p", 4.0)      # the energy-driven exponents
+    out["ash_m0.33_z0.50_noZ"] = ({"sn.mass_slope": 1 / 3, "sn.redshift_slope": 0.5, "sn.metallicity_step": False}, "sn.epsilon_p", 4.0)
+    out["ash_m0.67_z1.00_noZ"] = ({"sn.mass_slope": 2 / 3, "sn.redshift_slope": 1.0, "sn.metallicity_step": False}, "sn.epsilon_p", 1.0)
+    out["momentum_wind"] = ({"sn.wind_model": "momentum"}, "sn.f_p", 0.76)                                  # eta = nu_SN f_p p_SN / v_esc
+    out["energy_wind"] = ({"sn.wind_model": "energy"}, "sn.eps_fb", 0.2)                                    # eta = nu_SN 2 eps_fb E_SN / v_esc^2
     for ep in (0.2, 0.35, 0.5):
         out[f"stellar_p{ep:.2f}_cut"] = ({"sn.wind_model": "stellar_mass", "sn.eta_p": ep, "sn.eta_c": 4.5}, "sn.eta_norm", 10.0)
         out[f"stellar_p{ep:.2f}_nocut"] = ({"sn.wind_model": "stellar_mass", "sn.eta_p": ep, "sn.eta_c": 0.0}, "sn.eta_norm", 3.0)

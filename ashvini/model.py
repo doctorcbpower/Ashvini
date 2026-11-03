@@ -116,6 +116,12 @@ class Model:
         from .main import run_forest
         return run_forest(halo_mass, halo_mass_rate, redshift, config=self.config(theta), **kwargs)
 
+    def relation(self, sample, theta=None, y="bh_mass", x="stars_mass", bins=None, **kwargs):
+        """Run `sample` (a TreeSample) at `theta` and return the relation of y given x (relation.Relation); see ashvini.relation.relation."""
+        from .relation import relation
+        kw = dict(bins=bins) if bins is not None else {}
+        return relation(sample.run(self, theta), y=y, x=x, log_mh_range=sample.settings.get("log_mh"), **kw, **kwargs)
+
     def describe(self):
         """One line per free knob: the Config path it sets, its value in the preset and its range."""
         rows = [f"{n}: {self._paths[n]}, preset value {v:g}, range {lo:g} to {hi:g} ({'log' if lg else 'linear'})"

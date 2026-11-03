@@ -8,7 +8,7 @@ Does the way the wind removes gas, as a function of halo mass, stellar mass and 
 
 ## 2. Correction to what I said earlier
 
-I said the loading cutoff in GRUMPY "is probably what lets M*/M_halo rise" towards high mass, and that Ashvini's lack of rise might come from the fixed mass scaling. The parameter-space run shows that is too strong: the accepted parameter sets, calibrated only at 3e10 Msun and above, already lie between Moster and Behroozi at 1e10 and rise to 1e12 with the existing form. The unresolved discrepancies are below 1e10 Msun (the floor of 1e-5 against 1e-4 to 1e-3 in the extrapolated relations and in Nadler et al.) and the redshift evolution (the z = 5 offset of 3 to 20 times). Those are what these changes can address.
+I said the loading cutoff in GRUMPY "is probably what lets M*/M_halo rise" towards high mass, and that Ashvini's lack of rise might come from the fixed mass scaling. The parameter-space run shows that is too strong: the accepted parameter sets, calibrated only at 3e10 Msun and above, already lie between Moster and Behroozi at 1e10 and rise to 1e12 with the existing form. The unresolved discrepancies are below 1e10 Msun (the floor of 1e-5 against 1e-4 to 1e-3 in the extrapolated relations; this is not so against Nadler et al., see the section on the Nadler band below) and the redshift evolution (the z = 5 offset of 3 to 20 times). Those are what these changes can address.
 
 ## 3. The models compared
 
@@ -71,3 +71,13 @@ Each form has its amplitude set so the median M* at 3e10, 1e11, 3e11 and 1e12 Ms
 - **At 1e8 to 1e9 Msun:** 8e-6 to 5.5e-5 for every form; the wind form does not change the floor set by reionisation by more than a factor 4 to 7.
 - **Redshift:** at 1e9 to 3e9 Msun and z = 5, M*/M_halo is 5.6e-4 to 3.2e-3 for all forms. Dropping the (1+z) factor of the Ashvini loading lowers z = 5 by about 1.6 times and z = 2 by about 1.3 times: part of the evolution, not all.
 - **Cautions.** The slope 0.5 of the best stellar-mass fit was fitted to the same four masses (the FIRE value is 0.35); the energy-driven exponent 2/3 has a physical argument. Ashvini's M* counts all mass formed, GRUMPY's locks 56 percent (about 0.25 dex). The 1e11 to 3e11 Msun bin at z = 5 has too few haloes. The stellar-mass wind is implemented for the grid integrator only.
+
+## The Nadler et al. (2020) band (read 2026-11-03; pages 1-12 of the paper)
+
+Nadler et al. fit the DES and Pan-STARRS satellite luminosity functions with a forward model on dark-matter-only zoom simulations of Milky Way-like haloes with Large Magellanic Cloud analogues. Galaxies are placed on subhaloes by abundance matching absolute magnitude to peak circular velocity (anchored on GAMA at M_V < -13, extrapolated with a free faint-end slope alpha = -1.43, scatter below 0.19 dex), with a smooth occupation fraction centred on a peak halo mass M_50 < 8.5e7 Msun (95 percent; the lower limit is set by the prior and the resolution). The stellar-halo mass relation in their Fig. 6 (right) is derived from that model, not fitted as a power law with a fixed normalisation, and is for satellites by peak halo mass.
+
+The 68 percent band, read off Fig. 6 by eye at 300 dpi (about 0.2 dex; the authors do not tabulate it), is in `scripts/wind_scaling_plot.py` and the plots in `scripts/output/shmr_z0/wind_scan/`: M*/M_peak of 1e-6 to 1e-5 at 1e8 Msun, 3e-6 to 1e-4 at 1e9, 8e-6 to 5e-4 at 3e9 and 2e-5 to 8e-4 at 1e10. My earlier by-eye numbers from the small figure were 2 to 3 times too high.
+
+Median M*/M_halo at z = 0 of the 13 forms of the scan against that band: 1e8 Msun, 3 inside (forms 8e-6 to 3.1e-5); 3e8, 12 inside; 1e9, all 13 (1.0e-5 to 5.5e-5); 3e9, all 13 (4e-5 to 4.3e-4); 1e10, 5 inside (3.9e-4 to 3.3e-3), the steepest forms, while the current Ashvini loading (1.4e-3) lies above the band. So the floor set by star formation before reionisation is consistent with the satellites, and 1e10 Msun is the one place where the satellite constraint separates the wind forms.
+
+Cautions: satellites by peak halo mass against field haloes by z = 0 mass; the relation follows from the luminosity function slope and the occupation model, and ignores tidal stripping of stars; the band is read by eye.

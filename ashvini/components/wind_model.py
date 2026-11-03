@@ -7,6 +7,8 @@ stellar_metallicity)` returning eta_w (shape of halo_mass). Choose with `superno
              prescription of Menon et al. It follows V_esc^-1, which is a momentum-conserving wind
              (it equals the momentum-driven wind below with f_p = 0.7625 to 0.2 percent for 1e6-1e10 Msun,
              z = 5-15, p_SN = 3e5 Msun km/s, 8-100 Msun progenitors).
+  stellar_mass  eta_w = min(eta_max, max(0, eta_norm (M_star/1e10)^(-eta_p) - eta_c)): the Kravtsov & Manwadkar (2022)
+             loading, a function of the stellar mass at the start of the step (grid integrator only)
   momentum   each supernova removes f_p * p_SN / v_esc;       eta_w = nu_SN * f_p * p_SN / v_esc
   energy     each supernova removes 2 eps_fb E_SN / v_esc^2;  eta_w = nu_SN * 2 eps_fb E_SN / v_esc^2
 
@@ -32,8 +34,22 @@ class AshviniLoading:
         """Msun removed by one supernova, for the event integrator: the mass loading divided by nu_SN."""
         return self.mass_loading(redshift, halo_mass, stellar_metallicity) / self.nu_SN
 
-    def mass_loading(self, redshift, halo_mass, stellar_metallicity):
+    def mass_loading(self, redshift, halo_mass, stellar_metallicity, stellar_mass=None):
         return sn.mass_loading_factor(redshift, halo_mass, stellar_metallicity, self.cfg)
+
+
+class StellarMassLoading:
+    """Loading set by the stellar mass: zero above M_star = 1e10 (eta_norm / eta_c)^(1/eta_p) Msun, at most eta_max."""
+    def __init__(self, cfg):
+        self.cfg = cfg
+
+    def mass_loading(self, redshift, halo_mass, stellar_metallicity=None, stellar_mass=None):
+        if stellar_mass is None:
+            raise ValueError("The stellar_mass wind model needs the stellar mass (grid integrator only).")
+        sn_ = self.cfg.sn
+        x = np.maximum(np.asarray(stellar_mass, dtype=float), 1.0e-30) / 1.0e10
+        eta = np.minimum(sn_.eta_max, np.maximum(0.0, sn_.eta_norm * x ** (-sn_.eta_p) - sn_.eta_c))
+        return np.where(np.asarray(halo_mass, dtype=float) > 0, eta, 0.0)
 
 
 class _SupernovaWind:
@@ -48,7 +64,7 @@ class _SupernovaWind:
         v_esc = halo.v_esc_cms(np.where(resolved, halo_mass, 1.0), redshift)
         return np.where(resolved, self._per_supernova(v_esc), 0.0)
 
-    def mass_loading(self, redshift, halo_mass, stellar_metallicity=None):
+    def mass_loading(self, redshift, halo_mass, stellar_metallicity=None, stellar_mass=None):
         return self.nu_SN * self.mass_per_supernova(redshift, halo_mass)
 
     def per_supernova(self, redshift, halo_mass, stellar_metallicity=None):
@@ -76,4 +92,5 @@ class EnergyDrivenWind(_SupernovaWind):
 
 def make_wind_model(cfg):
     """The wind model selected by cfg.sn.wind_model."""
-    return {"ashvini": AshviniLoading, "momentum": MomentumDrivenWind, "energy": EnergyDrivenWind}[cfg.sn.wind_model](cfg)
+    return {"ashvini": AshviniLoading, "momentum": MomentumDrivenWind, "energy": EnergyDrivenWind,
+            "stellar_mass": StellarMassLoading}[cfg.sn.wind_model](cfg)

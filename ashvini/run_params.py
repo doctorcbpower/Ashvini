@@ -82,6 +82,16 @@ class SupernovaParams:
     # How much gas the explosions remove. "ashvini": the calibrated mass loading epsilon_p, pi_fid above.
     # "momentum": each supernova removes f_p * p_SN / v_esc. "energy": each removes 2 eps_fb E_SN / v_esc^2.
     wind_model: str = "ashvini"
+    # The "ashvini" loading is proportional to (1e11.5 Msun / M_h)^mass_slope * (9 / (1 + z))^redshift_slope (momentum-driven: 1/3
+    # and 1/2; an energy-driven wind has mass_slope 2/3).
+    mass_slope: float = 1.0 / 3.0
+    redshift_slope: float = 0.5
+    # "stellar_mass": eta_w = min(eta_max, max(0, eta_norm * (M_star / 1e10 Msun)^(-eta_p) - eta_c)), the form of Kravtsov & Manwadkar
+    # (2022, eq. 34; Muratov et al. 2015). It depends on the stellar mass at the start of the step and not on redshift or halo mass.
+    eta_norm: float = 3.6
+    eta_p: float = 0.35
+    eta_c: float = 4.5
+    eta_max: float = 2000.0
     f_p: float = 1.0
     p_SN_msun_kms: float = 3.0e5   # momentum per supernova, Msun km/s
     eps_fb: float = 0.1            # fraction of the supernova energy that unbinds gas

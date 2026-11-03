@@ -22,7 +22,7 @@ SN_TYPES = ("delayed", "instantaneous", "no")
 GROWTH_MODELS = ("pznk11_freefall", "hobbs_slimdisk")
 TREE_SOURCES = ("file", "pymctrees")
 DELAY_DISTRIBUTIONS = ("single_delay", "stellar_lifetimes")
-WIND_MODELS = ("ashvini", "momentum", "energy")
+WIND_MODELS = ("ashvini", "momentum", "energy", "stellar_mass")
 UV_FORMS = ("rate_dependent", "equilibrium")
 STAR_FORMATION_LAWS = ("halo_free_fall", "schmidt_kennicutt")
 

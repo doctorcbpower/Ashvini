@@ -93,6 +93,8 @@ class EventIntegrator:
         self.sf_dt_max = sf_dt_max_myr * MYR_GYR
         self.step_cap_factor = step_cap_factor
         self.star_formation = make_star_formation(cfg)
+        if cfg.sn.wind_model == "stellar_mass":
+            raise ValueError("supernova.wind_model 'stellar_mass' is implemented for the grid integrator only.")
         self.wind_model = make_wind_model(cfg)
         self.nu_SN = nu_SN(cfg.sn.imf, cfg.sn.m_sn_min, cfg.sn.m_sn_max)
         self.f_b = utils.Omega_b / utils.Omega_m

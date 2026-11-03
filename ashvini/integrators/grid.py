@@ -80,7 +80,7 @@ class GridIntegrator:
             A_acc = gas_accretion_rate[:, j - 1]
             # scalar, shared across haloes, unless the star formation law depends on the halo (disc: one value per halo)
             B_sf = self.star_formation.halo_rate_coefficient(z_mid, hm_prev, gm_prev)
-            ML = self.wind_model.mass_loading(z_mid, hm_prev, stellar_metallicity[:, j - 1])  # shape (N,)
+            ML = self.wind_model.mass_loading(z_mid, hm_prev, stellar_metallicity[:, j - 1], stars_mass[:, j - 1])  # shape (N,)
 
             # --- black hole first: the gas equation needs this step's accretion and wind ---
             gas_metallicity_prev = np.where(has_gas, gas_metals[:, j - 1] / gm_prev_safe, 0.0)

@@ -162,7 +162,7 @@ def build_forest_for_bin(tree_generator, M0_msun, h, n_halos, z0, z_max, m_res_m
     if rng_seed is not None:
         np.random.seed(rng_seed)
 
-    M0_array_hunits = np.full(n_halos, M0_msun * h)  # Msun -> Msun/h
+    M0_array_hunits = np.broadcast_to(np.asarray(M0_msun, dtype=float) * h, (n_halos,)).copy()  # Msun -> Msun/h; M0_msun is one mass or one per halo
     M_res_hunits = m_res_msun * h
 
     if backend == "numpy":
@@ -282,6 +282,55 @@ def compute_growth_rates(smooth_accretion, merger_mass, redshifts):
     return rates
 
 
+def _tree_generator(pymctrees_config_path, algorithm, z0, pk_kmax_override=None):
+    """(tree generator, CosmoData, run_params, h) for a foraois config: the set-up shared by every live tree builder (it dominates the cost of a small build)."""
+    cosmo_utils, PCHMergerTree, pymctrees_io = _import_pymctrees()
+    if algorithm not in ("pch08", "zh"):
+        raise ValueError(f"Unknown algorithm '{algorithm}' (expected 'pch08' or 'zh')")
+    run_params = pymctrees_io.get_params(pymctrees_config_path)
+    if pk_kmax_override is not None:
+        run_params["Code"]["pk_kmax"] = float(pk_kmax_override)
+    cosmo_data = cosmo_utils.CosmoData(run_params, redshift=[z0])
+    if algorithm == "zh":
+        from foraois import ZhangHuiMergerTree
+        tree_generator = ZhangHuiMergerTree(cosmo_data, run_params, model=run_params["Code"].get("dm_model", "cdm"))
+    else:
+        tree_generator = PCHMergerTree(cosmo_data, run_params)
+    return tree_generator, cosmo_data, run_params, run_params["Cosmology"]["h"]
+
+
+def build_forest_masses(pymctrees_config_path, m0_msun, z0, z_max, dz, m_res_fraction=1e-4, batch_dex=0.1,
+                        backend="numpy", seed=None, algorithm="zh", pk_kmax_override=None):
+    """
+    One tree per entry of `m0_msun` (final halo masses in Msun, any order), returned in the order given, in the same
+    (halo_masses, halo_growth_rates, redshifts, merger_mass) contract as build_forest_live.
+
+    The builders take one resolution M_res per call, so the trees are built in batches of `batch_dex` in log10 M0, each with
+    M_res = m_res_fraction * (the largest M0 in the batch). The trees in a batch are therefore never finer than m_res_fraction * M0 (which
+    the one-split-per-step condition at dz = 0.005 allows down to about 1e-4; docs/TREESAMPLE_AUDIT.md) and at most 10**batch_dex coarser.
+    Each batch is seeded with seed + its index, so a rebuild with the same arguments is identical.
+    """
+    m0 = np.asarray(m0_msun, dtype=float)
+    tree_generator, cosmo_data, run_params, h = _tree_generator(pymctrees_config_path, algorithm, z0, pk_kmax_override)
+    group = np.floor((np.log10(m0) - np.log10(m0.min())) / batch_dex + 1e-9).astype(int)
+    top = int(np.argmax(m0))
+    _warn_if_timestep_noncompliant(tree_generator, cosmo_data, "pch08" if algorithm == "pch08" else "zh", m0[top] * h,
+                                   m_res_fraction * m0[top] * h, z0, z_max, dz, model=run_params["Code"].get("dm_model", "cdm"))
+    hm = hg = merger = z = None
+    for k, g in enumerate(np.unique(group)):
+        idx = np.flatnonzero(group == g)
+        m_res = m_res_fraction * m0[idx].max()
+        hm_g, z_g, smooth_g, merger_g = build_forest_for_bin(
+            tree_generator, m0[idx], h, len(idx), z0, z_max, m_res, dz, backend, None if seed is None else seed + k)
+        hg_g = compute_growth_rates(smooth_g, merger_g, z_g)
+        if hm is None:
+            z = z_g
+            hm, hg = np.empty((len(m0), hm_g.shape[1])), np.empty((len(m0), hm_g.shape[1]))
+            merger = np.empty((len(m0), merger_g.shape[1]))
+        hm[idx], hg[idx], merger[idx] = hm_g, hg_g, merger_g
+    return hm, hg, z, merger
+
+
 def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
                        m_res=None, backend="numpy", seed=None, algorithm="pch08", pk_kmax_override=None):
     """
@@ -347,23 +396,8 @@ def build_forest_live(pymctrees_config_path, mass_bin, n_halos, z0, z_max, dz,
         future merger-triggered physics. One entry per *gap* between
         consecutive halo_masses columns (n_steps, not n_steps+1).
     """
-    cosmo_utils, PCHMergerTree, pymctrees_io = _import_pymctrees()
-
-    run_params = pymctrees_io.get_params(pymctrees_config_path)
-    if pk_kmax_override is not None:
-        run_params["Code"]["pk_kmax"] = float(pk_kmax_override)
-    h = run_params["Cosmology"]["h"]
+    tree_generator, cosmo_data, run_params, h = _tree_generator(pymctrees_config_path, algorithm, z0, pk_kmax_override)
     m_res_msun = m_res if m_res is not None else 1e-3 * mass_bin
-    if algorithm not in ("pch08", "zh"):
-        raise ValueError(f"Unknown algorithm '{algorithm}' (expected 'pch08' or 'zh')")
-
-    cosmo_data = cosmo_utils.CosmoData(run_params, redshift=[z0])
-    if algorithm == "zh":
-        from foraois import ZhangHuiMergerTree
-        tree_generator = ZhangHuiMergerTree(
-            cosmo_data, run_params, model=run_params["Code"].get("dm_model", "cdm"))
-    else:
-        tree_generator = PCHMergerTree(cosmo_data, run_params)
     _warn_if_timestep_noncompliant(
         tree_generator, cosmo_data, "pch08" if algorithm == "pch08" else "zh", mass_bin * h, m_res_msun * h, z0, z_max, dz,
         model=run_params["Code"].get("dm_model", "cdm"))

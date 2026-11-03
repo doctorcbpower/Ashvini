@@ -23,6 +23,7 @@ PRESETS = {
     "energy_wind": {"sn.wind_model": "energy"},
     "stellar_mass_wind": {"sn.wind_model": "stellar_mass"},
     "slim_disc": {"bh.growth_model": "hobbs_slimdisk"},
+    "m_sigma_cap": {"bh.sigma_feedback.enabled": True, "bh.sigma_feedback.growth_cap_enabled": True},
 }
 
 

@@ -86,9 +86,22 @@ KNOBS = {k.name: k for k in [
          "Mass of black holes seeded once a halo reaches the fallback halo-mass threshold.",
          requires="bh.seeding.halo_mass_threshold.enabled"),
     Knob("bh_accretion_eff", {"pznk11_freefall": "bh.efficiency", "hobbs_slimdisk": "bh.slimdisk.eta_acc"}, "bh.growth_model",
-         "pznk11_freefall: fraction of gas per free-fall time; hobbs_slimdisk: nuclear accretion efficiency", 3e-4, 1e-2, True, "exploration",
-         "How fast gas is accreted onto the black hole (not the radiative efficiency).",
+         "pznk11_freefall: fraction of gas per free-fall time; hobbs_slimdisk: nuclear accretion efficiency", 1e-6, 1e-2, True, "provisional",
+         "How fast gas is accreted onto the black hole (not the radiative efficiency). At fixed stellar mass M_BH is proportional to it and inversely "
+         "proportional to sf_efficiency (docs/FIT_AUDIT.md, section 10). The pznk11_freefall range was extended below the exploration's 3e-4 to reach "
+         "black hole to stellar mass ratios of order 0.1 per cent.",
          solas_name="BH accretion efficiency (Bondi-like prefactor; mapping not yet checked)"),
+    Knob("bh_eddington_multiplier", _one("bh.eddington_multiplier"), None, "dimensionless (factor on the Eddington accretion rate)", 0.1, 10.0, True,
+         "provisional",
+         "Cap on black hole growth in units of the Eddington rate. Below about 0.5 growth is capped and the scatter in M_BH at fixed M* grows "
+         "(0.3 gives 0.9 dex); above 1 it changes nothing. Used by the pznk11_freefall growth model only (the slim-disc model has its own cap, r_crit).",
+         only_when=("bh.growth_model", "pznk11_freefall")),
+    Knob("bh_msigma_baryon_fraction", _one("bh.sigma_feedback.f_g"), None, "dimensionless (baryon fraction relative to dark matter)", 0.05, 0.3, False,
+         "provisional",
+         "Baryon fraction in the isothermal-sphere M-sigma mass at which black hole growth is capped (King 2003; Power et al. 2011). Its physical value is "
+         "0.16: freeing it turns a theory prediction into a calibration, and M_BH at the cap is proportional to it. Needs the M-sigma growth cap "
+         "(preset 'm_sigma_cap').",
+         requires="bh.sigma_feedback.growth_cap_enabled"),
     Knob("bh_feedback_coupling", {"pznk11_freefall": "bh.eta_agn", "hobbs_slimdisk": "bh.slimdisk.epsilon_f"}, "bh.growth_model",
          "pznk11_freefall: wind mass loaded per unit mass accreted; hobbs_slimdisk: fraction of the accretion luminosity coupled to the gas",
          5e-4, 2.0, True, "provisional",

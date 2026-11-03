@@ -113,3 +113,26 @@ def test_build_cache_and_run(tmp_path, monkeypatch):
     assert len(list(tmp_path.glob("trees_*.npz"))) == 2                      # a different seed is a different sample
     out = s.run(Model("fiducial", free=["sf_efficiency"]), [0.03])
     assert out["stars_mass"].shape == s.halo_masses.shape and np.array_equal(out["weight"], s.weight)
+
+
+@pytest.mark.skipif(not os.path.exists(DEFAULT_CONFIG), reason="the foraois config is not available")
+def test_foraois_mass_function_matches_an_independent_sheth_tormen():
+    """CAMB P(k) -> top-hat sigma(M) -> the standard Sheth-Tormen form (A = 0.3222, a = 0.707, p = 0.3, delta_c = 1.686), none of it foraois code."""
+    camb = pytest.importorskip("camb")
+    from ashvini.tree_sample import foraois_mass_function
+    H0, OB, OM = 67.556, 0.048275, 0.3120456
+    h = H0 / 100
+    pars = camb.set_params(H0=H0, ombh2=OB * h ** 2, omch2=(OM - OB) * h ** 2, As=2.215e-9, ns=0.9619, tau=0.0925, mnu=0.0, kmax=2000.0, redshifts=[0.0])
+    pars.set_matter_power(redshifts=[0.0], kmax=2000.0)
+    k, _, pk = camb.get_results(pars).get_matter_power_spectrum(minkh=1e-5, maxkh=1000.0, npoints=4000)
+    delta2, lnk, rho = k ** 3 * pk[0] / (2 * np.pi ** 2), np.log(k), OM * 2.7754e11     # rho in Msun/h per (Mpc/h)^3
+    logm = np.linspace(8.0, 14.9, 300)
+    M = 10 ** logm
+    R = (3 * M / (4 * np.pi * rho)) ** (1 / 3)
+    sigma = np.array([np.sqrt(np.trapezoid(delta2 * (3 * (np.sin(k * r) - k * r * np.cos(k * r)) / (k * r) ** 3) ** 2, lnk)) for r in R])
+    nu = 1.686 / sigma
+    f = 0.3222 * np.sqrt(2 * 0.707 / np.pi) * (1 + (0.707 * nu ** 2) ** -0.3) * nu * np.exp(-0.707 * nu ** 2 / 2)
+    independent = rho / M * f * np.abs(np.gradient(np.log(sigma), np.log(M)))
+    test = np.logspace(8.3, 14.5, 9)
+    ratio = foraois_mass_function()(test / h) / np.exp(np.interp(np.log10(test), logm, np.log(independent)))
+    assert np.allclose(ratio, 1.0, atol=5e-3), ratio

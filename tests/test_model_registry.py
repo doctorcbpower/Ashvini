@@ -109,3 +109,24 @@ def test_parameters_table_lists_every_knob():
     text = parameters(show=False)
     assert all(n in text for n in KNOBS)
     assert "not used with the current set-up" in parameters(override(DEFAULT, **{"sn.wind_model": "energy"}), show=False)
+
+
+def test_accretion_efficiency_range_reaches_a_tenth_of_a_per_cent_black_hole_to_stellar_mass_ratio():
+    lo, hi, _ = knob_range("bh_accretion_eff", DEFAULT)
+    assert lo <= 1e-5 and hi == 1e-2          # the fiducial model needs about 2e-5 for M_BH/M* of 0.1 per cent (docs/FIT_AUDIT.md, section 10)
+
+
+def test_eddington_multiplier_knob_is_for_the_default_growth_model_only():
+    m = Model("fiducial", free=["bh_eddington_multiplier"])
+    assert m._paths["bh_eddington_multiplier"] == "bh.eddington_multiplier" and m.config([0.5]).bh.eddington_multiplier == 0.5
+    with pytest.raises(ValueError, match="needs bh.growth_model = 'pznk11_freefall'"):
+        Model("slim_disc", free=["bh_eddington_multiplier"])
+
+
+def test_msigma_baryon_fraction_needs_the_growth_cap_and_the_preset_provides_it():
+    with pytest.raises(ValueError, match="would change nothing"):
+        Model("fiducial", free=["bh_msigma_baryon_fraction"])
+    m = Model("m_sigma_cap", free=["bh_msigma_baryon_fraction"])
+    cfg = m.config([0.1])
+    assert cfg.bh.sigma_feedback.f_g == 0.1 and cfg.bh.sigma_feedback.enabled and cfg.bh.sigma_feedback.growth_cap_enabled
+    assert m.theta0[0] == 0.16

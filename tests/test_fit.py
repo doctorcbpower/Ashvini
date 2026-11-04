@@ -241,3 +241,13 @@ def test_the_model_problem_holds_the_reference_errors_fixed_and_recovers_a_known
     res = fit(prob, n_steps=3000, seed=2)
     q = np.quantile(res.physical()[:, 0], [0.025, 0.975])
     assert q[0] < truth < q[1]
+
+
+def test_forked_workers_give_the_same_chain_as_one_process():
+    d = mock(0.1, 0.1, np.random.default_rng(8), n=50)
+    with pytest.warns(UserWarning):
+        a = fit(synthetic_problem(d), n_steps=60, seed=4, n_runs=1).chain
+        b = fit(synthetic_problem(d), n_steps=60, seed=4, n_runs=1, workers=2).chain
+    assert np.array_equal(a, b)
+    with pytest.raises(ValueError):
+        fit(synthetic_problem(d), workers=2, pool=object())

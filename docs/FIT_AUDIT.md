@@ -159,3 +159,18 @@ Not yet done: `fit()` with emcee and its convergence diagnostics; the binding to
 Tests (tests 5 to 7 and the sampler version of test 3, 15 in the file): recovery of a known offset, with the sampler's 16th to 84th percentiles agreeing with the exact grid posterior; a short chain is reported, not trusted; same seed gives the same chain; a truth outside the bounds piles up with a warning; data the model cannot reach is an error; and a stand-in model confirming one bootstrap in total and recovery of a known knob. A 1500-step chain was flagged as too short (tau 29 to 38 steps); 3000 steps were needed.
 
 Still to do: recovery on the real `Model` (test 4: three mocks, one near a bound; needs OzSTAR and a choice of fixed star-formation set, for which the preset values are the default) and the first real data set.
+
+## 14. Recovery on the real model: design (4 Nov 2026) `scripts/fit_recovery.py`, `hpc/submit_fit_recovery.sbatch`
+
+Question: if the model itself generates the data, does `fit` return the parameters that made them, and does a parameter the relation cannot constrain come back as its prior?
+
+Setup (my choices; change any):
+- Model: `fiducial` preset, so star formation, winds and reionisation sit at the preset values (A2 default). Free: `bh_accretion_eff` (1e-6 to 1e-2, log) and `bh_feedback_coupling` (eta_agn, 0.05 to 2, log), plus `s_int`. eta_agn is there because section 10 found it changes nothing: it should return its prior.
+- Tree sample: `TreeSample.for_stellar_masses((8.0, 10.5), n_trees=1000, seed=1)`.
+- Mock: 40 points uniform in log M\* over the unflagged bins, measurement error 0.3 dex, `s_int` 0.2 dex (I2), drawn from the model relation at the truth (median, plus model scatter, `s_int` and the measurement error in quadrature).
+- Truths (accretion efficiency, eta_agn): case 0: (2e-4, 0.5); case 1: (1e-3, 0.1), the preset; case 2: (3e-6, 1.0), a factor of three above the lower bound of the accretion efficiency. Cases 3 to 5 repeat these with the mock drawn from an independent tree realisation (seed 2) while the fit keeps seed 1 (A4b).
+- Sampler: two ensembles of 16 walkers, 4000 steps (1000 discarded), 32 forked workers. Cost: the local smoke run (600 trees, 4 workers on a laptop, 60 steps) took 2.0 s per evaluation per worker, so 128 000 evaluations is about 2.2 hours per case on 32 cores at 600 trees, perhaps 3.5 hours at 1000 (not measured on the cluster; the job asks for 8 hours).
+
+What would count as success: for each case, the accretion efficiency truth in the 95 per cent interval (and in the 68 per cent interval in roughly two thirds of the six cases); `s_int` the same; eta_agn flat across its prior range (Kolmogorov-Smirnov test against uniform, and about half the posterior in the central half of the range); no convergence warnings. Case 2 may show a mild pile-up if the lower bound is felt; a case where the truth sits outside the 95 per cent interval for the accretion efficiency in a same-trees mock would be a defect in the machinery, and in an independent-trees mock a sign that tree noise biases the answer. With six cases, one or two misses at 68 per cent are expected and mean nothing.
+
+Not covered: the fit uses the same bins and the same reference errors as the mock, so it does not test sensitivity to the flagged-bin thresholds.

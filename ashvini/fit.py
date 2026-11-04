@@ -288,17 +288,36 @@ def _split_r_hat(runs):
     return np.sqrt(var_plus / within)
 
 
-def fit(problem, n_steps=2000, n_walkers=None, n_discard=None, n_runs=2, seed=0, pool=None, min_tau_ratio=50, max_r_hat=1.1, min_accept=0.1,
-        progress=False):
+_ACTIVE_PROBLEM = None
+
+
+def _active_log_prob(v):
+    """The log posterior of the problem being fitted. Module level so that worker processes forked by `fit(workers=...)` can call it without pickling
+    the problem (which holds the whole tree sample)."""
+    return _ACTIVE_PROBLEM.log_prob(v)
+
+
+def fit(problem, n_steps=2000, n_walkers=None, n_discard=None, n_runs=2, seed=0, pool=None, workers=None, min_tau_ratio=50, max_r_hat=1.1,
+        min_accept=0.1, progress=False):
     """
     Sample the posterior of `problem` with emcee: `n_runs` independent ensembles of `n_walkers` (default 4 x the number of dimensions, at least 16),
     each started from different draws of the prior. Convergence is judged from the integrated autocorrelation time (the chain must be at least
     `min_tau_ratio` times longer), the acceptance fraction, and agreement between the ensembles (split R-hat below `max_r_hat`). A parameter whose
     posterior piles up against a bound of its prior is reported. All problems found are in `FitResult.warnings` and are also issued as warnings;
     nothing is hidden when a chain is too short.
-    pool: an object with a `map` method (multiprocessing.Pool, or an MPI pool) for the walkers' likelihood evaluations.
+    workers: number of forked processes for the walkers' likelihood evaluations (they share the problem and its tree sample without copying it).
+    pool: instead, an object with a `map` method (an MPI pool, say) that can call `problem.log_prob`.
     """
     import emcee
+    global _ACTIVE_PROBLEM
+    if workers and pool is not None:
+        raise ValueError("give workers or pool, not both.")
+    log_prob = problem.log_prob
+    if workers and workers > 1:
+        import multiprocessing
+        _ACTIVE_PROBLEM = problem
+        pool = multiprocessing.get_context("fork").Pool(workers)
+        log_prob = _active_log_prob
     ndim = len(problem.lower)
     n_walkers = n_walkers or max(16, 4 * ndim)
     n_walkers += n_walkers % 2                                    # emcee needs an even number
@@ -306,15 +325,21 @@ def fit(problem, n_steps=2000, n_walkers=None, n_discard=None, n_runs=2, seed=0,
     if n_steps <= n_discard:
         raise ValueError("n_steps must exceed n_discard.")
     runs, lps, tau_runs, acc = [], [], [], []
-    for run in range(n_runs):
-        start = _starting_points(problem, n_walkers, seed + 7919 * run)
-        sampler = emcee.EnsembleSampler(n_walkers, ndim, problem.log_prob, pool=pool)
-        sampler.random_state = np.random.RandomState(seed + 104729 * run + 1).get_state()
-        sampler.run_mcmc(start, n_steps, progress=progress)
-        runs.append(sampler.get_chain(discard=n_discard))
-        lps.append(sampler.get_log_prob(discard=n_discard))
-        tau_runs.append(sampler.get_autocorr_time(discard=n_discard, quiet=True, tol=0))
-        acc.append(float(np.mean(sampler.acceptance_fraction)))
+    own_pool = pool if (workers and workers > 1) else None
+    try:
+        for run in range(n_runs):
+            start = _starting_points(problem, n_walkers, seed + 7919 * run)
+            sampler = emcee.EnsembleSampler(n_walkers, ndim, log_prob, pool=pool)
+            sampler.random_state = np.random.RandomState(seed + 104729 * run + 1).get_state()
+            sampler.run_mcmc(start, n_steps, progress=progress)
+            runs.append(sampler.get_chain(discard=n_discard))
+            lps.append(sampler.get_log_prob(discard=n_discard))
+            tau_runs.append(sampler.get_autocorr_time(discard=n_discard, quiet=True, tol=0))
+            acc.append(float(np.mean(sampler.acceptance_fraction)))
+    finally:
+        if own_pool is not None:
+            own_pool.close()
+            own_pool.join()
     chain = np.concatenate(runs, axis=1)
     tau = np.max(tau_runs, axis=0)
     r_hat = _split_r_hat(runs)

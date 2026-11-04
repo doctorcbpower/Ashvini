@@ -8,7 +8,7 @@ FORAOIS_DIR="${1:?usage: bash hpc/setup_env.sh <path-to-foraois>}"
 python3 -m venv "$PWD/venv"
 source "$PWD/venv/bin/activate"
 pip install --upgrade pip
-pip install numpy scipy numba matplotlib pyyaml camb h5py astropy pytest
+pip install numpy scipy numba matplotlib pyyaml camb h5py astropy pytest emcee corner
 pip install -e "$FORAOIS_DIR"
 pip install -e "$PWD"
 python - <<'PY'

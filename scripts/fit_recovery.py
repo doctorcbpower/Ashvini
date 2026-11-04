@@ -100,7 +100,7 @@ if __name__ == "__main__":
     r.add_argument("--n-trees", type=int, default=1000)
     r.add_argument("--steps", type=int, default=4000)
     r.add_argument("--workers", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", "1")))
-    r.add_argument("--cache", default=os.environ.get("TREE_CACHE", os.path.join(OUT, "..", "tree_cache")))
+    r.add_argument("--cache", default=os.environ.get("TREE_CACHE", os.path.normpath(os.path.join(OUT, "..", "tree_cache"))))
     sub.add_parser("report")
     a = ap.parse_args()
     run(a.case, a.n_trees, a.steps, a.workers, a.cache) if a.cmd == "run" else report()

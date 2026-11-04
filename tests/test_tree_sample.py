@@ -136,3 +136,12 @@ def test_foraois_mass_function_matches_an_independent_sheth_tormen():
     test = np.logspace(8.3, 14.5, 9)
     ratio = foraois_mass_function()(test / h) / np.exp(np.interp(np.log10(test), logm, np.log(independent)))
     assert np.allclose(ratio, 1.0, atol=5e-3), ratio
+
+
+def test_save_works_when_the_path_goes_through_a_folder_that_does_not_exist_yet(tmp_path):
+    """'a/../b' with 'a' missing cannot be opened by the OS, although makedirs of the resolved path succeeds (seen on a cluster scratch directory)."""
+    s = TreeSample(np.array([1e11, 1e12]), np.array([0.5, 0.5]), np.ones((2, 4)), np.ones((2, 4)), np.array([2.0, 1.0, 0.5, 0.0]), {"n_trees": 2})
+    path = str(tmp_path / "missing" / ".." / "cache" / "trees_x.npz")
+    s.save(path)
+    assert (tmp_path / "cache" / "trees_x.npz").exists() and not (tmp_path / "missing").exists()
+    assert np.array_equal(TreeSample.load(path).m0, s.m0)

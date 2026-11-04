@@ -143,7 +143,7 @@ class TreeSample:
                         z_max=z_max, dz=dz, pk_kmax=pk_kmax, batch_dex=batch_dex, config=_file_hash(config_path), foraois=_foraois_version())
         path = None
         if cache_dir is not None:
-            path = os.path.join(cache_dir, "trees_" + hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()[:16] + ".npz")
+            path = os.path.join(os.path.abspath(cache_dir), "trees_" + hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()[:16] + ".npz")
             if os.path.exists(path):
                 return cls.load(path)
         from .pymctrees_adapter import build_forest_masses
@@ -170,7 +170,8 @@ class TreeSample:
         return out
 
     def save(self, path):
-        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        path = os.path.abspath(path)                 # resolves any '..' before the directory exists, so the file opens where makedirs made the folder
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = path + ".tmp.npz"
         np.savez(tmp, m0=self.m0, weight=self.weight, halo_masses=self.halo_masses, growth_rates=self.growth_rates,
                  redshifts=self.redshifts, settings=json.dumps(self.settings))
@@ -178,7 +179,7 @@ class TreeSample:
 
     @classmethod
     def load(cls, path):
-        d = np.load(path, allow_pickle=False)
+        d = np.load(os.path.abspath(path), allow_pickle=False)
         return cls(d["m0"], d["weight"], d["halo_masses"], d["growth_rates"], d["redshifts"], json.loads(str(d["settings"])))
 
 

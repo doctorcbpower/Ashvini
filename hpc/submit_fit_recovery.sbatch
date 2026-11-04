@@ -1,14 +1,15 @@
 #!/bin/bash
 # Mock recovery of the fit on the real Model (docs/FIT_AUDIT.md, section 14): task k fits case k (0-2: mock from the same trees, 3-5: from an independent
-# tree realisation), 32 forked workers each. Needs the foraois configuration (the first task builds the trees and stores them in $TREE_CACHE; start
-# task 0 alone first, or run `python scripts/fit_recovery.py run 0 --steps 20` once, so that the other tasks find them). Usage, from the repository root:
-#   mkdir -p logs; sbatch --array=0-5 hpc/submit_fit_recovery.sbatch;  then:  python scripts/fit_recovery.py report
+# tree realisation), 32 forked workers each. Needs the foraois configuration. Each task first builds the two tree samples if they are not in $TREE_CACHE
+# (about a minute each; tasks that start together may all build them, which only wastes that minute), then runs the fit. Do not run the fit on a login
+# node. Usage, from the repository root:
+#   mkdir -p /fred/oz009/cpower/Ashvini/logs; sbatch --array=0-5 hpc/submit_fit_recovery.sbatch;  then:  python scripts/fit_recovery.py report
 #SBATCH --job-name=fit_recovery
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=32G
 #SBATCH --time=08:00:00
-#SBATCH --output=logs/fit_recovery_%A_%a.out
+#SBATCH --output=/fred/oz009/cpower/Ashvini/logs/fit_recovery_%A_%a.out
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 if [ -n "${VENV:-}" ]; then source "$VENV/bin/activate"; elif [ -f venv/bin/activate ]; then source venv/bin/activate; fi
@@ -19,6 +20,7 @@ missing = [m for m in ["numpy","scipy","astropy","h5py","yaml","emcee","foraois"
 sys.exit("missing Python packages in this environment: " + ", ".join(missing) if missing else 0)
 PY
 export NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-export SHMR_OUT="${SHMR_OUT:-$PWD/scripts/output/shmr_z0}"
+export SHMR_OUT="${SHMR_OUT:-/fred/oz009/cpower/Ashvini}"
 export TREE_CACHE="${TREE_CACHE:-$SHMR_OUT/tree_cache}"
+python scripts/fit_recovery.py trees
 python scripts/fit_recovery.py run "${SLURM_ARRAY_TASK_ID:?run with --array=0-5}" --steps "${FIT_STEPS:-4000}"

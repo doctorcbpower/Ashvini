@@ -172,7 +172,7 @@ class TreeSample:
     def save(self, path):
         path = os.path.abspath(path)                 # resolves any '..' before the directory exists, so the file opens where makedirs made the folder
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = path + ".tmp.npz"
+        tmp = f"{path}.{os.getpid()}.tmp.npz"                # unique per process: tasks on a cluster may build the same sample at once
         np.savez(tmp, m0=self.m0, weight=self.weight, halo_masses=self.halo_masses, growth_rates=self.growth_rates,
                  redshifts=self.redshifts, settings=json.dumps(self.settings))
         os.replace(tmp, path)

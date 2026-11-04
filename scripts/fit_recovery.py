@@ -1,9 +1,12 @@
 """
 Mock recovery on the real Model (docs/FIT_AUDIT.md, section 7 test 4 and section 14): can `fit` recover known parameters from the model's own relation?
 
-    python scripts/fit_recovery.py run CASE [--n-trees 1000] [--steps 4000] [--workers 8]     # CASE 0 to 5; writes $SHMR_OUT/fit_recovery/case_<CASE>.json
+    python scripts/fit_recovery.py run CASE [--n-trees 1000] [--steps 4000] [--workers 8]     # CASE 0 to 5; writes <out>/fit_recovery/case_<CASE>.json
+    python scripts/fit_recovery.py trees [--n-trees 1000]                                     # only builds and stores the two tree samples (no fit)
     python scripts/fit_recovery.py report                                                      # table of the finished cases
 
+Output goes to $SHMR_OUT, else /fred/oz009/cpower/Ashvini if that directory exists (OzSTAR), else scripts/output/shmr_z0; trees are cached in
+<out>/tree_cache.
 Free knobs: bh_accretion_eff (the one a M_BH-M* relation constrains, with the star formation efficiency fixed at the preset) and bh_feedback_coupling
 (eta_agn, which section 10 found to change nothing, so it should come back as its prior). Plus the intrinsic scatter s_int.
 Cases 0-2: truths in the preset's neighbourhood, at the preset, and near the lower bound of the accretion efficiency. Cases 3-5: the same truths with
@@ -23,7 +26,10 @@ from ashvini.fit import Curve, Data, fit, problem_for_model
 from ashvini.model import Model
 from ashvini.tree_sample import TreeSample
 
-OUT = os.path.join(os.environ.get("SHMR_OUT", os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "shmr_z0")), "fit_recovery")
+CLUSTER_OUT = "/fred/oz009/cpower/Ashvini"          # OzSTAR project storage: used when it exists, unless SHMR_OUT says otherwise
+LOCAL_OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "shmr_z0")
+BASE = os.environ.get("SHMR_OUT") or (CLUSTER_OUT if os.path.isdir(CLUSTER_OUT) else LOCAL_OUT)
+OUT = os.path.join(BASE, "fit_recovery")
 FREE = ["bh_accretion_eff", "bh_feedback_coupling"]
 TRUTHS = [dict(bh_accretion_eff=2e-4, bh_feedback_coupling=0.5), dict(bh_accretion_eff=1e-3, bh_feedback_coupling=0.1),
           dict(bh_accretion_eff=3e-6, bh_feedback_coupling=1.0)]
@@ -80,6 +86,13 @@ def run(case, n_trees, steps, workers, cache):
     return out
 
 
+def build_trees(n_trees, cache):
+    """Build and store the tree samples that every case uses (seed 1 for the fit, seed 2 for the independent mocks); no model runs."""
+    for seed in (1, 2):
+        s = TreeSample.for_stellar_masses(LOG_MSTAR, seed=seed, n_trees=n_trees, cache_dir=cache)
+        print(f"seed {seed}: {s.n} trees, effective number {s.effective_n:.0f}")
+
+
 def report():
     rows = []
     for p in sorted(glob.glob(os.path.join(OUT, "case_*.json"))):
@@ -100,7 +113,15 @@ if __name__ == "__main__":
     r.add_argument("--n-trees", type=int, default=1000)
     r.add_argument("--steps", type=int, default=4000)
     r.add_argument("--workers", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", "1")))
-    r.add_argument("--cache", default=os.environ.get("TREE_CACHE", os.path.normpath(os.path.join(OUT, "..", "tree_cache"))))
+    r.add_argument("--cache", default=os.environ.get("TREE_CACHE", os.path.join(BASE, "tree_cache")))
+    t = sub.add_parser("trees")
+    t.add_argument("--n-trees", type=int, default=1000)
+    t.add_argument("--cache", default=r.get_default("cache"))
     sub.add_parser("report")
     a = ap.parse_args()
-    run(a.case, a.n_trees, a.steps, a.workers, a.cache) if a.cmd == "run" else report()
+    if a.cmd == "run":
+        run(a.case, a.n_trees, a.steps, a.workers, a.cache)
+    elif a.cmd == "trees":
+        build_trees(a.n_trees, a.cache)
+    else:
+        report()

@@ -297,49 +297,109 @@ def _active_log_prob(v):
     return _ACTIVE_PROBLEM.log_prob(v)
 
 
+def _fingerprint(problem, n_walkers, seed):
+    """A hash of what a checkpoint must agree with to be resumed: the parameters, their bounds, the data and the sampler settings."""
+    import hashlib
+    h = hashlib.sha256()
+    for a in (problem.lower, problem.upper, problem.data.log_x, problem.data.log_y, problem.data.sigma_y, problem.data.upper_limit, problem.data.sigma_x):
+        h.update(np.ascontiguousarray(a, dtype=float).tobytes())
+    h.update(repr((list(problem.labels), int(n_walkers), int(seed))).encode())
+    return h.hexdigest()
+
+
+def _run_ensemble(run, problem, log_prob, pool, n_walkers, n_steps, seed, checkpoint, log_every):
+    """One ensemble of walkers, from fresh prior draws or from its checkpoint file; returns the emcee sampler."""
+    import emcee
+    import time
+    ndim = len(problem.lower)
+    backend = None
+    if checkpoint:
+        backend = emcee.backends.HDFBackend(f"{checkpoint}_ens{run}.h5")
+        if not backend.initialized:
+            backend.reset(n_walkers, ndim)
+        elif backend.iteration > 0 and backend.shape != (n_walkers, ndim):
+            raise ValueError(f"checkpoint {checkpoint}_ens{run}.h5 has shape {backend.shape}, not {(n_walkers, ndim)}: delete it or change the checkpoint name.")
+    sampler = emcee.EnsembleSampler(n_walkers, ndim, log_prob, pool=pool, backend=backend)
+    done = backend.iteration if backend is not None else 0
+    state = _starting_points(problem, n_walkers, seed + 7919 * run) if done == 0 else backend.get_last_sample()
+    sampler.random_state = np.random.RandomState(seed + 104729 * run + 1 + done).get_state()
+    if done:
+        print(f"[fit] ensemble {run}: resuming from step {done} of {n_steps}", flush=True)
+    t0 = time.time()
+    for i, _ in enumerate(sampler.sample(state, iterations=max(0, n_steps - done))):
+        step = done + i + 1
+        if log_every and step % log_every == 0:
+            per = (time.time() - t0) / (i + 1)
+            print(f"[fit] ensemble {run}: step {step}/{n_steps}, {per:.1f} s per step, about {per * (n_steps - step) / 3600:.1f} h left", flush=True)
+    return sampler
+
+
 def fit(problem, n_steps=2000, n_walkers=None, n_discard=None, n_runs=2, seed=0, pool=None, workers=None, min_tau_ratio=50, max_r_hat=1.1,
-        min_accept=0.1, progress=False):
+        min_accept=0.1, checkpoint=None, log_every=0):
     """
     Sample the posterior of `problem` with emcee: `n_runs` independent ensembles of `n_walkers` (default 4 x the number of dimensions, at least 16),
     each started from different draws of the prior. Convergence is judged from the integrated autocorrelation time (the chain must be at least
     `min_tau_ratio` times longer), the acceptance fraction, and agreement between the ensembles (split R-hat below `max_r_hat`). A parameter whose
     posterior piles up against a bound of its prior is reported. All problems found are in `FitResult.warnings` and are also issued as warnings;
     nothing is hidden when a chain is too short.
-    workers: number of forked processes for the walkers' likelihood evaluations (they share the problem and its tree sample without copying it).
-    pool: instead, an object with a `map` method (an MPI pool, say) that can call `problem.log_prob`.
+    workers: number of forked processes for the likelihood evaluations, divided between the ensembles, which then run at the same time (they share the
+    problem and its tree sample without copying it). emcee updates half of an ensemble's walkers at a time, so an ensemble keeps at most n_walkers / 2
+    processes busy: with `workers` the default n_walkers is raised to twice the processes per ensemble.
+    pool: instead, an object with a `map` method (an MPI pool, say) that can call `problem.log_prob`; the ensembles then run one after another.
+    checkpoint: path prefix; each ensemble writes its chain to `<prefix>_ens<k>.h5` as it goes, and a call with the same problem, seed and walkers
+    resumes from there (a time limit then costs no more than the steps since the last write; a resumed chain is not bit-identical to an uninterrupted
+    one, because the random stream restarts). log_every: print progress, the time per step and the time left, every this many steps.
     """
     import emcee
     global _ACTIVE_PROBLEM
     if workers and pool is not None:
         raise ValueError("give workers or pool, not both.")
-    log_prob = problem.log_prob
-    if workers and workers > 1:
-        import multiprocessing
-        _ACTIVE_PROBLEM = problem
-        pool = multiprocessing.get_context("fork").Pool(workers)
-        log_prob = _active_log_prob
     ndim = len(problem.lower)
-    n_walkers = n_walkers or max(16, 4 * ndim)
+    per_run = max(1, int(workers) // n_runs) if workers else 1
+    n_walkers = n_walkers or max(16, 4 * ndim, 2 * per_run if workers else 0)
     n_walkers += n_walkers % 2                                    # emcee needs an even number
     n_discard = n_steps // 4 if n_discard is None else n_discard
     if n_steps <= n_discard:
         raise ValueError("n_steps must exceed n_discard.")
-    runs, lps, tau_runs, acc = [], [], [], []
-    own_pool = pool if (workers and workers > 1) else None
+    if checkpoint:
+        import json
+        import os
+        os.makedirs(os.path.dirname(os.path.abspath(checkpoint)), exist_ok=True)
+        fp, meta = _fingerprint(problem, n_walkers, seed), os.path.abspath(checkpoint) + ".json"
+        if os.path.exists(meta):
+            with open(meta) as f:
+                stale = json.load(f).get("fingerprint") != fp
+        else:
+            stale = False
+        if stale:
+            raise ValueError(f"{meta} was written for a different problem, data, seed or number of walkers: delete the checkpoint files or change the name.")
+        with open(meta, "w") as f:
+            json.dump(dict(fingerprint=fp, labels=list(problem.labels), n_walkers=n_walkers, seed=seed), f)
+    pools, log_prob = [pool] * n_runs, problem.log_prob
+    if workers and per_run > 1:
+        import multiprocessing
+        _ACTIVE_PROBLEM = problem
+        pools = [multiprocessing.get_context("fork").Pool(per_run) for _ in range(n_runs)]      # forked before any thread starts
+        log_prob = _active_log_prob
+    elif workers:
+        pools = [None] * n_runs
+    args = lambda run: (run, problem, log_prob, pools[run], n_walkers, n_steps, seed, checkpoint, log_every)
     try:
-        for run in range(n_runs):
-            start = _starting_points(problem, n_walkers, seed + 7919 * run)
-            sampler = emcee.EnsembleSampler(n_walkers, ndim, log_prob, pool=pool)
-            sampler.random_state = np.random.RandomState(seed + 104729 * run + 1).get_state()
-            sampler.run_mcmc(start, n_steps, progress=progress)
-            runs.append(sampler.get_chain(discard=n_discard))
-            lps.append(sampler.get_log_prob(discard=n_discard))
-            tau_runs.append(sampler.get_autocorr_time(discard=n_discard, quiet=True, tol=0))
-            acc.append(float(np.mean(sampler.acceptance_fraction)))
+        if workers:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(n_runs) as ex:
+                samplers = list(ex.map(lambda r: _run_ensemble(*args(r)), range(n_runs)))
+        else:
+            samplers = [_run_ensemble(*args(r)) for r in range(n_runs)]
     finally:
-        if own_pool is not None:
-            own_pool.close()
-            own_pool.join()
+        for p in pools:
+            if p is not None and p is not pool:
+                p.close()
+                p.join()
+    runs = [s.get_chain(discard=n_discard) for s in samplers]
+    lps = [s.get_log_prob(discard=n_discard) for s in samplers]
+    tau_runs = [s.get_autocorr_time(discard=n_discard, quiet=True, tol=0) for s in samplers]
+    acc = [float(np.mean(s.acceptance_fraction)) for s in samplers]
     chain = np.concatenate(runs, axis=1)
     tau = np.max(tau_runs, axis=0)
     r_hat = _split_r_hat(runs)

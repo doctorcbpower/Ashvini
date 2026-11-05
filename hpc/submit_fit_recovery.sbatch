@@ -2,13 +2,14 @@
 # Mock recovery of the fit on the real Model (docs/FIT_AUDIT.md, section 14): task k fits case k (0-2: mock from the same trees, 3-5: from an independent
 # tree realisation), 32 forked workers each. Needs the foraois configuration. Each task first builds the two tree samples if they are not in $TREE_CACHE
 # (about a minute each; tasks that start together may all build them, which only wastes that minute), then runs the fit. Do not run the fit on a login
-# node. Usage, from the repository root:
+# node. The chains are checkpointed under $SHMR_OUT/fit_recovery/checkpoints: a task that reaches the time limit is resubmitted with the same command
+# and continues where it stopped. Usage, from the repository root:
 #   mkdir -p /fred/oz009/cpower/Ashvini/logs; sbatch --array=0-5 hpc/submit_fit_recovery.sbatch;  then:  python scripts/fit_recovery.py report
 #SBATCH --job-name=fit_recovery
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=32G
-#SBATCH --time=08:00:00
+#SBATCH --mem=64G
+#SBATCH --time=16:00:00
 #SBATCH --output=/fred/oz009/cpower/Ashvini/logs/fit_recovery_%A_%a.out
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$PWD}"

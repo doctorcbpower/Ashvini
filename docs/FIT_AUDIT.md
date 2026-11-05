@@ -169,8 +169,22 @@ Setup (my choices; change any):
 - Tree sample: `TreeSample.for_stellar_masses((8.0, 10.5), n_trees=1000, seed=1)`.
 - Mock: 40 points uniform in log M\* over the unflagged bins, measurement error 0.3 dex, `s_int` 0.2 dex (I2), drawn from the model relation at the truth (median, plus model scatter, `s_int` and the measurement error in quadrature).
 - Truths (accretion efficiency, eta_agn): case 0: (2e-4, 0.5); case 1: (1e-3, 0.1), the preset; case 2: (3e-6, 1.0), a factor of three above the lower bound of the accretion efficiency. Cases 3 to 5 repeat these with the mock drawn from an independent tree realisation (seed 2) while the fit keeps seed 1 (A4b).
-- Sampler: two ensembles of 16 walkers, 4000 steps (1000 discarded), 32 forked workers. Cost: the local smoke run (600 trees, 4 workers on a laptop, 60 steps) took 2.0 s per evaluation per worker, so 128 000 evaluations is about 2.2 hours per case on 32 cores at 600 trees, perhaps 3.5 hours at 1000 (not measured on the cluster; the job asks for 8 hours).
+- Sampler: two ensembles of 16 walkers, 4000 steps (1000 discarded), 32 forked workers. Cost: see section 15; the first estimate here (2 to 4 hours per case) was wrong.
 
 What would count as success: for each case, the accretion efficiency truth in the 95 per cent interval (and in the 68 per cent interval in roughly two thirds of the six cases); `s_int` the same; eta_agn flat across its prior range (Kolmogorov-Smirnov test against uniform, and about half the posterior in the central half of the range); no convergence warnings. Case 2 may show a mild pile-up if the lower bound is felt; a case where the truth sits outside the 95 per cent interval for the accretion efficiency in a same-trees mock would be a defect in the machinery, and in an independent-trees mock a sign that tree noise biases the answer. With six cases, one or two misses at 68 per cent are expected and mean nothing.
 
 Not covered: the fit uses the same bins and the same reference errors as the mock, so it does not test sensitivity to the flagged-bin thresholds.
+
+## 15. First cluster run and the cost correction (5 Nov 2026)
+
+The first OzSTAR run (six tasks, 32 workers, 8 hours each) hit the time limit with no case finished and nothing saved. My estimate of 2 to 4 hours per case assumed all 32 workers were busy. They were not: emcee updates half of an ensemble's walkers per call, so 16 walkers keep 8 workers busy (confirmed by counting the sizes of the calls to the pool), and the two ensembles ran one after the other. The wall time is the number of calls times the time of one model run: 4000 steps x 2 halves x 2 ensembles = 16 000 calls, at about 2.3 s per run (1000 trees, warm, laptop; 3.8 s for the first call) is about 10 hours, more than the limit.
+
+Changes (`ashvini/fit.py`, `scripts/fit_recovery.py`, `hpc/submit_fit_recovery.sbatch`):
+- The ensembles run at the same time, each with half of the workers (threads, each with its own forked pool made before the threads start); with `workers` the default number of walkers rises to twice the processes per ensemble (32 walkers for 16 workers), so every worker is busy. Calls in sequence: 4000 x 2 = 8000, about 5 hours at 2.3 s and 9 hours at 4 s. The chains are unchanged by the concurrency (tested: same chain as one ensemble after the other).
+- Checkpointing (`checkpoint=`): each ensemble writes its chain to an HDF5 file as it goes; resubmitting the same task resumes. A fingerprint of the problem, data, seed and walkers is stored, and a checkpoint from a different problem is refused. A resumed chain is not bit-identical to an uninterrupted one (the random stream restarts); the first steps are unchanged.
+- Progress lines every 50 steps with the time per step and the time left, so the next run shows its cost within minutes.
+- Job: 16 hours, 64 GB. One model run on 1000 trees peaks at about 0.9 GB per process (measured), so 32 busy workers need about 29 GB; the earlier 32 GB request was safe only because 8 were busy.
+
+Tests added (20 in the file): concurrent ensembles equal sequential ones; more walkers with more workers; resume continues the same chain and refuses another problem or seed; progress lines.
+
+Not done: reducing the 4000 steps. The autocorrelation time at 3 parameters is not yet measured on the real model; the progress lines and the first finished case give it.

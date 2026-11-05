@@ -65,11 +65,12 @@ def run(case, n_trees, steps, workers, cache):
     problem = problem_for_model(model, sample, data, n_boot=100)
     truth_phys = [truth[n] for n in FREE] + [S_INT_TRUE]
     t1 = time.time()
-    res = fit(problem, n_steps=steps, workers=workers, seed=case)
+    checkpoint = os.path.join(OUT, "checkpoints", f"case_{case}_n{n_trees}")     # a task that stops at the time limit resumes from here when resubmitted
+    res = fit(problem, n_steps=steps, workers=workers, seed=case, checkpoint=checkpoint, log_every=50)
     v_true = problem.to_variables(truth_phys)
     flat = res.chain.reshape(-1, res.chain.shape[-1])
     out = dict(case=case, truth=dict(zip(problem.labels, truth_phys)), mock_from="independent trees" if independent else "same trees", n_trees=n_trees,
-               steps=steps, workers=workers, seconds_setup=t1 - t0, seconds_fit=time.time() - t1, acceptance=res.acceptance, tau=res.tau.tolist(),
+               steps=steps, workers=workers, seconds_setup=t1 - t0, seconds_fit_this_run=time.time() - t1, acceptance=res.acceptance, tau=res.tau.tolist(),
                r_hat=res.r_hat.tolist(), converged=res.converged, warnings=res.warnings, summary=res.summary(), params={})
     for i, name in enumerate(problem.labels):
         lo, hi = problem.lower[i], problem.upper[i]
@@ -97,7 +98,7 @@ def report():
     rows = []
     for p in sorted(glob.glob(os.path.join(OUT, "case_*.json"))):
         r = json.load(open(p))
-        rows.append(f"case {r['case']} ({r['mock_from']}), {r['steps']} steps, {r['seconds_fit'] / 60:.0f} min, converged={r['converged']}")
+        rows.append(f"case {r['case']} ({r['mock_from']}), {r['steps']} steps, {r['seconds_fit_this_run'] / 60:.0f} min this run, converged={r['converged']}")
         for name, d in r["params"].items():
             rows.append(f"    {name:22s} truth {r['truth'][name]:9.3g}  in 68%: {d['in_68']!s:5}  in 95%: {d['in_95']!s:5}  "
                         f"flat-posterior KS p {d['ks_uniform_p']:.3f}  mass in central half of range {d['prior_fraction_in_central_half']:.2f}")

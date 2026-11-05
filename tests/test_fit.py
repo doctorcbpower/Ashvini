@@ -251,3 +251,43 @@ def test_forked_workers_give_the_same_chain_as_one_process():
     assert np.array_equal(a, b)
     with pytest.raises(ValueError):
         fit(synthetic_problem(d), workers=2, pool=object())
+
+
+def test_ensembles_run_at_the_same_time_and_give_the_same_chain_as_one_after_another():
+    d = mock(0.1, 0.1, np.random.default_rng(8), n=50)
+    with pytest.warns(UserWarning):
+        a = fit(synthetic_problem(d), n_steps=60, seed=4, n_runs=2).chain
+        b = fit(synthetic_problem(d), n_steps=60, seed=4, n_runs=2, workers=4).chain
+        c = fit(synthetic_problem(d), n_steps=60, seed=4, n_runs=2, workers=2).chain       # one process per ensemble: threads, no pools
+    assert np.array_equal(a, b) and np.array_equal(a, c)
+
+
+def test_workers_raise_the_default_number_of_walkers_to_keep_them_busy():
+    d = mock(0.1, 0.1, np.random.default_rng(8), n=50)
+    with pytest.warns(UserWarning):
+        res = fit(synthetic_problem(d), n_steps=20, n_runs=2, workers=80)
+    assert res.chain.shape[1] == 2 * (2 * 40)                           # 40 processes per ensemble need 80 walkers each
+
+
+def test_a_checkpoint_resumes_where_it_stopped_and_refuses_a_different_problem(tmp_path):
+    d = mock(0.1, 0.1, np.random.default_rng(8), n=50)
+    prefix = str(tmp_path / "ck" / "case")
+    with pytest.warns(UserWarning):
+        first = fit(synthetic_problem(d), n_steps=40, n_discard=0, seed=4, n_runs=2, checkpoint=prefix)
+        longer = fit(synthetic_problem(d), n_steps=90, n_discard=0, seed=4, n_runs=2, checkpoint=prefix)
+        again = fit(synthetic_problem(d), n_steps=90, n_discard=0, seed=4, n_runs=2, checkpoint=prefix)       # already complete: nothing to run
+    assert first.chain.shape[0] == 40 and longer.chain.shape[0] == 90
+    assert np.array_equal(longer.chain[:40], first.chain) and np.array_equal(again.chain, longer.chain)
+    other = mock(0.5, 0.1, np.random.default_rng(9), n=50)
+    with pytest.raises(ValueError, match="different problem"):
+        fit(synthetic_problem(other), n_steps=90, n_discard=0, seed=4, n_runs=2, checkpoint=prefix)
+    with pytest.raises(ValueError, match="different problem"):
+        fit(synthetic_problem(d), n_steps=90, n_discard=0, seed=5, n_runs=2, checkpoint=prefix)
+
+
+def test_progress_lines_report_the_time_per_step(capsys):
+    d = mock(0.1, 0.1, np.random.default_rng(8), n=50)
+    with pytest.warns(UserWarning):
+        fit(synthetic_problem(d), n_steps=40, n_runs=1, log_every=20)
+    out = capsys.readouterr().out
+    assert "step 20/40" in out and "s per step" in out and "h left" in out

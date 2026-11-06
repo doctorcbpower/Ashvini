@@ -20,7 +20,6 @@ import sys
 import time
 
 import numpy as np
-from scipy import stats
 
 from ashvini.fit import Curve, Data, fit, problem_for_model
 from ashvini.model import Model
@@ -53,6 +52,28 @@ def make_mock(model, sample, truth, seed):
     return Data(x, y, np.full(N_POINTS, SIGMA_Y)), curve
 
 
+def summarise(chain, tau, lower, upper, truth_variable):
+    """
+    Per parameter, from a chain of shape (steps, walkers, ndim) in sampling variables: the median and 68 and 95 per cent intervals, the posterior
+    probability below the truth (its rank: uniform over many mocks if the fit is calibrated), whether the truth is inside each interval, and how far
+    the posterior is from flat across the prior range (the largest departure of a tenth of the range from 0.1). Samples are thinned by the longest
+    autocorrelation time before the deciles are counted, so that the numbers do not rest on strongly correlated samples.
+    """
+    step = max(1, int(np.ceil(np.max(tau))))
+    thin = chain[::step].reshape(-1, chain.shape[-1])
+    flat = chain.reshape(-1, chain.shape[-1])
+    out = {}
+    for i in range(chain.shape[-1]):
+        q = np.quantile(flat[:, i], [0.025, 0.16, 0.5, 0.84, 0.975])
+        deciles = np.histogram((thin[:, i] - lower[i]) / (upper[i] - lower[i]), bins=10, range=(0, 1))[0] / len(thin)
+        rank = float(np.mean(flat[:, i] < truth_variable[i]))
+        out[i] = dict(sampling_variable_quantiles=q.tolist(), truth_variable=float(truth_variable[i]), rank_of_truth=rank,
+                      in_68=bool(q[1] <= truth_variable[i] <= q[3]), in_95=bool(q[0] <= truth_variable[i] <= q[4]),
+                      width_68_dex=float(q[3] - q[1]), decile_mass=deciles.tolist(), max_decile_departure=float(np.max(np.abs(deciles - 0.1))),
+                      thinned_samples=int(len(thin)))
+    return out
+
+
 def run(case, n_trees, steps, workers, cache):
     truth = TRUTHS[case % 3]
     independent = case >= 3
@@ -68,17 +89,11 @@ def run(case, n_trees, steps, workers, cache):
     checkpoint = os.path.join(OUT, "checkpoints", f"case_{case}_n{n_trees}")     # a task that stops at the time limit resumes from here when resubmitted
     res = fit(problem, n_steps=steps, workers=workers, seed=case, checkpoint=checkpoint, log_every=50)
     v_true = problem.to_variables(truth_phys)
-    flat = res.chain.reshape(-1, res.chain.shape[-1])
     out = dict(case=case, truth=dict(zip(problem.labels, truth_phys)), mock_from="independent trees" if independent else "same trees", n_trees=n_trees,
                steps=steps, workers=workers, seconds_setup=t1 - t0, seconds_fit_this_run=time.time() - t1, acceptance=res.acceptance, tau=res.tau.tolist(),
                r_hat=res.r_hat.tolist(), converged=res.converged, warnings=res.warnings, summary=res.summary(), params={})
-    for i, name in enumerate(problem.labels):
-        lo, hi = problem.lower[i], problem.upper[i]
-        q = np.quantile(flat[:, i], [0.0015, 0.025, 0.16, 0.5, 0.84, 0.975, 0.9985])
-        u = (flat[:, i] - lo) / (hi - lo)
-        out["params"][name] = dict(sampling_variable_quantiles=q.tolist(), truth_variable=float(v_true[i]), in_68=bool(q[2] <= v_true[i] <= q[4]),
-                                   in_95=bool(q[1] <= v_true[i] <= q[5]), ks_uniform_p=float(stats.kstest(u[:: max(1, len(u) // 2000)], "uniform").pvalue),
-                                   prior_fraction_in_central_half=float(np.mean((u > 0.25) & (u < 0.75))))
+    for i, d in summarise(res.chain, res.tau, problem.lower, problem.upper, v_true).items():
+        out["params"][problem.labels[i]] = d
     os.makedirs(OUT, exist_ok=True)
     np.savez_compressed(os.path.join(OUT, f"case_{case}_chain.npz"), chain=res.chain, log_prob=res.log_prob, labels=problem.labels)
     with open(os.path.join(OUT, f"case_{case}.json"), "w") as f:
@@ -95,13 +110,24 @@ def build_trees(n_trees, cache):
 
 
 def report():
+    """A table of the finished cases. The statistics are recomputed from the stored chains, so cases run with an older version of this script are included."""
+    from ashvini.fit import S_INT_RANGE
+    model = Model("fiducial", free=FREE)
+    lower = np.append(np.log10(model.bounds[:, 0]), np.log10(S_INT_RANGE[0]))        # all free knobs here are log parameters
+    upper = np.append(np.log10(model.bounds[:, 1]), np.log10(S_INT_RANGE[1]))
     rows = []
     for p in sorted(glob.glob(os.path.join(OUT, "case_*.json"))):
         r = json.load(open(p))
-        rows.append(f"case {r['case']} ({r['mock_from']}), {r['steps']} steps, {r['seconds_fit_this_run'] / 60:.0f} min this run, converged={r['converged']}")
-        for name, d in r["params"].items():
-            rows.append(f"    {name:22s} truth {r['truth'][name]:9.3g}  in 68%: {d['in_68']!s:5}  in 95%: {d['in_95']!s:5}  "
-                        f"flat-posterior KS p {d['ks_uniform_p']:.3f}  mass in central half of range {d['prior_fraction_in_central_half']:.2f}")
+        rows.append(f"case {r['case']} ({r['mock_from']}), {r['steps']} steps, {r['seconds_fit_this_run'] / 60:.0f} min this run, converged={r['converged']}, "
+                    f"tau up to {max(r['tau']):.0f} steps")
+        chain_file = p.replace(".json", "_chain.npz")
+        names = list(r["params"])
+        truth_v = np.array([r["params"][n]["truth_variable"] for n in names])
+        stats_ = summarise(np.load(chain_file)["chain"], r["tau"], lower, upper, truth_v) if os.path.exists(chain_file) else None
+        for i, name in enumerate(names):
+            d = stats_[i] if stats_ else r["params"][name]
+            rows.append(f"    {name:22s} truth {r['truth'][name]:9.3g}  rank {d.get('rank_of_truth', float('nan')):.2f}  in 68%: {d['in_68']!s:5}  in 95%: {d['in_95']!s:5}  "
+                        f"68% width {d.get('width_68_dex', float('nan')):.2f} dex  largest departure from flat {d.get('max_decile_departure', float('nan')):.3f}")
         rows += [f"    WARNING: {w}" for w in r["warnings"]]
     print("\n".join(rows) or f"no finished cases in {OUT}")
 

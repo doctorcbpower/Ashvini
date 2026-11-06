@@ -188,3 +188,30 @@ Changes (`ashvini/fit.py`, `scripts/fit_recovery.py`, `hpc/submit_fit_recovery.s
 Tests added (20 in the file): concurrent ensembles equal sequential ones; more walkers with more workers; resume continues the same chain and refuses another problem or seed; progress lines.
 
 Not done: reducing the 4000 steps. The autocorrelation time at 3 parameters is not yet measured on the real model; the progress lines and the first finished case give it.
+
+## 16. Result of the recovery on the real model (5 to 6 Nov 2026, OzSTAR)
+
+Design as section 14; the run used the concurrent ensembles of section 15 (case 2 was extended from 4000 to 6000 steps by resuming its checkpoint, because its autocorrelation time of 76 steps was too long for 3000 kept steps). All six cases converged: 52 to 61 times the autocorrelation time kept, split R-hat 1.00 to 1.001, acceptance 0.55 to 0.60, no pile-up warnings. Each case took about 10 hours for 4000 steps, 4.5 s per model run on the cluster (against 2.3 s on the laptop).
+
+| case | mock from | accretion efficiency: truth, median (68% width) | rank | `s_int` rank |
+|---|---|---|---|---|
+| 0 | same trees | 2.0e-4, 2.3e-4 (0.11 dex) | 0.12 | 0.79 |
+| 1 | same trees | 1.0e-3, 8.9e-4 (0.16 dex) | 0.75 | 0.01 |
+| 2 | same trees | 3.0e-6, 2.3e-6 (0.14 dex) | 0.95 | 0.71 |
+| 3 | independent trees | 2.0e-4, 2.1e-4 (0.11 dex) | 0.39 | 0.95 |
+| 4 | independent trees | 1.0e-3, 9.9e-4 (0.11 dex) | 0.52 | 0.94 |
+| 5 | independent trees | 3.0e-6, 2.8e-6 (0.12 dex) | 0.72 | 0.88 |
+
+(rank: the posterior probability below the truth; uniform over many mocks if the fit is calibrated.)
+
+Findings
+1. **The accretion efficiency is recovered.** The truth is inside the 95 per cent interval in all six cases and inside the 68 per cent interval in four (expected about four). The 68 per cent width of 0.11 to 0.16 dex is what 40 points with 0.3 dex errors give (0.3 / sqrt(40) = 0.05 dex per side). The two cases with the truth near the lower bound (2 and 5) are as good as the others. The mocks drawn from an independent tree realisation (3 to 5) are as good as those from the same trees, so the noise from the finite tree sample does not bias the answer.
+2. **The AGN feedback coupling returns its prior.** Each tenth of the prior range holds 0.09 to 0.12 of the posterior, with the 68 per cent interval spanning 1.1 dex of the 1.6 dex range. As section 10 predicted, this relation does not constrain it.
+3. **The intrinsic scatter is weakly constrained, and the truth sits above the median in five of six cases.** The 68 per cent interval is about 0.9 dex wide (the prior is 2 dex wide), because 0.3 dex errors on 40 points barely see 0.2 dex of extra scatter. I tested whether the pattern means a bias, on the closed-form model with the truth fixed at 0.2 (200 mocks of 40 points, errors 0.3 dex): mean rank 0.71, truth above the median in 80 per cent, inside the 68 per cent interval in 48 per cent, inside the 95 per cent interval in 94 per cent, interval width 0.95 dex. This is the cluster pattern. The cause is the prior: with weak data the posterior is pulled toward the centre of a log-uniform prior (0.1 dex), and 0.2 lies above it. It is not a bias of the likelihood or the sampler, which the coverage test of section 12 showed to be calibrated when the truths are drawn from the prior. Case 1 (rank 0.01) is a mock that happened to scatter more than its input, so it measures 0.38 dex with a narrow interval; at 95 per cent one miss in six cases has a chance of about 26 per cent.
+4. **The Kolmogorov-Smirnov flatness test in the first version of the report was invalid** (it treated neighbouring chain samples as independent, which gave p-values near zero). The report now thins by the autocorrelation time and prints the largest departure of a tenth of the range from 0.1 (0.006 to 0.016 for the AGN coupling), and recomputes the statistics from the stored chains.
+
+What this does not show
+- The fit and the mock use the same model and the same bins, so it tests the machinery, not model error.
+- Star formation was fixed at the preset values. The ridge along accretion efficiency divided by star formation efficiency (section 10) was not tested: freeing the star formation efficiency would make the posterior a degenerate band, and a prior from the stellar-to-halo relation would be needed to break it.
+- Nothing here depends on a real data set. The accuracy of 0.1 dex quoted above is for 40 points with 0.3 dex errors drawn from the model's own relation.
+- Sensitivity to the flagged-bin thresholds is untested.

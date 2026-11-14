@@ -10,6 +10,7 @@
 # FORAOIS_ROOT=$HOME/software/foraois (v0.1.2 or later), and the output path below. Set them in the sbatch command with
 # --export=ALL,FORAOIS_ROOT=...,MVM_V2_OUT=... if yours differ.
 # Defaults: VENV=~/software/myenv_3.11, data in $MYSCRATCH/Ashvini/mvm_v2 (override with MVM_V2_OUT), logs in ./logs.
+# Follow-up runs on stored trees: see MVM_V2_TREES_DIR and MVM_V2_ARGS near the end of this file.
 # Setonix scratch is purged, so copy trees_M*.npz and the JSON files to permanent storage once the run is finished.
 # Then:  python scripts/paper_figures/merge_mvm_v2_production.py $MYSCRATCH/Ashvini/mvm_v2
 #SBATCH --job-name=mvm_v2
@@ -42,4 +43,8 @@ export NUMBA_CACHE_DIR="${TMPDIR:-/tmp}/numba_cache_${SLURM_JOB_ID}_${SLURM_ARRA
 OUT="${MVM_V2_OUT:-${MYSCRATCH:-/scratch/pawsey1164/$USER}/Ashvini/mvm_v2}"
 mkdir -p "$OUT"
 $PY -m pytest -q -p no:cacheprovider tests/test_reservoir_stock_v2.py
-$PY scripts/paper_figures/gen_mvm_v2_production.py --mass-index "$SLURM_ARRAY_TASK_ID" --outdir "$OUT"
+# Follow-up runs: MVM_V2_TREES_DIR reuses the stored trees of an earlier run (the same trees, so results are paired);
+# MVM_V2_ARGS passes further options, for example '--variants F_full_nsub --final-n-sub 16 --no-fixed-seeds'.
+TREES_ARG=""
+if [ -n "${MVM_V2_TREES_DIR:-}" ]; then TREES_ARG="--trees-from $MVM_V2_TREES_DIR/trees_M$(printf %02d "$SLURM_ARRAY_TASK_ID").npz"; fi
+$PY scripts/paper_figures/gen_mvm_v2_production.py --mass-index "$SLURM_ARRAY_TASK_ID" --outdir "$OUT" $TREES_ARG ${MVM_V2_ARGS:-}

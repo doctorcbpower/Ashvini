@@ -4,8 +4,11 @@
 #
 # Usage, from the repository root:
 #   mkdir -p logs
-#   export FORAOIS_ROOT=$MYSOFTWARE/foraois        # v0.1.2 or later; use your checkout
-#   sbatch --array=0-12 hpc/submit_mvm_v2_setonix.sbatch
+#   sbatch --array=0-12 --export=ALL hpc/submit_mvm_v2_setonix.sbatch
+# Pawsey sets SBATCH_EXPORT=NONE, so a job does not inherit your shell's exports unless you pass --export=ALL on the command
+# line (a directive inside this file cannot override that variable). The script therefore also falls back to defaults:
+# FORAOIS_ROOT=$HOME/software/foraois (v0.1.2 or later), and the output path below. Set them in the sbatch command with
+# --export=ALL,FORAOIS_ROOT=...,MVM_V2_OUT=... if yours differ.
 # Defaults: VENV=~/software/myenv_3.11, data in $MYSCRATCH/Ashvini/mvm_v2 (override with MVM_V2_OUT), logs in ./logs.
 # Setonix scratch is purged, so copy trees_M*.npz and the JSON files to permanent storage once the run is finished.
 # Then:  python scripts/paper_figures/merge_mvm_v2_production.py $MYSCRATCH/Ashvini/mvm_v2
@@ -22,9 +25,12 @@ set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 # If the venv was built on a Pawsey python module, load that module here first, for example: module load python/3.11.6
 VENV="${VENV:-$HOME/software/myenv_3.11}"
+FORAOIS_ROOT="${FORAOIS_ROOT:-$HOME/software/foraois}"
+[ -d "$FORAOIS_ROOT/src" ] || { echo "FORAOIS_ROOT='$FORAOIS_ROOT' has no src/; pass --export=ALL,FORAOIS_ROOT=<checkout>" >&2; exit 1; }
+export FORAOIS_ROOT
 source "$VENV/bin/activate"
 PY="$VENV/bin/python"
-echo "python: $PY ($($PY --version 2>&1)); FORAOIS_ROOT='${FORAOIS_ROOT:?set FORAOIS_ROOT}'; task ${SLURM_ARRAY_TASK_ID:?run with --array=0-12}"
+echo "python: $PY ($($PY --version 2>&1)); FORAOIS_ROOT='${FORAOIS_ROOT}'; task ${SLURM_ARRAY_TASK_ID:?run with --array=0-12}"
 $PY - <<PY
 import importlib.util, sys
 missing = [m for m in ["numpy","scipy","astropy","h5py","yaml","numba","foraois","pytest"] if importlib.util.find_spec(m) is None]
@@ -33,7 +39,7 @@ PY
 export PYTHONPATH="$PWD:${FORAOIS_ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
 export NUMBA_NUM_THREADS=${SLURM_CPUS_PER_TASK:-4} OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export NUMBA_CACHE_DIR="${TMPDIR:-/tmp}/numba_cache_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
-OUT="${MVM_V2_OUT:-${MYSCRATCH:?set MYSCRATCH or MVM_V2_OUT}/Ashvini/mvm_v2}"
+OUT="${MVM_V2_OUT:-${MYSCRATCH:-/scratch/pawsey1164/$USER}/Ashvini/mvm_v2}"
 mkdir -p "$OUT"
 $PY -m pytest -q -p no:cacheprovider tests/test_reservoir_stock_v2.py
 $PY scripts/paper_figures/gen_mvm_v2_production.py --mass-index "$SLURM_ARRAY_TASK_ID" --outdir "$OUT"

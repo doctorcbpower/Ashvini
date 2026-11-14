@@ -6,7 +6,10 @@
 # then, after all tasks finish:  python scripts/paper_figures/merge_mvm_v2_production.py /fred/oz009/cpower/Ashvini/mvm_v2
 # Trees are sampled once per task and stored in trees_M<idx>.npz next to the JSON; re-run an analysis on the same trees with
 #   python scripts/paper_figures/gen_mvm_v2_production.py --mass-index I --trees-from <dir>/trees_MII.npz --outdir <other dir>
-# Each task is single-threaded numpy; request time generously for the high masses until a first run gives the timings.
+# Tree sampling uses the task's CPUs (numba); the variants run single-threaded. Request time generously for the high masses.
+# To use another file system (for example /scratch), set MVM_V2_OUT for the data and pass --output to sbatch for the logs:
+#   export MVM_V2_OUT=/scratch/$USER/Ashvini/mvm_v2; mkdir -p $MVM_V2_OUT /scratch/$USER/Ashvini/logs
+#   sbatch --array=0-12 --output=/scratch/$USER/Ashvini/logs/mvm_v2_%A_%a.out hpc/submit_mvm_v2.sbatch
 #SBATCH --job-name=mvm_v2
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4

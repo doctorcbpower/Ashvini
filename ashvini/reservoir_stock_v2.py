@@ -128,6 +128,7 @@ def run_reservoir_v2(
     f_mom=PAPER_PARAMS.f_mom, eta_sn_scale=PAPER_PARAMS.eta_sn_scale,
     halo_growth_rate=None,
     dm_nuclear=True, inflow="conservative", cosmology="paper", n_sub=1,
+    cooling_T_vir_K=None, cooling_mass=None, reionised_below_z=None, cooling_T_vir_reionised_K=1.0e4, mu_cooling=1.22,
 ):
     """
     Integrate the revised MVM along a halo trajectory. Arguments and returned dictionary are those of
@@ -140,6 +141,15 @@ def run_reservoir_v2(
         ``redshift`` must already be the grid appropriate to this choice (``uniform_time_grid``).
     n_sub : int. 1 (default) is the frozen explicit step. n_sub > 1 splits the consumption and feedback part of each step
         into n_sub sub-steps (see the comment in the loop); inflow and the nuclear transfer remain once per step.
+
+    cooling_T_vir_K, cooling_mass : optional cooling gate (default None = off, which reproduces the frozen behaviour exactly).
+        While the halo is below the threshold (virial temperature mu m_p V_vir^2 / 2k_B >= cooling_T_vir_K, or halo mass >=
+        cooling_mass, which replaces the temperature condition) gas still arrives and is cut and transferred as usual, but it
+        cannot cool: star formation at both scales and nuclear black hole accretion are switched off. The gas stays in the
+        reservoirs and is used once the gate opens. This is the treatment of the cooling threshold in the Ashvini event
+        integrator and in Stochastic_Occupation (gas can accumulate but cannot form stars). reionised_below_z and
+        cooling_T_vir_reionised_K add, below that redshift, the further condition T_vir >= cooling_T_vir_reionised_K.
+        mu_cooling is the mean molecular weight in T_vir (1.22, neutral, as in Stochastic_Occupation).
 
     Extra returned keys: ``cum_in`` (cumulative baryon inflow, Msun), ``halo_gain`` (sum over steps of the positive halo
     mass increments, Msun), ``halo_decrease_clipped`` (sum of the halo mass decreases that the conservative scheme does not
@@ -193,6 +203,21 @@ def run_reservoir_v2(
     halo_gain = np.zeros(N)
     halo_clip = np.zeros(N)
     R_nuc_cm = R_nuc_pc * pc_cm
+    use_gate = (cooling_T_vir_K is not None) or (cooling_mass is not None) or (reionised_below_z is not None)
+
+    def cooling_gate(hm_, z_):
+        """1.0 where gas can cool (star formation and nuclear accretion allowed), 0.0 where it cannot."""
+        _, V_cms = virial_radius_velocity(np.where(hm_ > 0, hm_, 1.0), z_, om, ol, H0)
+        T_vir = mu_cooling * 1.6726219e-24 * V_cms ** 2 / (2.0 * 1.380649e-16)
+        if cooling_mass is not None:
+            ok = hm_ >= cooling_mass
+        elif cooling_T_vir_K is not None:
+            ok = T_vir >= cooling_T_vir_K
+        else:
+            ok = np.ones_like(hm_, dtype=bool)
+        if reionised_below_z is not None and z_ < reionised_below_z:
+            ok = ok & (T_vir >= cooling_T_vir_reionised_K)
+        return np.where(ok & (hm_ > 0), 1.0, 0.0)
 
     for j in range(1, n):
         dt = cosmic_time[j] - cosmic_time[j - 1]
@@ -200,6 +225,7 @@ def run_reservoir_v2(
         k = j - 1
         hm = halo_mass[:, k]
         has_halo = hm > 0
+        gate = cooling_gate(hm, z_mid) if use_gate else None
         gn0, gg0 = gas_nuc[:, k], gas_gal[:, k]
         sn0, sg0, bh0 = stars_nuc[:, k], stars_gal[:, k], bh[:, k]
 
@@ -241,10 +267,14 @@ def run_reservoir_v2(
             with np.errstate(divide="ignore", invalid="ignore"):
                 inv_nuc = np.where(np.isfinite(tff_nuc) & (tff_nuc > 0), 1.0 / tff_nuc, 0.0)
             A_bh = eta_acc * G_nuc1 * inv_nuc
+            if gate is not None:
+                A_bh = A_bh * gate
             A_hist[:, j] = A_bh
             dbh_full = strict_eddington_step(bh0, A_bh, kappa_edd, dt) - bh0
             sf_n_full = star_formation_demand(G_nuc1, tff_nuc, epsilon_sf, dt)
             sf_g_full = star_formation_demand(G_gal1, tff_gal, epsilon_sf, dt)
+            if gate is not None:
+                sf_n_full, sf_g_full = sf_n_full * gate, sf_g_full * gate
 
             # --- 3. primary consumption, proportional sharing if a reservoir cannot meet its demands ---
             dem_n = dbh_full + sf_n_full
@@ -302,10 +332,14 @@ def run_reservoir_v2(
                 with np.errstate(divide="ignore", invalid="ignore"):
                     inv_nuc = np.where(np.isfinite(tff_nuc) & (tff_nuc > 0), 1.0 / tff_nuc, 0.0)
                 A_bh = eta_acc * Gn * inv_nuc
+                if gate is not None:
+                    A_bh = A_bh * gate
                 A_t += A_bh / n_sub
                 dbh_full = strict_eddington_step(bh_c, A_bh, kappa_edd, dts) - bh_c
                 sf_n_full = star_formation_demand(Gn, tff_nuc, epsilon_sf, dts)
                 sf_g_full = star_formation_demand(Gg, tff_gal, epsilon_sf, dts)
+                if gate is not None:
+                    sf_n_full, sf_g_full = sf_n_full * gate, sf_g_full * gate
                 dem_n = dbh_full + sf_n_full
                 phi_n = np.where(dem_n > Gn, Gn / np.where(dem_n > 0, dem_n, 1.0), 1.0)
                 phi_g = np.where(sf_g_full > Gg, Gg / np.where(sf_g_full > 0, sf_g_full, 1.0), 1.0)

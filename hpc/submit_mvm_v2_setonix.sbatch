@@ -42,7 +42,8 @@ export NUMBA_NUM_THREADS=${SLURM_CPUS_PER_TASK:-4} OMP_NUM_THREADS=1 OPENBLAS_NU
 export NUMBA_CACHE_DIR="${TMPDIR:-/tmp}/numba_cache_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 OUT="${MVM_V2_OUT:-${MYSCRATCH:-/scratch/pawsey1164/$USER}/Ashvini/mvm_v2}"
 mkdir -p "$OUT"
-$PY -m pytest -q -p no:cacheprovider tests/test_reservoir_stock_v2.py
+# The tests take several minutes on a Setonix node; skip them in follow-up runs with MVM_V2_SKIP_TESTS=1.
+if [ -z "${MVM_V2_SKIP_TESTS:-}" ]; then $PY -m pytest -q -p no:cacheprovider tests/test_reservoir_stock_v2.py; fi
 # Follow-up runs: MVM_V2_TREES_DIR reuses the stored trees of an earlier run (the same trees, so results are paired);
 # MVM_V2_ARGS passes further options, for example '--variants F_full_nsub --final-n-sub 16 --no-fixed-seeds'.
 TREES_ARG=""

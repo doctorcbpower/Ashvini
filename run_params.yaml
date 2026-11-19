@@ -35,21 +35,31 @@ supernova:
   delay_time: 0.015 #Gyr
   epsilon_p: 5
   pi_fid: 1
+  # Supernova progenitor range and IMF, used only for the supernova rate in the dust destruction term
+  imf: "salpeter"
+  m_sn_min: 8.0 # Msun
+  m_sn_max: 40.0 # Msun
+  # When the stars explode and how much gas they remove (MODELS.md, "Delay between star formation and explosion, and the wind model").
+  # The defaults are the Ashvini model; presets.stochocc_smooth_control() sets the Stochastic_Occupation smooth limit.
+  # delay_distribution: "single_delay"      # distribution of delays between forming and exploding: "single_delay" (all after delay_time) or "stellar_lifetimes" (each massive star after its own lifetime)
+  # lifetime_Z: 0.002    # mass fraction; 0.002 Georgy+13, 0.014 Ekstrom+12 (used by delay_distribution "stellar_lifetimes" and the event integrator)
+  # n_progenitor_masses: 400
+  # wind_model: "ashvini"   # the wind model (gas removed per supernova): "ashvini", "momentum" (f_p, p_SN_msun_kms) or "energy" (eps_fb, E_SN_erg)
 
 reionization:
   UVB_enabled: True
   z_reion: 7
   gamma: 15
   omega: 2
+  # form: "rate_dependent"  # or "equilibrium": suppression of the equilibrium baryon fraction at the halo mass and redshift alone (docs/UV_SUPPRESSION_AUDIT.md)
 
 metallicity:
-  Z_IGM: 1.0e-3 #Z_solar units
+  Z_IGM_Zsun: 1.0e-3 # metallicity of inflowing gas in units of Z_sun (Z_sun = 0.015 as a mass fraction, constants.Z_SUN)
   Z_yield: 0.06
 
 dust:
   m_swept: 1.0e+3 #Swept-up mass in SNe; epsilon_d x M_ISM
   dust_yield: 0.004
-  dust_gamma: 1.3e-4
   dust_alpha: 8
   m_crit: 1.0e+5
 
@@ -99,23 +109,32 @@ black_holes:
   seeding:
     # Three independently enable-able seeding channels, checked in priority
     # order pop3 -> direct_collapse -> halo_mass_threshold; the first one
-    # satisfied for a given halo wins. Z_gas_max thresholds are in the same
-    # Z_solar units as metallicity.Z_IGM/Z_yield above.
+    # satisfied for a given halo wins. Z_gas_max_Zsun thresholds are in units of Z_sun
+    # (mass fraction = value * constants.Z_SUN), like metallicity.Z_IGM_Zsun above.
     pop3:
       enabled: True
       z_min: 15 # only forms this early in the universe
       M_halo_min: 1.0e+6 # minihalo mass threshold (H2-cooling, Tvir ~ 1e4 K)
-      Z_gas_max: 1.0e-4 # near-primordial gas required
+      Z_gas_max_Zsun: 1.0e-4 # near-primordial gas required
       M_seed: 1.0e+2 # light seed: Pop III remnant mass
 
     direct_collapse:
       enabled: True
       z_min: 10
       M_halo_min: 1.0e+7 # atomic-cooling halo threshold
-      Z_gas_max: 1.0e-5 # pristine gas required to suppress H2 fragmentation
+      Z_gas_max_Zsun: 1.0e-5 # pristine gas required to suppress H2 fragmentation
       M_seed: 1.0e+5 # heavy seed
 
     halo_mass_threshold:
       enabled: True
       M_halo_min: 1.0e+10 # generic fallback: seed once the halo is massive enough
       M_seed: 1.0e+3
+
+# disc: give the gas a disc size and a star formation threshold on its surface density (MODELS.md, "Disc size and ...").
+# Off by default. The size is spin_parameter * angular_momentum_ratio * R_vir / sqrt(2).
+# disc:
+#   enabled: True
+#   spin_parameter: 0.035
+#   angular_momentum_ratio: 1.0                    # j_d / m_d
+#   critical_surface_density_Msun_pc2: 5.0         # gas below this surface density forms no stars; 0 = no threshold
+#   star_formation_law: halo_free_fall             # or schmidt_kennicutt (then schmidt_kennicutt_normalisation, schmidt_kennicutt_slope)

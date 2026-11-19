@@ -12,6 +12,14 @@ The model works by balancing the mass fluxes between the baryonic components of 
 
 See [MODELS.md](MODELS.md) for the exact governing equations behind each of these and a full parameter reference (every `run_params.yaml` key, its default, and what it physically controls).
 
+## Scope: what Ashvini is for
+
+Ashvini is for testing a physical idea quickly, along dark matter merger trees, and for finding out which assumption the answer depends on. It is a step between a back-of-the-envelope estimate and a hydrodynamical simulation (Arepo Solas): its parameters (star formation efficiency, wind mass loading, supernova delay, seeding) mean the same as the simulation's sub-grid parameters, so a result here turns directly into "run this, and check this observable".
+
+It is **not** a calibrated model that is tuned to fit observations, a full semi-analytic galaxy model with discs, molecular hydrogen and morphology (GRUMPY does that), or a population-synthesis and global-signal tool.
+
+A new process is added only if (a) it can be stated in one physical sentence, (b) the sensitivity of the outputs to it has been measured and is not negligible, and (c) you can name the simulation output that would test it. Each process is an option, off by default, so the minimal model is always available as the baseline.
+
 ## Installation
 
 Clone the repository:
@@ -59,10 +67,27 @@ See the script's docstring for the unit/ordering conversions it handles (pymctre
 
 Alternatively, `run()` can generate trees live -- no intermediate file -- by setting `basics.tree_source: pymctrees` in `run_params.yaml` instead of `file` (see the commented-out example in `run_params.yaml` for the full `basics.pymctrees` block: config path, halo count, z0/z_max/dz, mass resolution, backend, seed). Tree generation is fast enough that there's no caching -- every run regenerates the forest. For a forest you want to reuse across many `run_params.yaml` sweeps, build one offline instead with the script above and point `tree_file` at it.
 
+## Learning the model
+
+Start with [docs/STUDENT_GUIDE.md](docs/STUDENT_GUIDE.md) and `notebooks/ashvini_tour.ipynb`: how the code is laid out, how to change a parameter, replace a piece of physics, follow individual supernovae, and how to check that a change is right. [docs/RESERVOIRS.md](docs/RESERVOIRS.md) says which modules are kept unchanged.
+
+```python
+from ashvini import utils
+from ashvini.config import DEFAULT, override
+from ashvini.main import run_forest, run_events
+
+halo_mass, rate, z = utils.read_trees("tests/fixtures/merger_trees_fixture.h5", 1e10)
+result = run_forest(halo_mass, rate, z, config=override(DEFAULT, **{"sf.efficiency": 0.03}))
+```
+
 ## Package structure
 
 | Module | Responsibility |
 |---|---|
+| `config.py`, `state.py` | `Config` (the parameter tree; `DEFAULT`, `override`, `validate`) and `State` (the evolving arrays) |
+| `components/` | One piece of physics each: `star_formation`, `inflow`, `delay` (time between a star forming and exploding), `wind_model` (the wind model: how much gas each supernova removes), `gas`, `chemistry`, `blackholes`, `ode` |
+| `integrators/` | The two time integrators: `grid.py` (`GridIntegrator`: all haloes of a forest, step by step on the tree grid) and `events.py` (`EventIntegrator`: individual supernovae at the moment each explodes, with optional cooling threshold, delayed inflow, gas falling back, stored explosion energy, ...) |
+| `imf.py`, `stellar_lifetimes.py`, `halo.py`, `samplers.py`, `trajectory.py`, `presets.py` | IMF and supernova rate; main-sequence lifetimes (Ekstrom 2012, Georgy 2013); halo scales; random or expected supernovae of a stellar population; the halo history for the event integrator; ready-made parameter sets |
 | `main.py` | Drives the integration: `run1()` (vectorised, fast path), `run1_scalar()` (solve_ivp reference), `run_forest()` (all haloes at once), `run()` (CLI entry point, reads or generates trees, writes HDF5) |
 | `run_params.py` / `run_params.yaml` | Dataclass-based config loader |
 | `pymctrees_adapter.py` | pymctrees <-> Ashvini tree-format conversion (unit/ordering conversions, pre-formation-prefix handling), shared by `scripts/build_trees_from_pymctrees.py` (offline) and `run()`'s live `tree_source: pymctrees` path |
@@ -79,8 +104,8 @@ Alternatively, `run()` can generate trees live -- no intermediate file -- by set
 | `reionization.py` | UV background suppression of gas accretion |
 | `utils.py` | Merger-tree I/O, cosmic time/redshift interpolation |
 | `critical_seed.py` | General-purpose bisection for the black-hole seed mass at which strict Eddington-limited growth reaches a target overmassiveness (`M_BH(z_anchor) = f_bh*M_star(z_anchor)`), against `main.run_forest()`; vectorised across an ensemble of haloes/trees, one independent bisection per halo |
-| `reservoir_stock.py` | The Minimal Viable Model (MVM) of the galaxy and nuclear reservoirs: the model implementation behind the 2026 paper "Critical seed masses for massive black holes in the early Universe". **Frozen**; see the section below and `docs/PRODUCTION_PROVENANCE.md` |
-| `reservoir_stock_premvm.py` | Frozen exploratory model that preceded the MVM; a reference only, not used for any result of the paper |
+| `reservoir_stock.py` | The Minimal Viable Model (MVM) of the galaxy and nuclear reservoirs: the model implementation behind the 2026 paper "Critical seed masses for massive black holes in the early Universe". **Kept unchanged**; see the section below and `docs/PRODUCTION_PROVENANCE.md` |
+| `reservoir_stock_premvm.py` | Exploratory model that preceded the MVM, kept unchanged; a reference only, not used for any result of the paper |
 | `paper_reservoir.py` | Halo-growth-rate (GRUMPY-style spline), UV and cold/hot suppression, virial-quantity and tree-interpolation helpers imported by `reservoir_stock.py`. Its own reservoir integrator (`run_reservoir_paper`, the earlier "Differential Growth" model) is **superseded** by `reservoir_stock.py` and is kept for the record |
 
 ## Reproducing figures
@@ -121,7 +146,7 @@ None of these six scripts are used by the paper directly (only
 
 `ashvini/reservoir_stock.py` implements the paper's model (module docstring: halo supply, the angular-momentum criterion for delivering galaxy gas to a nuclear reservoir, coupled black-hole and star-formation sinks with stellar and AGN feedback, and the critical-seed diagnostic). Its equations are summarised in [`MODELS.md`](MODELS.md).
 
-The production calculation (13 halo masses, 240 Zhang and Hui trees per mass, 801 time nodes, `dz = 0.05`, `M_res = 1e4 Msun`, `z = 25` to `5`) is **frozen**. Its output is `scripts/paper_figures/output/mvm_production_results.json`, produced with `reservoir_stock.py` (SHA-256 beginning `31c701dd`, first recorded in Ashvini commit `695b114`, which was made after the run) and a recorded, partly inferred state of `foraois`. [`docs/PRODUCTION_PROVENANCE.md`](docs/PRODUCTION_PROVENANCE.md) records what generated it (marking what is inferred and what is not established), what later changes do and do not affect, and what is not exactly reproducible (the numba tree sampler is not seed-reproducible, so a rerun gives a new ensemble; the JSON is the record). **A `foraois v0.1.2` numerical-validity correction (2026-09-22) has been applied to this run** -- the compiled tree kernel's `sigma(M)` table clamp and `pk_kmax=100` both silently degraded `M_res` at the low end this production used. The full 13-mass ensemble has been regenerated with the fix; the original frozen file is preserved as `mvm_production_results_pre_v0.1.2_kmax_fix.json`. See `docs/PRODUCTION_PROVENANCE.md`'s section 9 for the corrected values (critical-seed medians shift by $+0.3$ to $+4.7\%$ across all thirteen masses; first-resolved-node quantities shift substantially -- the median first-resolved redshift is now $24.8$ at every mass).
+The production calculation (13 halo masses, 240 Zhang and Hui trees per mass, 801 time nodes, `dz = 0.05`, `M_res = 1e4 Msun`, `z = 25` to `5`) is **frozen**. Its output is `scripts/paper_figures/output/mvm_production_results.json`, produced with `reservoir_stock.py` (SHA-256 beginning `31c701dd`, first recorded in Ashvini commit `695b114`, which was made after the run) and a recorded, partly inferred state of `foraois`. [`docs/PRODUCTION_PROVENANCE.md`](docs/PRODUCTION_PROVENANCE.md) records what generated it (marking what is inferred and what is not established), what later changes do and do not affect, and what is not exactly reproducible (the numba tree sampler is not seed-reproducible, so a rerun gives a new ensemble; the JSON is the record). **A `foraois v0.1.2` numerical-validity correction (2026-09-22) has been applied to this run** -- the compiled tree delay_distribution's `sigma(M)` table clamp and `pk_kmax=100` both silently degraded `M_res` at the low end this production used. The full 13-mass ensemble has been regenerated with the fix; the original frozen file is preserved as `mvm_production_results_pre_v0.1.2_kmax_fix.json`. See `docs/PRODUCTION_PROVENANCE.md`'s section 9 for the corrected values (critical-seed medians shift by $+0.3$ to $+4.7\%$ across all thirteen masses; first-resolved-node quantities shift substantially -- the median first-resolved redshift is now $24.8$ at every mass).
 
 Two limitations to know about:
 
@@ -157,7 +182,8 @@ Open it with `jupyter notebook notebooks/pymctrees_ashvini_demo.ipynb` after `pi
 
 ```
 pip install -r requirements-dev.txt
-pytest tests/
+pytest tests/            # about five minutes
+pytest tests/ --stochocc   # also reruns Stochastic_Occupation live (needs it next to this repository, or STOCHOCC_SRC)
 ```
 
 The suite runs against a small downsampled merger-tree fixture (`tests/fixtures/merger_trees_fixture.h5`, regenerated with `scripts/downsample_trees.py`) and checks output shapes/validity, a pinned reference baseline, agreement between the vectorised and reference integrators, and BH seeding/growth invariants. `test_run_params.py` and `test_run_tree_source.py` cover the `tree_source: pymctrees` config parsing (including a regression test for `run_params.yaml`'s bare-exponent-number YAML gotcha, e.g. `1e10` parsing as a string) and a full live-generation `run()` smoke test; both are skipped if pymctrees isn't installed. `test_bh_growth_feedback.py` covers BH accretion as a genuine gas-mass sink (competing with star formation for the same budget), the Eddington-growth multiplier, and the (optionally delayed) AGN wind term.

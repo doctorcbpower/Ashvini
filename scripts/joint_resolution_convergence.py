@@ -20,6 +20,14 @@ from ashvini import main, pymctrees_adapter
 
 from stellar_to_halo_mass_relation import moster2013_mstar, behroozi2013_mstar
 
+
+def _figure_path(name):
+    """Figures go in figures/ at the repository root, not the working directory."""
+    import os
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "figures")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, name)
+
 PYMCTREES_CONFIG = "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
 MASS_BINS = np.logspace(8, 12, 9)
 N_HALOS = 1000
@@ -108,8 +116,8 @@ def main_():
 
     fig.suptitle("Ashvini low-mass SHMR: joint dz x M_res convergence grid, reionization ON (default)")
     fig.tight_layout(rect=[0, 0, 1, 0.94])
-    fig.savefig("joint_resolution_convergence.png", dpi=150)
-    print("Wrote joint_resolution_convergence.png")
+    fig.savefig(_figure_path("joint_resolution_convergence.png"), dpi=150)
+    print("Wrote figures/joint_resolution_convergence.png")
 
 
 if __name__ == "__main__":

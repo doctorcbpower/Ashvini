@@ -122,7 +122,8 @@ def apply_variant(variant):
             return uv_suppression_mass_only(np.asarray(z, dtype=float), m) * zeta
 
         reionization.uv_suppression = uv_with_hot_mode
-        ash_main.e_ff = TUNED_E_FF
+        from ashvini.run_params import PARAMS
+        PARAMS.sf.efficiency = TUNED_E_FF  # config.sf.efficiency
 
 
 def main_():
@@ -189,8 +190,8 @@ def make_figure(results, variant, suffix):
             ax2.plot(sm[:, 0], sm[:, 1] / sm[:, 0], "-", color=ps.BLUE, lw=0.8, alpha=0.5)
         except FileNotFoundError:
             pass
-        ax.text(0.97, 0.03, "illustrative: UV term, $\\epsilon_{\\rm ff}$ and hot-mode floor tuned", transform=ax.transAxes,
-                ha="right", fontsize=5.5, color="0.25")
+        #ax.text(0.97, 0.03, "illustrative: UV term, $\\epsilon_{\\rm ff}$ and hot-mode floor tuned", transform=ax.transAxes,
+        #        ha="right", fontsize=5.5, color="0.25")
 
     for a in [x for x in (ax, ax2, ax3) if x is not None]:
         a.set_xscale("log")

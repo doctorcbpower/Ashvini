@@ -32,3 +32,7 @@ sigma_thomson = 6.65e-25  # Thomson cross section, cm^2
 Gyr_s = 3.15576e16              # seconds per Gyr
 Msun_g = 1.98892e33             # grams per solar mass (IAU nominal)
 pc_cm = 3.0856775814913673e18   # cm per parsec
+
+# Solar metallicity as a mass fraction. Every metallicity in run_params.yaml carries its unit in its
+# name (..._Zsun); the code works in absolute mass fractions and converts once, here.
+Z_SUN = 0.015

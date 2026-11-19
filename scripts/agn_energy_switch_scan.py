@@ -11,12 +11,13 @@ import agn_energy_switch as E  # noqa: E402
 import shmr_mvm_vs_general as S  # noqa: E402
 import uv_suppression_audit as A  # noqa: E402
 from ashvini import black_holes_growth as bg, main, pymctrees_adapter as pa, reionization as R  # noqa: E402
+from ashvini.run_params import PARAMS  # noqa: E402
 from stellar_to_halo_mass_relation import behroozi2013_mstar  # noqa: E402
 
 N, DZ = 100, 0.005
 MASSES = [1e10, 3.16e10, 1e11, 3.16e11, 1e12, 3.16e12, 1e13, 3.16e13, 1e14]
 R.uv_suppression = A.uv_mass_only
-main.e_ff = 0.05
+PARAMS.sf.efficiency = 0.05  # config.sf.efficiency (main.e_ff no longer exists)
 h, gen = S.build_trees(N, DZ, 1e-4, S.CONFIG)
 trees = {m: pa.build_forest_for_bin(gen, m, h, N, 0.0, 30.0, 1e-4 * m, DZ, "numba", 42) for m in MASSES}
 beh = np.array([float(behroozi2013_mstar(np.array([m]))[0]) for m in MASSES])
@@ -41,11 +42,11 @@ def run(spec, m):
     if spec is None:
         r = main.run_forest(hm, rate, z)
     elif spec == "cap":
-        bg.growth_cap_enabled = True
+        PARAMS.bh.sigma_feedback.growth_cap_enabled = True
         try:
             r = main.run_forest(hm, rate, z)
         finally:
-            bg.growth_cap_enabled = False
+            PARAMS.bh.sigma_feedback.growth_cap_enabled = False
     else:
         with E.installed(**spec):
             r = main.run_forest(hm, rate, z)

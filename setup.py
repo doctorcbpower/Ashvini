@@ -7,6 +7,7 @@ setuptools.setup(
     #    author_email="",
     description="light-weight galaxy formation and evolution model",
     packages=setuptools.find_packages(),
+    package_data={"ashvini": ["data/*.dat"]},
     python_requires=">=3.6",
     install_requires=[
         "numpy",

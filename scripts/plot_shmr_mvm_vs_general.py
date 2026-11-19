@@ -6,6 +6,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from stellar_to_halo_mass_relation import moster2013_mstar, behroozi2013_mstar
 
+
+def _figure_path(name):
+    """Figures go in figures/ at the repository root, not the working directory."""
+    import os
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "figures")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, name)
+
 rows = [r for r in json.load(open("scripts/output/shmr_mvm_vs_general_cdm_dz0.005.json")) if "error" not in r]
 mh = np.array([r["M0"] for r in rows])
 grid = np.logspace(7.8, 14.2, 200)
@@ -36,5 +44,5 @@ ax.set_ylabel(r"$M_\star(z=0)$ [M$_\odot$]", fontsize=15)
 ax2.set_ylabel(r"$M_\star/M_{\rm halo}$ (median)", fontsize=15)
 ax.legend(fontsize=9, loc="lower right")
 fig.tight_layout()
-fig.savefig("shmr_mvm_vs_general.png", dpi=150)
-print("Wrote shmr_mvm_vs_general.png")
+fig.savefig(_figure_path("shmr_mvm_vs_general.png"), dpi=150)
+print("Wrote figures/shmr_mvm_vs_general.png")

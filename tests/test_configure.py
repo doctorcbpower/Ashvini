@@ -1,17 +1,14 @@
 """
-Tests for ashvini.configure.set_params -- see its module docstring for why
-this exists (run_params.yaml's values are cached into module-level globals
-at import time, scattered across several modules, some of them duplicated).
+Tests for ashvini.configure.set_params -- see its module docstring: it changes values of config.DEFAULT in
+place, and nothing is cached in module-level copies, so every module sees the change on its next call.
 """
 import numpy as np
 
 from ashvini import configure
 from ashvini import main as amain
-from ashvini import star_formation as asf
 from ashvini import supernovae_feedback as asn
 from ashvini import reionization as areion
-from ashvini import agn_feedback as aagn
-from ashvini import black_holes_growth as abh
+from ashvini import reionization_physics as areion_physics
 from ashvini.run_params import PARAMS
 
 
@@ -23,49 +20,53 @@ def teardown_function(_):
         sn_type="delayed", uv_background=True,
         bh_enabled=True, eta_agn=0.5, sigma_feedback_enabled=False,
         growth_cap_enabled=False, e_bh=0.001, eddington_multiplier=1.0,
+        m_sn_max=40.0, agn_delay_time=0.0,
     )
 
 
-def test_eps_sf_patches_both_star_formation_and_main_copies():
-    # main.py duplicates star_formation.e_ff as its own module-level e_ff
-    # (used directly in run_forest's inlined SFR update) -- this is exactly
-    # the "one of two copies not updated" bug class this test guards
-    # against, given the codebase's history with silent parameter drift.
+def test_eps_sf_patches_the_config():
+    from ashvini.star_formation import star_formation_rate
     configure.set_params(eps_sf=0.1)
-    assert asf.e_ff == 0.1
-    assert amain.e_ff == 0.1
+    assert PARAMS.sf.efficiency == 0.1
+    ratio = star_formation_rate(1.0, 1.0) / star_formation_rate(1.0, 1.0, cfg=_with(sf_efficiency=1.0))
+    assert abs(ratio - 0.1) < 1e-12
+
+
+def _with(sf_efficiency):
+    from ashvini.config import override
+    return override(PARAMS, **{"sf.efficiency": sf_efficiency})
 
 
 def test_eps_fb_patches_supernovae_feedback():
     configure.set_params(eps_fb=7)
-    assert asn.epsilon_p == 7
+    assert PARAMS.sn.epsilon_p == 7
+    assert float(asn.mass_loading_factor(6.0, 1e9, 0.0)) > 0
+    base = float(asn.mass_loading_factor(6.0, 1e9, 0.0))
+    configure.set_params(eps_fb=14)
+    assert float(asn.mass_loading_factor(6.0, 1e9, 0.0)) == 2 * base
 
 
-def test_t_d_and_sn_type_and_uv_patch_main():
+def test_t_d_and_sn_type_and_uv_patch_the_config():
     configure.set_params(t_d=0.03, sn_type="instantaneous", uv_background=False)
-    assert amain.t_d == 0.03
-    assert amain.sn_type == "instantaneous"
-    assert amain.UV_background is False
+    assert PARAMS.sn.delay_time == 0.03
+    assert PARAMS.sn.type == "instantaneous"
+    assert PARAMS.reion.UVB_enabled is False
 
 
-def test_z_rei_repatches_derived_beta_and_c_omega():
+def test_z_rei_rederives_beta_and_c_omega():
     beta_fiducial = areion.beta
     configure.set_params(z_rei=10)
     assert areion.z_rei == 10
     assert areion.beta != beta_fiducial
-    # sanity: recomputing beta from scratch with the same formula agrees
-    gamma = areion.gamma
-    expected_beta = 10 * (
-        (np.log(1.82 * (10**3) * np.exp(-0.63 * 10) - 1)) ** (-1 / gamma)
-    )
-    assert areion.beta == expected_beta
+    # beta is derived from (z_rei, gamma) on each read, never stored: it can not go stale
+    assert areion.beta == areion_physics.beta(10, areion.gamma)
 
 
 def test_unspecified_arguments_leave_values_unchanged():
     configure.set_params(eps_sf=0.05)
-    eps_fb_before = asn.epsilon_p
+    eps_fb_before = PARAMS.sn.epsilon_p
     configure.set_params(eps_sf=0.06)
-    assert asn.epsilon_p == eps_fb_before
+    assert PARAMS.sn.epsilon_p == eps_fb_before
 
 
 def test_set_params_actually_changes_run_forest_output():
@@ -107,14 +108,14 @@ def test_bh_enabled_true_restores_all_seeding_channels():
     assert seeding.halo_mass_threshold.enabled is True
 
 
-def test_eta_agn_patches_agn_feedback():
+def test_eta_agn_patches_the_config():
     configure.set_params(eta_agn=1.0)
-    assert aagn.eta_agn == 1.0
+    assert PARAMS.bh.eta_agn == 1.0
 
 
-def test_sigma_feedback_enabled_patches_agn_feedback():
+def test_sigma_feedback_enabled_patches_the_config():
     configure.set_params(sigma_feedback_enabled=True)
-    assert aagn.sigma_feedback_enabled is True
+    assert PARAMS.bh.sigma_feedback.enabled is True
 
 
 def test_bh_enabled_false_actually_prevents_seeding_in_run_forest():
@@ -137,14 +138,20 @@ def test_bh_enabled_false_actually_prevents_seeding_in_run_forest():
     assert np.all(result_off["bh_mass"] == 0)
 
 
-def test_growth_cap_enabled_patches_black_holes_growth():
+def test_growth_cap_enabled_patches_the_config():
     configure.set_params(growth_cap_enabled=True)
-    assert abh.growth_cap_enabled is True
+    assert PARAMS.bh.sigma_feedback.growth_cap_enabled is True
 
 
-def test_e_bh_patches_black_holes_growth():
+def test_e_bh_patches_the_config():
     configure.set_params(e_bh=0.05)
-    assert abh.e_bh == 0.05
+    assert PARAMS.bh.efficiency == 0.05
+
+
+def test_m_sn_max_and_agn_delay_patch_the_config():
+    configure.set_params(m_sn_max=100.0, agn_delay_time=0.2)
+    assert PARAMS.sn.m_sn_max == 100.0
+    assert PARAMS.bh.feedback_delay_time == 0.2
 
 
 def test_e_bh_actually_changes_run_forest_bh_growth():

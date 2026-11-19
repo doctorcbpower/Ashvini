@@ -38,6 +38,14 @@ import matplotlib.pyplot as plt
 from ashvini import main, pymctrees_adapter
 from ashvini.run_params import PARAMS
 
+
+def _figure_path(name):
+    """Figures go in figures/ at the repository root, not the working directory."""
+    import os
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "figures")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, name)
+
 PYMCTREES_CONFIG = "/Users/00075868/MyCodes/foraois/config/planck2018_camb.yml"
 MASS_BINS = np.logspace(8, 14, 13)  # Msun, at z0=0
 N_HALOS = 1000
@@ -90,14 +98,10 @@ def run_ensemble(disable_bh_seeding=False, disable_uvb=False):
         PARAMS.bh.seeding.direct_collapse.enabled = False
         PARAMS.bh.seeding.halo_mass_threshold.enabled = False
 
-    # main.UV_background is a module-level snapshot of PARAMS.reion.UVB_enabled
-    # taken at import time (same pattern as main.sn_type -- see
-    # notebooks/pymctrees_ashvini_demo.ipynb's own sn_type toggling), so
-    # PARAMS.reion.UVB_enabled itself must be patched via main.UV_background,
-    # not by assigning to PARAMS.
-    orig_uvb = main.UV_background
+    # The UV background switch is PARAMS.reion.UVB_enabled; it is read at each call.
+    orig_uvb = PARAMS.reion.UVB_enabled
     if disable_uvb:
-        main.UV_background = False
+        PARAMS.reion.UVB_enabled = False
 
     tag = f"bh_seeding={'off' if disable_bh_seeding else 'on'},uvb={'off' if disable_uvb else 'on'}"
     halo_mass_pts, stellar_mass_pts, per_bin_median = [], [], []
@@ -131,7 +135,7 @@ def run_ensemble(disable_bh_seeding=False, disable_uvb=False):
         PARAMS.bh.seeding.pop3.enabled = orig_enabled["pop3"]
         PARAMS.bh.seeding.direct_collapse.enabled = orig_enabled["direct_collapse"]
         PARAMS.bh.seeding.halo_mass_threshold.enabled = orig_enabled["halo_mass_threshold"]
-        main.UV_background = orig_uvb
+        PARAMS.reion.UVB_enabled = orig_uvb
 
     return (
         np.concatenate(halo_mass_pts),
@@ -177,8 +181,8 @@ def main_():
 
     fig.suptitle(f"Ashvini SHMR, z=0 (n_halos={N_HALOS}/bin, CDM): BH growth and reionization on/off, vs. literature")
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    fig.savefig("stellar_to_halo_mass_relation.png", dpi=150)
-    print("Wrote stellar_to_halo_mass_relation.png")
+    fig.savefig(_figure_path("stellar_to_halo_mass_relation.png"), dpi=150)
+    print("Wrote figures/stellar_to_halo_mass_relation.png")
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 
 from ashvini import agn_feedback as agn
+from ashvini.run_params import PARAMS
 from ashvini import black_holes_growth as bh_growth
 from ashvini import gas_evolve
 from ashvini import main
@@ -81,11 +82,11 @@ def test_eddington_multiplier_scales_the_cap(monkeypatch):
     M_BH = 1e6  # Msun
     base_rate = bh_growth.eddington_bh_growth(M_BH)
 
-    monkeypatch.setattr(bh_growth, "eddington_multiplier", 1.0)
+    monkeypatch.setattr(PARAMS.bh, "eddington_multiplier", 1.0)
     huge_gas = 1e20  # gas-unlimited regime, so growth is purely Eddington-capped
     rate_1x = bh_growth.black_hole_growth_rate(t=0.0, M_BH=M_BH, gas_mass=huge_gas)
 
-    monkeypatch.setattr(bh_growth, "eddington_multiplier", 3.0)
+    monkeypatch.setattr(PARAMS.bh, "eddington_multiplier", 3.0)
     rate_3x = bh_growth.black_hole_growth_rate(t=0.0, M_BH=M_BH, gas_mass=huge_gas)
 
     assert float(rate_1x) == pytest.approx(float(base_rate))
@@ -134,18 +135,18 @@ def test_run_forest_with_agn_delay_differs_from_instantaneous(monkeypatch):
     # were dominant" stress case, not a realistic config) makes the BH
     # growth rate comparable to the accretion rate, so the delay's effect
     # on gas_mass is actually visible rather than lost in noise.
-    monkeypatch.setattr(bh_growth, "e_bh", 0.3)
-    monkeypatch.setattr(bh_growth, "eddington_multiplier", 500.0)
+    monkeypatch.setattr(PARAMS.bh, "efficiency", 0.3)
+    monkeypatch.setattr(PARAMS.bh, "eddington_multiplier", 500.0)
 
     n = 60
     z = np.linspace(5.0, 15.0, n)[::-1]
     halo_mass = np.linspace(1e10, 1e12, n)
     halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
 
-    monkeypatch.setattr(main, "agn_delay_time", 0.0)
+    monkeypatch.setattr(PARAMS.bh, "feedback_delay_time", 0.0)
     result_instant = main.run_forest(halo_mass, halo_mass_rate, z)
 
-    monkeypatch.setattr(main, "agn_delay_time", 0.3)  # Gyr
+    monkeypatch.setattr(PARAMS.bh, "feedback_delay_time", 0.3)  # Gyr
     result_delayed = main.run_forest(halo_mass, halo_mass_rate, z)
 
     assert not np.allclose(result_instant["gas_mass"], result_delayed["gas_mass"])
@@ -170,10 +171,10 @@ def test_bh_growth_measurably_reduces_gas_and_stellar_mass(monkeypatch):
     halo_mass = np.linspace(1e10, 1e12, n)
     halo_mass_rate = np.gradient(halo_mass, main.utils.time_at_z(z))
 
-    monkeypatch.setattr(bh_growth, "e_bh", 0.3)
+    monkeypatch.setattr(PARAMS.bh, "efficiency", 0.3)
     result_bh_on = main.run_forest(halo_mass, halo_mass_rate, z)
 
-    seeding = main.PARAMS.bh.seeding
+    seeding = PARAMS.bh.seeding
     monkeypatch.setattr(seeding.pop3, "enabled", False)
     monkeypatch.setattr(seeding.direct_collapse, "enabled", False)
     monkeypatch.setattr(seeding.halo_mass_threshold, "enabled", False)

@@ -52,56 +52,56 @@ dM_gas/dt = Mdot_acc - SFR(t,M_gas) - eta_w(z,M_halo,Z_star)*SFR_wind - Mdot_BH 
 
 ## Metal enrichment ([`metallicity.py`](ashvini/metallicity.py))
 
-Gas-phase metal mass, with a separate branch for halos with no gas (pure inflow + delayed-wind enrichment, no dilution term):
+Gas-phase metal mass. All metallicities are absolute mass fractions inside the code; the config states them in units of Z_sun (`constants.Z_SUN = 0.015`) and the run header prints both:
 
 ```
-M_gas = 0:   dM_Z,gas/dt = Z_IGM*Mdot_acc + Z_yield*SFR_wind
-
-M_gas > 0:   dM_Z,gas/dt = Z_IGM*Mdot_acc - M_Z,gas*SFR(t,M_gas)/M_gas + Z_yield*SFR_wind
-                            - eta_w(z,M_halo,Z_star) * (M_Z,gas/M_gas) * SFR_wind
+dM_Z,gas/dt = Z_IGM*Mdot_acc - (eps_ff/t_ff) * M_Z,gas + Z_yield*SFR_wind
+              - eta_w(z,M_halo,Z_star) * (M_Z,gas/M_gas) * SFR_wind        (last term omitted if M_gas = 0)
 ```
 
-Stellar metal mass (new stars inherit the gas-phase metal fraction at formation):
+Stellar metal mass (new stars inherit the gas-phase metal fraction at formation, `SFR * M_Z,gas / M_gas = (eps_ff/t_ff) * M_Z,gas`):
 
 ```
-dM_Z,star/dt = SFR(t,M_gas) * M_Z,gas/M_gas     (0 if M_gas = 0)
+dM_Z,star/dt = (eps_ff/t_ff) * M_Z,gas
 ```
+
+`SFR_wind` is the same quantity as in the gas equation (zero, present or delayed, set by `supernova.type`). In the vectorised integrator the stellar mass and stellar metals formed in a step follow from mass balance over the step (for `dy/dt = F - D y`, the time integral of `D y` is `y0 + F dt - y1`), so gas + stars + removed mass balance to round-off and a reservoir that is empty at the start of a step forms stars in it.
 
 Stellar metallicity `Z_star = M_Z,star/M_star` (0 if `M_star=0`) feeds back into the mass-loading factor and dust wind-loss below.
 
 | Parameter | Config key | Default | Meaning |
 |---|---|---|---|
-| Z_IGM | `metallicity.Z_IGM` | 1.0e-3 | Metallicity of inflowing IGM gas (Z_solar) |
-| Z_yield | `metallicity.Z_yield` | 0.06 | Metal yield per unit (delayed) SFR returned to the ISM |
+| Z_IGM | `metallicity.Z_IGM_Zsun` | 1.0e-3 | Metallicity of inflowing IGM gas, in units of Z_sun (= 1.5e-5 as a mass fraction) |
+| Z_yield | `metallicity.Z_yield` | 0.06 | Mass of metals returned per unit mass of stars formed (a mass ratio, not in Z_sun) |
 
 ## Dust ([`dust.py`](ashvini/dust.py))
 
 ```
-growth_rate      = Y_d * SFR_past
-SNe_rate         = Gamma * SFR_past / M_star,past          (0 if M_star,past <= 0)
+growth_rate       = Y_d * SFR_wind
+SNe_rate          = nu_SN * SFR_wind                         (supernovae per unit time)
 dust_loading      = 1 - exp(-(M_gas/M_crit)^Alpha)           (saturates to 1 for M_gas >> M_crit)
-destruction_rate  = M_swept * SNe_rate * dust_loading
-wind_loss         = (M_dust/M_gas) * eta_w(z,M_halo,Z_star) * SFR_past    (0 if M_gas <= 0)
+destruction_rate  = M_swept * (M_dust/M_gas) * dust_loading * SNe_rate
+wind_loss         = (M_dust/M_gas) * eta_w(z,M_halo,Z_star) * SFR_wind    (both loss terms 0 if M_gas <= 0)
 
 dM_dust/dt = growth_rate - destruction_rate - wind_loss
 ```
 
-`SFR_past` and `M_star,past` are the SFR and the *stellar mass formed in that single delayed step interval* (not cumulative) from `supernova.delay_time` ago -- this represents the population of young SN progenitors formed at that specific past episode, driving dust destruction now. Both are 0 until enough cosmic time has elapsed to have delay history.
+`SFR_wind` is the same star formation rate that drives the supernova wind in the gas and metal equations: zero for `supernova.type: "no"`, the present rate for `"instantaneous"`, the rate `supernova.delay_time` ago for `"delayed"`. `nu_SN` is the number of core-collapse supernovae per Msun of stars formed, computed from `supernova.imf` over `supernova.m_sn_min`-`m_sn_max` (Salpeter 8-40 Msun: 6.8e-3; 8-100 Msun: 7.4e-3). The swept-up mass `M_swept` carries the dust-to-gas ratio, so each supernova destroys `M_swept * M_dust/M_gas`, not a fixed mass. (Before 2026-11-02 the rate was `Gamma * SFR_past / M_star,past`, which equals `Gamma / dt_step` and depended on the tree grid, and there was no `M_dust/M_gas` factor.)
 
 | Parameter | Config key | Default | Meaning |
 |---|---|---|---|
 | M_swept | `dust.m_swept` | 1.0e3 Msun | ISM mass swept/destroyed per SN (`= epsilon_d * M_ISM`) |
 | Y_d | `dust.dust_yield` | 0.004 | Dust mass produced per unit (delayed) SFR |
-| Gamma | `dust.dust_gamma` | 1.3e-4 | SN rate per unit stellar mass formed in the delayed episode |
+| nu_SN | `supernova.imf`, `m_sn_min`, `m_sn_max` | salpeter, 8, 40 Msun | Sets the supernova rate per Msun formed (the upper limit is a parameter; it does not change the mass-loading factor) |
 | Alpha | `dust.dust_alpha` | 8 | Steepness of the destruction-efficiency saturation curve |
 | M_crit | `dust.m_crit` | 1.0e5 Msun | Gas-mass scale at which destruction efficiency saturates |
 
 ## Supernova feedback ([`supernovae_feedback.py`](ashvini/supernovae_feedback.py))
 
-Metallicity modulation (smooth logistic step from strong feedback at low `Z_star` to weak feedback at high `Z_star`; the step center/width/floor/ceiling below are hard-coded, not exposed in the YAML):
+Metallicity modulation (smooth logistic step from strong feedback at low `Z_star` to weak feedback at high `Z_star`; the step center/width/floor/ceiling below are hard-coded, not exposed in the YAML; Z_star is converted to units of Z_sun first, so the step is centred on 0.1 Z_sun):
 
 ```
-f_Z(Z_star) = sigmoid(-(Z_star - 0.1)/0.01) * (0.25 - 1) + 1
+f_Z(Z_star) = sigmoid((Z_star/Z_sun - 0.1)/0.01) * (0.25 - 1) + 1
 ```
 
 Mass-loading factor (mass of gas ejected per unit SFR):
@@ -118,6 +118,71 @@ eta_w(z, M_halo, Z_star) = epsilon_p * pi_fid * (10^11.5 / M_halo)^(1/3) * (9/(1
 | delay_time | `supernova.delay_time` | 0.015 Gyr | Lookback time for the delayed-feedback SFR |
 | epsilon_p | `supernova.epsilon_p` | 5 | Mass-loading normalization |
 | pi_fid | `supernova.pi_fid` | 1 | Fiducial mass-loading efficiency multiplier |
+| delay_distribution | `supernova.delay_distribution` | `"single_delay"` | The distribution of times between a star forming and exploding: `"single_delay"` (every star after `delay_time`) or `"stellar_lifetimes"` (each massive star after its own lifetime) |
+| wind_model | `supernova.wind_model` | `"ashvini"` | The wind model, i.e. how much gas each supernova removes: `"ashvini"` (the mass loading above), `"momentum"` (momentum-driven) or `"energy"` (energy-driven) |
+
+### Delay between star formation and explosion, and the wind model (`components/delay.py`, `components/wind_model.py`)
+
+**Delay distribution `"stellar_lifetimes"`.** Each massive star that explodes as a supernova, with initial mass `m` drawn from the IMF between `m_sn_min` and `m_sn_max` (`n_progenitor_masses` bins of equal probability), explodes `t_MS(m, Z)` after it forms, where `t_MS` is its main-sequence lifetime (`stellar_lifetimes.py`; Georgy et al 2013 at `lifetime_Z` = 0.002, Ekstrom et al 2012 at 0.014, interpolated in log Z between them; rotating models; the lifetime ends when the central hydrogen fraction falls to 1e-4). Let `F(s)` be the fraction of these stars that have exploded a time `s` after forming, and `G` the integral of `F`. Then the fraction of the stars formed (at a constant rate) in step `k` whose supernovae go off in step `j` is `K[j,k] = [G(T_j - T_{k-1}) - G(T_j - T_k) - G(T_{j-1} - T_{k-1}) + G(T_{j-1} - T_k)] / dT_k`, where `T` are the cosmic times at the step boundaries and `dT_k` is the length of step `k`; this is exact when the star formation rate is constant within a step. The star formation rate that drives the wind in step `j` is `sum_k K[j,k] S_k / dt_j` over earlier steps, with `S_k` the mass of stars formed in step `k`. Supernovae that would go off within the step in which their stars formed are counted at the start of the next step. The same rate drives the loss of gas, metals and dust. With a single lifetime this is the single delay `delay_time` (to within one step). Used only when `supernova.type` is `"delayed"`.
+
+**Wind models.** The mass loading `eta_w` is the gas removed per unit mass of stars formed, `eta_w = nu_SN * (gas removed by one supernova)`, with `nu_SN` the number of supernova progenitors per Msun of stars formed for the chosen IMF and mass range:
+
+```
+ashvini   eta_w from the calibrated formula above
+momentum  eta_w = nu_SN * f_p * p_SN / v_esc                 (p_SN = 3e5 Msun km/s, the momentum one supernova delivers)
+energy    eta_w = nu_SN * 2 * eps_fb * E_SN / v_esc^2        (E_SN = 1e51 erg, the energy of one supernova;
+                                                              eps_fb = the fraction of it that unbinds gas)
+```
+
+`v_esc = sqrt(2) V_c`, with `V_c` the circular speed at the virial radius of a halo whose mean density is 200 times the critical density (`halo.py`). The Ashvini mass loading falls as `v_esc^-1`, like a momentum-driven wind: it equals the momentum-driven wind with `f_p` = 0.7646 at zero stellar metallicity to 0.3 percent over 1e6-1e10 Msun and z = 5-15 (for 8-100 Msun progenitors). `presets.stochocc_smooth_control()` sets this up together with Stochastic_Occupation's star formation rate. The grid integrator does not limit the gas removed to the gas present (a negative gas mass is set to zero afterwards); the event integrator does.
+
+### Event integrator (`integrators/events.py`, `main.run_events`)
+
+Follows individual supernovae for one halo at a time. Between supernovae the gas, stars and metals are advanced exactly (`dM/dt = S - kM`, solved in closed form, with `k` the star formation rate per unit gas mass at the start of the substep and the gas supply `S = f_b max(dM_h, 0)` reduced by the equilibrium UV suppression of Okamoto et al 2008). The stars formed in a substep are passed to `samplers.py`, which returns the supernovae they will produce. Each supernova acts at the moment it explodes, using the halo mass and escape speed at that moment: it adds its metals and dust (`Z_yield` and `dust_yield` per Msun of stars, divided by `nu_SN` per supernova), destroys dust (`weight * m_swept * M_d/M_g * f_gas`, at most the dust present), and removes `min(M_gas, weight * (gas removed by one supernova))` of gas, with metals and dust in proportion to the gas. Here `weight` is the fraction of a whole supernova that the event stands for. Two ways of choosing the supernovae: `"smooth"` (the expected supernovae, as fractions of a supernova, on K = 100 representative masses, released in batches of 1 Myr; no randomness) and `"stochastic"` (a Poisson number of whole supernovae with random masses). Not included: black holes. The gas supply and the UV suppression use the equilibrium form, unlike the grid integrator's form that depends on the growth rate.
+
+#### Optional physics of the event integrator (Config section `events`, all off by default)
+
+Each is compared with Stochastic_Occupation's smooth model (`tests/test_event_options.py`; reference numbers in `tests/reference_outputs/stochocc_options.json`). `tau` below is the Config value (a number of crossing times) times `r_vir / v_esc` at the time named, where `r_vir / v_esc` is the time to travel the virial radius `r_vir` at the escape speed `v_esc`.
+
+| Key | What it does |
+|---|---|
+| `cooling_T_vir_K`, `cooling_mass`, `reionised_below_z`, `cooling_T_vir_reionised_K` | Cooling threshold: gas forms stars only when the halo's virial temperature `T_vir` (mu = 1.22) is above `cooling_T_vir_K`, or its mass above `cooling_mass` (which replaces the temperature condition); below redshift `reionised_below_z` it must also exceed `cooling_T_vir_reionised_K` (gas in smaller haloes cannot cool after reionisation). Tested at the start of each substep. |
+| `inflow_delay_in_crossing_times` | Gas takes a time `tau` (at the start of the substep) to reach the galaxy: the supply passes through a reservoir that empties at rate `1/tau`, solved exactly. |
+| `recycling_fraction`, `recycling_delay_in_crossing_times`, `recycling_fraction_Z` | This fraction of the gas a supernova removes falls back into the galaxy after `tau` (at the supernova); `recycling_fraction_Z` (default: the same) is the fraction of the removed metals and dust that fall back. |
+| `stored_energy_loss_time_myr` | Energy kept for later: when a supernova finds less gas than its energy could unbind, the unused energy `(wanted - removed)/2 * v_esc^2` is stored, decays over `stored_energy_loss_time_myr` (`inf` = never), and removes gas as it arrives, before it reaches the galaxy. Needs the energy-driven wind. |
+| `reachable_gas_fraction` | One supernova can reach only this fraction of the gas present. Because the limit applies to each supernova separately, the answer depends on how the expected supernovae are divided into separate explosions (the smooth sampler's `K`). |
+| `coupling_change_mass`, `eps_fb_above_change_mass` | Above this halo mass at the time of the explosion the energy-driven wind uses a different coupling `eps_fb_above_change_mass` (supernovae confined in massive minihaloes). Needs the energy-driven wind. |
+| `wind_delay_in_crossing_times` | The gas a supernova will remove is fixed when it explodes, but leaves the galaxy a time `tau` later (limited to the gas then present); metals and dust are lost with it then. The gas can form stars in the meantime. |
+
+Stochastic_Occupation does not allow several of these together with chemistry (or with the momentum-driven wind). The event integrator always follows metals and dust and allows every combination, so those combinations are not compared with it.
+
+## Disc size and a star formation threshold on surface density (`components/disc.py`, Config section `disc`, off by default)
+
+With the option off the gas is one bulk reservoir. With `disc.enabled: True` the gas is taken to form an exponential disc, `Sigma(r) = Sigma_0 exp(-r / R_d)`, holding all of the gas mass `M_gas`, so `Sigma_0 = M_gas / (2 pi R_d^2)`. The scale length follows Mo, Mao & White (1998) without their corrections for the halo concentration and for the disc's pull on the halo:
+
+```
+R_d = (j_d / m_d) * lambda * R_vir / sqrt(2)
+```
+
+where `lambda` is the halo spin parameter (`spin_parameter`, 0.035, constant in time), `j_d / m_d` is the disc's share of the halo's angular momentum divided by its share of the mass (`angular_momentum_ratio`, 1) and `R_vir` is the virial radius (mean density 200 times critical). For `j_d / m_d = 1` this is the disc size used by the reservoir model, and the two virial radii agree to 0.3 percent.
+
+Gas forms stars only where the surface density is above `critical_surface_density_Msun_pc2` (`Sigma_crit`, default 5 Msun/pc^2; 0 = no threshold). For an exponential disc that is every radius inside `R_crit = R_d ln(Sigma_0 / Sigma_crit)`, which holds the fraction
+
+```
+f = 1 - (1 + x) exp(-x),    x = ln(Sigma_0 / Sigma_crit) = R_crit / R_d      (f = 0 if Sigma_0 <= Sigma_crit)
+```
+
+of the gas. The star formation rate is the usual rate applied to that gas only: `SFR = f * eps_ff / t_ff * M_gas` (grid integrator: `f` from the gas and halo mass at the start of the step; event integrator: at the start of the substep). `f` rises smoothly from 0 as the disc becomes dense, so star formation does not switch on and off from step to step. `components.disc.diagnostics` gives `R_d`, `Sigma_0` and `f` for a finished run.
+
+**Star formation law from the disc (`disc.star_formation_law`).** `"halo_free_fall"` (the default) is the usual rate on the gas above the threshold, as above. `"schmidt_kennicutt"` sets the rate from the disc: `Sigma_SFR = A Sigma_gas^N` (Kennicutt 1998; `schmidt_kennicutt_normalisation` A = 2.5e-4 Msun/yr/kpc^2 for `Sigma_gas` in Msun/pc^2, `schmidt_kennicutt_slope` N = 1.4), integrated over the exponential disc, `SFR = 2 pi A Sigma_0^N R_d^2 / N^2`. It has no threshold. The relation is calibrated on present-day galaxies and here applied at every redshift and mass. `components.disc.implied_efficiency` gives the efficiency per halo free-fall time that a disc law amounts to at the present halo and gas mass.
+
+A rate `eps_d * M_gas / t_disc`, with `t_disc = R_d / V_c` the disc's dynamical time, is deliberately not an option. For `R_d` proportional to `R_vir` and `V_c` the halo circular speed, `R_vir / V_c = 1 / (10 H(z))`, so `t_disc` is a fixed multiple of `1 / H(z)` and the law is exactly the usual rate with efficiency `eps = eps_d * 0.141 * 10 sqrt(2) / ((j_d / m_d) * spin)`: 0.855 for `eps_d` = 0.015 and spin 0.035, for every halo and redshift. It would differ only if the spin varied between haloes or the circular speed at `R_d` differed from the halo's. `tests/test_disc.py` checks this.
+
+**Can the usual law be made consistent by changing its efficiency?** For the disc dynamical time law, yes: it is the same law (above). For the Schmidt-Kennicutt law, not with one number (`scripts/disc_star_formation_laws.py`, three haloes per mass; output in `scripts/output/disc_star_formation_laws.txt`). The efficiency per halo free-fall time that it amounts to is about 0.06 at 1e8 Msun, 0.12 at 1e10 and 0.16 at 1e11 (median over time), so it rises with mass, and within each history it changes by a factor of 4 to 7 (5th to 95th percentile; at 1e10 from 0.02 at z = 20 to 0.4 at z = 6) because it grows with the gas surface density (`eps` proportional to `Sigma_gas^(N-1)`). A single efficiency chosen to give the same final stellar mass is 0.12 to 0.14 at 1e8, 0.1 to 1.1 at 1e10 (the stellar mass is not a monotonic function of the efficiency there, so the match is not unique) and 0.5 to 0.7 at 1e11, i.e. different for each mass. With it the gas mass at z = 5 is 0.6 to 0.7 of the Schmidt-Kennicutt value at 1e8, 0.3 to 3 at 1e10 and 0.7 to 1.2 at 1e11, and the star formation rate at early times differs by factors of 3 to several hundred. The gas metallicity is matched to 1 to 30 percent. A constant efficiency therefore reproduces the final stellar mass at a given mass but not the gas content or the history. An efficiency that depends on the gas surface density (and so on mass and time) is needed.
+
+**Time step.** A star formation rate much faster than the supernova delay or the step makes the grid result depend on the redshift grid (feedback acts a supernova delay late relative to the step). `GridIntegrator` warns when star formation consumes more than about 26 percent of the gas in a step. The Schmidt-Kennicutt law is first order in the step: 3 percent below the converged value at the resolution of the test trees. The event integrator shortens its substeps to a tenth of the star formation time when the disc option is on.
+
+What this leaves out: the concentration and disc-gravity corrections (the fuller formula in the DiscModels package gives a disc 0.55-0.70 times as large for the cases tried, which `angular_momentum_ratio` can mimic), a spin that changes with time or differs between haloes, the disc's stability (Toomre) condition, molecular hydrogen, and the disc's effect on the dark matter halo. The disc is a test of what a disc-based star formation does, not a disc galaxy model. `scripts/disc_threshold_subset.py` (the threshold; it changes the stellar mass by 3 percent or less for thresholds up to 10 Msun/pc^2) and `scripts/disc_star_formation_laws.py` (the rate law; the Schmidt-Kennicutt law gives 1.5 to 11 times the stars of the usual law at the fiducial parameters, 1e8 to 1e11 Msun) compare them with the usual law on a few haloes.
 
 ## Black hole growth ([`black_holes_growth.py`](ashvini/black_holes_growth.py))
 
@@ -148,12 +213,12 @@ Default values:
 | enabled | `black_holes.seeding.pop3.enabled` | True | Pop III channel on/off |
 | z_min | `black_holes.seeding.pop3.z_min` | 15 | Only forms this early in the universe |
 | M_halo_min | `black_holes.seeding.pop3.M_halo_min` | 1.0e6 Msun | Minihalo mass threshold (H2-cooling, Tvir ~ 1e4 K) |
-| Z_gas_max | `black_holes.seeding.pop3.Z_gas_max` | 1.0e-4 | Near-primordial gas required |
+| Z_gas_max | `black_holes.seeding.pop3.Z_gas_max_Zsun` | 1.0e-4 | Near-primordial gas required (units of Z_sun) |
 | M_seed | `black_holes.seeding.pop3.M_seed` | 1.0e2 Msun | Light seed (Pop III remnant) |
 | enabled | `black_holes.seeding.direct_collapse.enabled` | True | Direct-collapse channel on/off |
 | z_min | `black_holes.seeding.direct_collapse.z_min` | 10 | Redshift floor |
 | M_halo_min | `black_holes.seeding.direct_collapse.M_halo_min` | 1.0e7 Msun | Atomic-cooling halo threshold |
-| Z_gas_max | `black_holes.seeding.direct_collapse.Z_gas_max` | 1.0e-5 | Pristine gas required to suppress H2 fragmentation |
+| Z_gas_max | `black_holes.seeding.direct_collapse.Z_gas_max_Zsun` | 1.0e-5 | Pristine gas required to suppress H2 fragmentation (units of Z_sun) |
 | M_seed | `black_holes.seeding.direct_collapse.M_seed` | 1.0e5 Msun | Heavy seed |
 | enabled | `black_holes.seeding.halo_mass_threshold.enabled` | True | Fallback channel on/off |
 | M_halo_min | `black_holes.seeding.halo_mass_threshold.M_halo_min` | 1.0e10 Msun | Generic mass threshold |
@@ -427,6 +492,8 @@ epsilon(z) = d/dz [ ln(1 + exp((z/beta)^gamma)) ]  (evaluated analytically)
 | gamma | `reionization.gamma` | 15 | Sharpness of the ionization transition |
 | omega | `reionization.omega` | 2 | Power-law index of the suppression functional form |
 
+`reionization.form` chooses how the suppression is applied to the gas accretion. `"rate_dependent"` (default) is the form above, with the term that depends on the halo growth rate; `docs/UV_SUPPRESSION_AUDIT.md` found that it stops essentially all accretion after z = 5 in haloes below about 1e10 Msun and that it depends on the tree time step. `"equilibrium"` uses only `s(M / M_c(z), omega)`, the suppression of the equilibrium baryon fraction at the halo mass and redshift (Okamoto, Gnedin & Frenk 2008; the form the reservoir model uses, and the form the event integrator always uses): accretion is reduced, not stopped, and the result does not depend on the growth rate or the time step.
+
 ## Merger tree input ([`utils.py`](ashvini/utils.py), [`pymctrees_adapter.py`](ashvini/pymctrees_adapter.py))
 
 Every equation above consumes a halo's mass/growth-rate history along cosmic time, from either an HDF5 file (`basics.tree_source: file`) or a live [pymctrees](https://github.com/doctorcbpower/pymctrees) forest (`basics.tree_source: pymctrees`). See [README.md](README.md#input-halo-merger-trees) for the config surface. Notable conversions in the adapter: pymctrees' Msun/h masses and backward-in-time ordering are converted to plain Msun / forward-chronological; growth rates are finite-differenced against Ashvini's own (Planck18) `time_at_z`, not pymctrees' internal cosmology; and pre-formation placeholder masses (below pymctrees' resolution) are zeroed to represent "halo does not exist yet," which is what the `M_halo <= 0` guards throughout this document are protecting against.
@@ -458,8 +525,8 @@ Excluded: black-hole mergers, super-Eddington growth, nuclear dark matter, an ev
 
 `run1()`/`run_forest()` (the production path) integrate the same five ODEs as `run1_scalar()` (the `solve_ivp` reference), but using closed-form/quadrature updates chosen per-equation:
 
-- **Stellar mass and stellar metals**: not self-referential within a step (pure integrals of quantities frozen at the step start) -> exact 5-point Gauss-Legendre quadrature of `1/t_ff(z(t))` over the step.
-- **Gas mass, gas metals, dust mass**: each is affine, `dy/dt = forcing - decay*y`, with forcing/decay frozen at the step midpoint redshift -> solved exactly via an exponential integrator (`_linear_ode_step`).
+- **Stellar mass and stellar metals**: from mass balance over the step: for `dy/dt = F - D*y` the time integral of `D*y` is `y0 + F*dt - y1`, so the stars formed are `(B_sf / D) * (y0 + F*dt - y1)`, exact and conserving mass to round-off (`components/gas.py`, `components/chemistry.py`).
+- **Gas mass, gas metals, dust mass**: each is affine, `dy/dt = forcing - decay*y`, with forcing/decay frozen at the step midpoint redshift -> solved exactly via an exponential integrator (`components/ode.linear_ode_step`).
 - **Black hole mass**: piecewise (gas-supply-limited vs. Eddington-limited, with a possible regime crossover mid-step) -> solved exactly per-regime rather than approximated.
 
 This lets the integration vectorise across every halo in a forest simultaneously (they share a redshift grid), rather than looping per-halo with `solve_ivp`. `tests/test_run1.py` cross-validates the vectorised path against the scalar reference.

@@ -127,7 +127,10 @@ def uv_suppression(z_val, m_halo, mdot_halo, cfg=None):
     mu_vals = mu_c(z_masked, mh_safe, cfg)
     x_vals = X(z_masked, mh_safe, cfg)
     eps_vals = epsilon(z_masked, cfg)
-    H_vals = cosmo.H(z_masked).value
+    # mdot_halo is in Msun/Gyr, so H must be in Gyr^-1 for the correction
+    # term to be dimensionless. Astropy's .value here would leave H in
+    # km/s/Mpc
+    H_vals = cosmo.H(z_masked).to_value(u.Gyr**-1)
 
     ratio_term = 2 * eps_vals * mh_safe * x_vals * (1 + z_masked) * H_vals / mdot_safe
     suppressed = s(mu_vals, _shape(cfg)[2]) * ((1 + x_vals) - ratio_term)
